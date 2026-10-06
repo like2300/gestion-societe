@@ -1,0 +1,475 @@
+{% extends "gestion/base_dashboard.html" %}
+{% load static %}
+
+{% block dash_title %}Finances — {{ societe.nom }}{% endblock %}
+
+{% block content %}
+    <style>
+        .fin-nav {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            padding: 0.9rem 1.1rem;
+        }
+        .fin-nav form {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+        .fin-month-input {
+            border: 1px solid #e2e8f0;
+            border-radius: 0.55rem;
+            padding: 0.5rem 0.7rem;
+            font-size: 0.85rem;
+            color: #0f172a;
+            background: #ffffff;
+        }
+        .fin-month-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-soft);
+        }
+        .fin-mois-label {
+            font-weight: 700;
+            color: var(--accent);
+            text-transform: capitalize;
+            white-space: nowrap;
+        }
+        .fin-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 1rem;
+        }
+        .fin-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.9rem;
+            padding: 1rem 1.1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+        .fin-card .k-lbl {
+            font-size: 0.72rem;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .fin-card .k-num {
+            font-size: 1.45rem;
+            font-weight: 700;
+            color: #0f172a;
+            line-height: 1.1;
+        }
+        .fin-card .k-sub {
+            font-size: 0.74rem;
+            color: #64748b;
+        }
+        .fin-dot {
+            width: 0.55rem;
+            height: 0.55rem;
+            border-radius: 9999px;
+            flex: none;
+        }
+        .fin-cumul {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            padding: 1.1rem 1.2rem;
+        }
+        .fin-cumul .c-item .c-lbl {
+            font-size: 0.7rem;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .fin-cumul .c-item .c-num {
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: #0f172a;
+        }
+        .fin-cols {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            align-items: start;
+        }
+        .fin-list {
+            display: flex;
+            flex-direction: column;
+        }
+        .fin-list .l-item {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            padding: 0.7rem 1.1rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .fin-list .l-item:last-child {
+            border-bottom: none;
+        }
+        .fin-list .l-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        .fin-list .l-sub {
+            font-size: 0.74rem;
+            color: #64748b;
+        }
+        .fin-list .l-amount {
+            margin-left: auto;
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: #0f172a;
+            white-space: nowrap;
+        }
+        .fin-list .l-amount.neg {
+            color: #b91c1c;
+        }
+        .fin-empty {
+            padding: 2rem 1.1rem;
+            text-align: center;
+            color: #64748b;
+            font-size: 0.85rem;
+        }
+        .pos { color: #15803d; }
+        .neg { color: #b91c1c; }
+        .c-sub {
+            font-size: 0.7rem;
+            color: #64748b;
+            margin-top: 0.15rem;
+        }
+        .kpay-test {
+            font-size: 0.58rem;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            background: #ede9fe;
+            color: #7c3aed;
+            border: 1px solid #ddd6fe;
+            border-radius: 9999px;
+            padding: 0.1rem 0.4rem;
+            margin-left: 0.35rem;
+            vertical-align: middle;
+        }
+        .kpay-rafraichir {
+            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            border-radius: 0.5rem;
+            padding: 0.32rem 0.65rem;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #334155;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        .kpay-rafraichir:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        @media (prefers-color-scheme: dark) {
+            .fin-card,
+            .fin-nav,
+            .fin-cumul {
+                background: #1e293b;
+                border-color: #334155;
+            }
+            .fin-card .k-num,
+            .fin-cumul .c-item .c-num,
+            .fin-list .l-amount,
+            .fin-list .l-name {
+                color: #f1f5f9;
+            }
+            .fin-month-input {
+                background: #0f172a;
+                border-color: #334155;
+                color: #f1f5f9;
+            }
+            .fin-list .l-item {
+                border-color: #334155;
+            }
+        }
+    </style>
+
+    <section class="banner">
+        <div>
+            <h1>Finances</h1>
+            <p>Récap complet : recettes, dépenses, salaires et solde de <strong>{{ societe.nom }}</strong>.</p>
+        </div>
+    </section>
+
+    <div class="panel fin-nav">
+        <form method="get" action="{% url 'gestion:finances' %}">
+            <a class="btn-ghost" href="{% url 'gestion:finances' %}?m={{ mois_prec }}">← Mois précédent</a>
+            <input type="month" name="m" class="fin-month-input" value="{{ mois_value }}"
+                aria-label="Mois à afficher" />
+            <button type="submit" class="btn-primary">Afficher</button>
+            <a class="btn-ghost" href="{% url 'gestion:finances' %}?m={{ mois_suiv }}">Mois suivant →</a>
+        </form>
+        <div class="fin-mois-label">{{ mois_label|capfirst }}</div>
+    </div>
+
+    <div class="fin-stats">
+        <div class="fin-card">
+            <div class="k-lbl"><span class="fin-dot" style="background:#059669"></span>Recettes</div>
+            <div class="k-num pos">{{ kpis.recettes|floatformat:"0g" }}</div>
+            <div class="k-sub">Paiements clients confirmés du mois</div>
+        </div>
+        <div class="fin-card">
+            <div class="k-lbl"><span class="fin-dot" style="background:#e11d48"></span>Dépenses</div>
+            <div class="k-num neg">{{ kpis.depenses|floatformat:"0g" }}</div>
+            <div class="k-sub">Dépenses société confirmées du mois</div>
+        </div>
+        <div class="fin-card">
+            <div class="k-lbl"><span class="fin-dot" style="background:#4f46e5"></span>Salaires payés</div>
+            <div class="k-num neg">{{ kpis.salaires|floatformat:"0g" }}</div>
+            <div class="k-sub">Payés pendant le mois (comptabilisés en dépense)</div>
+        </div>
+        <div class="fin-card">
+            <div class="k-lbl"><span class="fin-dot" style="background:#d97706"></span>Salaires à payer</div>
+            <div class="k-num">{{ kpis.salaires_prevus|floatformat:"0g" }}</div>
+            <div class="k-sub">Prévus ce mois et non encore payés</div>
+        </div>
+        <div class="fin-card">
+            <div class="k-lbl"><span class="fin-dot" style="background:var(--accent)"></span>Solde du mois</div>
+            <div class="k-num {% if kpis.solde < 0 %}neg{% else %}pos{% endif %}">{{ kpis.solde|floatformat:"0g" }}</div>
+            <div class="k-sub">Recettes − dépenses − salaires</div>
+        </div>
+    </div>
+
+    <div class="panel fin-cumul">
+        <div class="c-item">
+            <div class="c-lbl">Recettes cumulées</div>
+            <div class="c-num pos">{{ cumuls.recettes|floatformat:"0g" }}</div>
+        </div>
+        <div class="c-item">
+            <div class="c-lbl">Dépenses cumulées</div>
+            <div class="c-num neg">{{ cumuls.depenses|floatformat:"0g" }}</div>
+        </div>
+        <div class="c-item">
+            <div class="c-lbl">Salaires cumulés</div>
+            <div class="c-num neg">{{ cumuls.salaires|floatformat:"0g" }}</div>
+        </div>
+        <div class="c-item">
+            <div class="c-lbl">Solde global</div>
+            <div class="c-num {% if cumuls.solde < 0 %}neg{% else %}pos{% endif %}">{{ cumuls.solde|floatformat:"0g" }}</div>
+        </div>
+    </div>
+
+    {% if kpay_configuree %}
+        <div class="panel fin-cumul">
+            <div class="c-item">
+                <div class="c-lbl">Portefeuille KPay</div>
+                <div class="c-sub">Wallets Mobile Money de l'application — encaissements et virements</div>
+            </div>
+            {% for w in kpay_soldes %}
+                <div class="c-item">
+                    <div class="c-lbl">Wallet {{ w.currency }}</div>
+                    <div class="c-num pos">{{ w.availableBalance|floatformat:"0g" }} {{ w.currency }}</div>
+                    <div class="c-sub">Solde {{ w.balance|floatformat:"0g" }} · réservé {{ w.reservedBalance|floatformat:"0g" }}</div>
+                </div>
+            {% empty %}
+                <div class="c-item">
+                    <div class="c-lbl">Solde wallet</div>
+                    <div class="c-sub">{% if kpay_erreur %}Indisponible : {{ kpay_erreur }}{% else %}Aucun wallet à afficher.{% endif %}</div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="panel">
+        <div class="page-head" style="padding:1rem 1.1rem;border-bottom:1px solid #e2e8f0">
+            <div>
+                <h1 style="font-size:1.05rem">Historique (6 derniers mois)</h1>
+                <p class="sub">Évolution des recettes, dépenses, salaires et solde.</p>
+            </div>
+        </div>
+        <table class="crud-table">
+            <thead>
+                <tr>
+                    <th>Période</th>
+                    <th>Recettes</th>
+                    <th>Dépenses</th>
+                    <th>Salaires</th>
+                    <th>Solde</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for h in historique %}
+                    <tr>
+                        <td><span class="row-name">{{ h.label }}</span></td>
+                        <td class="pos">{{ h.recettes|floatformat:"0g" }}</td>
+                        <td class="neg">{{ h.depenses|floatformat:"0g" }}</td>
+                        <td class="neg">{{ h.salaires|floatformat:"0g" }}</td>
+                        <td class="{% if h.solde < 0 %}neg{% else %}pos{% endif %} row-name">{{ h.solde|floatformat:"0g" }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="fin-cols">
+        <div class="panel">
+            <div class="page-head" style="padding:1rem 1.1rem;border-bottom:1px solid #e2e8f0">
+                <div>
+                    <h1 style="font-size:1.05rem">Recettes du mois</h1>
+                    <p class="sub">Paiements clients confirmés</p>
+                </div>
+                <a class="btn-ghost" style="margin-left:auto" href="{% url 'gestion:crud' 'paiements' %}">Tout voir</a>
+            </div>
+            {% if recettes_recentes %}
+                <div class="fin-list">
+                    {% for p in recettes_recentes %}
+                        <div class="l-item">
+                            <div>
+                                <div class="l-name">{{ p.projet.nom }}</div>
+                                <div class="l-sub">{{ p.date_paiement|date:"d/m/Y" }}
+                                    {% if p.mode_paiement %} · {{ p.mode_paiement.nom }}{% endif %}
+                                </div>
+                            </div>
+                            <div class="l-amount pos">+{{ p.montant|floatformat:"0g" }}</div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="fin-empty">Aucune recette confirmée ce mois-ci.</div>
+            {% endif %}
+        </div>
+
+        <div class="panel">
+            <div class="page-head" style="padding:1rem 1.1rem;border-bottom:1px solid #e2e8f0">
+                <div>
+                    <h1 style="font-size:1.05rem">Dépenses du mois</h1>
+                    <p class="sub">Dépenses confirmées (salaires inclus)</p>
+                </div>
+                <a class="btn-ghost" style="margin-left:auto" href="{% url 'gestion:crud' 'depenses' %}">Tout voir</a>
+            </div>
+            {% if depenses_recentes %}
+                <div class="fin-list">
+                    {% for d in depenses_recentes %}
+                        <div class="l-item">
+                            <div>
+                                <div class="l-name">{{ d.nom }}</div>
+                                <div class="l-sub">{{ d.date_depense|date:"d/m/Y" }}
+                                    {% if d.type_depense %} · {{ d.type_depense.nom }}{% endif %}
+                                </div>
+                            </div>
+                            <div class="l-amount neg">−{{ d.montant|floatformat:"0g" }}</div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="fin-empty">Aucune dépense confirmée ce mois-ci.</div>
+            {% endif %}
+        </div>
+
+        <div class="panel">
+            <div class="page-head" style="padding:1rem 1.1rem;border-bottom:1px solid #e2e8f0">
+                <div>
+                    <h1 style="font-size:1.05rem">Salaires du mois</h1>
+                    <p class="sub">Paiements du personnel</p>
+                </div>
+                <a class="btn-ghost" style="margin-left:auto" href="{% url 'gestion:crud' 'salaires' %}">Gérer</a>
+            </div>
+            {% if salaires_mois %}
+                <div class="fin-list">
+                    {% for s in salaires_mois %}
+                        <div class="l-item">
+                            <div>
+                                <div class="l-name">{{ s.employe.prenom }} {{ s.employe.nom }}</div>
+                                <div class="l-sub">{{ s.periode_mois|date:"m/Y" }}
+                                    {% if s.date_paiement %} · payé le {{ s.date_paiement|date:"d/m/Y" }}{% endif %}
+                                </div>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:0.5rem;margin-left:auto">
+                                <span class="badge-status {{ s.statut }}">{{ s.statut }}</span>
+                                <span class="l-amount {% if s.statut == 'PAYE' %}neg{% endif %}">
+                                    {{ s.montant_paye|default:s.montant_du|floatformat:"0g" }}
+                                </span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="fin-empty">Aucun salaire prévu ce mois-ci.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="panel" style="margin-top:1rem">
+        <div class="page-head" style="padding:1rem 1.1rem;border-bottom:1px solid #e2e8f0">
+            <div>
+                <h1 style="font-size:1.05rem">Opérations KPay (Mobile Money)</h1>
+                <p class="sub">Encaissements clients et virements de salaires. Le statut final est confirmé par le webhook
+                    KPay (source d'autorité) ou via « Rafraîchir ».</p>
+            </div>
+        </div>
+        {% if kpay_operations %}
+            <table class="crud-table">
+                <thead>
+                    <tr>
+                        <th>Opération</th>
+                        <th>Type</th>
+                        <th>Montant</th>
+                        <th>Statut</th>
+                        <th>Date</th>
+                        <th style="text-align:right">Suivi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for op in kpay_operations %}
+                        <tr>
+                            <td>
+                                <span class="row-name">{{ op.reference|default:op.kpay_id|default:"—" }}</span>
+                                {% if op.telephone %}<div class="fin-list l-sub" style="padding:0">{{ op.telephone }}</div>{% endif %}
+                            </td>
+                            <td>
+                                {% if op.type_operation == "DEPOSIT" %}<span class="pos">+ Encaissement</span>
+                                {% else %}<span class="neg">− Virement</span>{% endif %}
+                                {% if op.is_test %}<span class="kpay-test">TEST</span>{% endif %}
+                            </td>
+                            <td class="{% if op.type_operation == 'DEPOSIT' %}pos{% else %}neg{% endif %}">
+                                {{ op.montant|floatformat:"0g" }} {{ op.devise }}</td>
+                            <td><span class="kpay-badge kpay-{{ op.statut }}">{{ op.statut }}</span></td>
+                            <td class="l-sub">{{ op.created_at|date:"d/m/Y H:i" }}</td>
+                            <td style="text-align:right">
+                                {% if op.statut == "PENDING" or op.statut == "PROCESSING" %}
+                                    <form method="post" action="{% url 'gestion:kpay_actualiser' op.pk %}"
+                                        style="display:inline-flex">
+                                        {% csrf_token %}
+                                        <button type="submit" class="kpay-rafraichir" title="Interroger KPay">↻ Rafraîchir</button>
+                                    </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="fin-empty">Aucune opération Mobile Money pour le moment.
+                {% if kpay_configuree %}Utilisez « Mobile Money » sur une échéance ou un salaire pour initier un paiement.{% endif %}
+            </div>
+        {% endif %}
+    </div>
+{% endblock content %}
+
+{% block extra_js %}
+    <script>
+        (function () {
+            var params = new URLSearchParams(window.location.search);
+            if (params.get("kpay_ok") === "1") {
+                window.showToast && window.showToast("success", "Statut de l'opération KPay actualisé.");
+            } else if (params.get("kpay_ok") === "0") {
+                window.showToast && window.showToast("error",
+                    "KPay n'a pas pu être interrogé : statut inchangé.");
+            }
+        })();
+    </script>
+{% endblock extra_js %}

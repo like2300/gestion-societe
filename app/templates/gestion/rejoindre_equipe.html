@@ -1,0 +1,144 @@
+{% extends "account/base_auth.html" %}
+
+{% block title %}Rejoindre une société{% endblock %}
+
+{% block main %}
+    <div class="max-w-2xl w-full mx-auto">
+        <div class="rounded-lg px-6 py-8 md:px-8">
+            <div class="flex items-center gap-3 mb-6">
+                <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-primary text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                        stroke-width="1.8" stroke="currentColor" class="size-6">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
+                    </svg>
+                </span>
+                <div>
+                    <p class="text-xs uppercase tracking-wide text-brand-text/70">Rejoindre une équipe</p>
+                    <h1 class="text-2xl font-semibold text-brand-title">Rejoindre une société</h1>
+                </div>
+            </div>
+
+            <p class="text-sm text-brand-text mb-6">
+                Connecté(e) en tant que <span class="font-semibold">{{ user.email }}</span>.
+                {% if est_compte_employe %}
+                    Choisissez une société existante ci-dessous pour demander à rejoindre son équipe.
+                {% else %}
+                    Acceptez une invitation ou demandez à rejoindre une société existante.
+                {% endif %}
+            </p>
+
+            {% if invitations %}
+                <h2 class="text-sm font-semibold text-brand-title mb-3">Invitations reçues</h2>
+                <div class="space-y-4 mb-8">
+                    {% for demande in invitations %}
+                        <div class="rounded-md border border-brand-border px-4 py-4">
+                            <div class="flex items-start justify-between gap-4">
+                                <div>
+                                    <div class="font-semibold text-brand-title">{{ demande.societe.nom }}</div>
+                                    {% if demande.employe %}
+                                        <div class="text-sm text-brand-text">
+                                            Vous êtes enregistré(e) comme
+                                            <span class="font-medium">{{ demande.employe.prenom }} {{ demande.employe.nom }}</span>{% if demande.employe.fonction %} — {{ demande.employe.fonction.nom }}{% endif %}.
+                                        </div>
+                                    {% else %}
+                                        <div class="text-sm text-brand-text">Membre de l'équipe.</div>
+                                    {% endif %}
+                                </div>
+                                <span class="text-xs text-brand-text/70">{{ demande.created_at|date:"d/m/Y" }}</span>
+                            </div>
+
+                            <div class="flex flex-wrap gap-3 mt-4">
+                                <form method="post" action="{% url 'gestion:rejoindre_equipe' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="demande_id" value="{{ demande.pk }}" />
+                                    <input type="hidden" name="action" value="rejoindre" />
+                                    <button type="submit"
+                                        class="py-2 px-4 text-sm rounded-md font-semibold cursor-pointer tracking-wide text-white border border-brand-primary bg-brand-primary hover:bg-brand-primary-hover transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary">
+                                        Rejoindre l'équipe
+                                    </button>
+                                </form>
+
+                                <form method="post" action="{% url 'gestion:rejoindre_equipe' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="demande_id" value="{{ demande.pk }}" />
+                                    <input type="hidden" name="action" value="refuser" />
+                                    <button type="submit"
+                                        class="py-2 px-4 text-sm rounded-md font-semibold cursor-pointer tracking-wide btn-return focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary">
+                                        Refuser
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            {% if mes_demandes %}
+                <h2 class="text-sm font-semibold text-brand-title mb-3">Mes demandes</h2>
+                <div class="space-y-3 mb-8">
+                    {% for demande in mes_demandes %}
+                        <div class="rounded-md border border-brand-border px-4 py-3 flex items-center justify-between gap-4">
+                            <div>
+                                <div class="font-semibold text-brand-title">{{ demande.societe.nom }}</div>
+                                <div class="text-xs text-brand-text/70">Envoyée le {{ demande.created_at|date:"d/m/Y" }}</div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs font-semibold px-2 py-1 rounded-full
+                                    {% if demande.statut == 'ACCEPTEE' %}bg-emerald-100 text-emerald-700
+                                    {% elif demande.statut == 'REFUSEE' %}bg-rose-100 text-rose-700
+                                    {% else %}bg-amber-100 text-amber-700{% endif %}">
+                                    {{ demande.get_statut_display }}
+                                </span>
+                                {% if demande.statut == 'EN_ATTENTE' %}
+                                    <form method="post" action="{% url 'gestion:rejoindre_equipe' %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="demande_id" value="{{ demande.pk }}" />
+                                        <input type="hidden" name="action" value="annuler" />
+                                        <button type="submit"
+                                            class="text-xs font-semibold text-rose-600 hover:underline cursor-pointer">
+                                            Annuler
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <h2 class="text-sm font-semibold text-brand-title mb-3">Sociétés de la plateforme</h2>
+            <div class="space-y-3">
+                {% for societe in societes %}
+                    <div class="rounded-md border border-brand-border px-4 py-3 flex items-center justify-between gap-4">
+                        <div class="font-semibold text-brand-title">{{ societe.nom }}</div>
+                        <form method="post" action="{% url 'gestion:rejoindre_equipe' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="societe_id" value="{{ societe.pk }}" />
+                            <input type="hidden" name="action" value="demander" />
+                            <button type="submit"
+                                class="py-2 px-4 text-sm rounded-md font-semibold cursor-pointer tracking-wide text-white border border-brand-primary bg-brand-primary hover:bg-brand-primary-hover transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary">
+                                Demander à rejoindre
+                            </button>
+                        </form>
+                    </div>
+                {% empty %}
+                    <p class="text-sm text-brand-text">
+                        Aucune société disponible pour le moment.
+                    </p>
+                {% endfor %}
+            </div>
+
+            {% if peut_creer_societe %}
+                <p class="text-xs text-brand-text mt-8">
+                    Vous êtes administrateur d'entreprise ?
+                    <a href="{% url 'gestion:societe_create' %}" class="font-semibold underline">Créer ma société</a>.
+                </p>
+            {% else %}
+                <p class="text-xs text-brand-text mt-8">
+                    Votre compte « employé » rejoint une société existante et ne peut pas en créer.
+                </p>
+            {% endif %}
+        </div>
+    </div>
+{% endblock main %}

@@ -1,0 +1,113 @@
+{% extends "gestion/crud_generic.html" %}
+{% load static %}
+
+{% block extra_js %}
+    {{ block.super }}
+    {{ extra.employes|json_script:"depenses-employes" }}
+    <script>
+        (function () {
+            var employes = JSON.parse(document.getElementById("depenses-employes").textContent);
+            var typeSel = document.getElementById("id_type_depense");
+            var nomSel = document.getElementById("id_nom");
+            var dateDep = document.getElementById("id_date_depense");
+            var statutSel = document.getElementById("id_statut");
+            var employeWrap = null, periodeWrap = null;
+            var employeSel = document.getElementById("id_employe");
+            var periodeSel = document.getElementById("id_periode_mois");
+            if (employeSel) employeWrap = employeSel.closest(".ffield");
+            if (periodeSel) periodeWrap = periodeSel.closest(".ffield");
+
+            function isSalaires() {
+                if (!typeSel) return false;
+                for (var i = 0; i < typeSel.options.length; i++) {
+                    var t = typeSel.options[i].text.trim().toLowerCase();
+                    if (t === "salaires" || t.indexOf("salaire") === 0) {
+                        return typeSel.value === typeSel.options[i].value;
+                    }
+                }
+                return false;
+            }
+
+            function updateSync() {
+                var on = isSalaires();
+                if (employeWrap) employeWrap.style.display = on ? "" : "none";
+                if (periodeWrap) periodeWrap.style.display = on ? "" : "none";
+                if (!on && employeSel) employeSel.value = "";
+                if (!on && periodeSel) periodeSel.value = "";
+            }
+
+            function pad(n) { return String(n).padStart(2, "0"); }
+
+            function autofillNom() {
+                if (!isSalaires() || !nomSel) return;
+                if ((nomSel.value || "").trim()) return;
+                var emp = null;
+                var id = String(employeSel ? employeSel.value || "" : "");
+                for (var j = 0; j < employes.length; j++) {
+                    if (String(employes[j].pk) === id) { emp = employes[j]; break; }
+                }
+                var periode = periodeSel ? periodeSel.value || "" : "";
+                var mm = "", aaaa = "";
+                if (periode && periode.length >= 7) {
+                    var parts = periode.slice(0, 7).split("-");
+                    aaaa = parts[0];
+                    mm = parseInt(parts[1], 10);
+                    mm = pad(mm);
+                }
+                if (!emp || !mm) return;
+                nomSel.value = "Salaire — " + emp.label + " — " + mm + "/" + aaaa;
+            }
+
+            if (typeSel) typeSel.addEventListener("change", function () {
+                updateSync();
+                autofillNom();
+            });
+            if (employeSel) employeSel.addEventListener("change", autofillNom);
+            if (periodeSel) periodeSel.addEventListener("change", autofillNom);
+
+            // Valeurs par défaut : mois courant pour la période et la date de dépense.
+            var addBtn = document.querySelector("[data-crud-add]");
+            if (addBtn) addBtn.addEventListener("click", function () {
+                var now = new Date();
+                var mois = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-01";
+                if (periodeSel) periodeSel.value = mois;
+                if (dateDep && !dateDep.value) {
+                    dateDep.value = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-" + pad(now.getDate());
+                }
+                updateSync();
+            });
+
+            var editBtns = document.querySelectorAll("[data-crud-edit]");
+            for (var k = 0; k < editBtns.length; k++) {
+                editBtns[k].addEventListener("click", function () {
+                    // Le handler générique a déjà rempli le formulaire : on ajuste la visibilité.
+                    requestAnimationFrame(function () { updateSync(); });
+                });
+            }
+
+            // Aide statut : une dépense « Salaires » doit être cohérente avec la paie.
+            if (statutSel) {
+                var statutHelp = statutSel.closest(".ffield");
+                if (statutHelp) {
+                    var p = document.createElement("p");
+                    p.className = "feld-help";
+                    p.textContent = "« Confirmée » marque le salaire payé, « En attente / Annulée » le repasse en « Prévu » côté Salaires.";
+                    statutHelp.appendChild(p);
+                }
+            }
+
+            updateSync();
+        })();
+    </script>
+    <style>
+        .ffield .feld-help {
+            margin: 0.35rem 0 0;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            line-height: 1.4;
+        }
+        @media (prefers-color-scheme: dark) {
+            .ffield .feld-help { color: #64748b; }
+        }
+    </style>
+{% endblock extra_js %}

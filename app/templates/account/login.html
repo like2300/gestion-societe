@@ -1,0 +1,124 @@
+{% extends "account/base_auth.html" %}
+{% load i18n socialaccount %}
+
+{% block title %}Connexion{% endblock %}
+
+{% block main %}
+    {% provider_login_url 'google' as provider_login_url %}
+    <div class="grid items-center gap-x-10 gap-y-16 max-w-6xl w-full lg:grid-cols-2">
+        <!-- Colonne gauche : présentation (sur le dégradé) -->
+        <div class="hidden lg:block max-w-lg max-lg:mx-auto">
+            <img src="https://i.pinimg.com/736x/6d/dc/3f/6ddc3f9a79c891e0efd6042624e08f51.jpg"
+                alt="Illustration connexion"
+                class="w-full rounded-lg animate-brand-in img-nobg" />
+
+            <div class="text-sm mt-8 text-brand-text">
+                Pas encore de compte ?
+                <a href="{% url 'account_signup' %}"
+                    class="text-brand-title font-semibold underline ml-1">Inscrivez-vous ici</a>
+            </div>
+        </div>
+
+        <!-- Colonne droite : carte blanche du formulaire -->
+        <div class="rounded-lg px-6 py-8 max-w-lg mx-auto w-full md:px-8 lg:max-w-md">
+            <h1 class="text-3xl mb-10 font-semibold text-brand-title">Connexion</h1>
+
+            <form method="post" action="{% url 'account_login' %}" class="space-y-6" novalidate>
+                {% csrf_token %}
+
+                {% include "account/snippets/field.html" with field=form.login %}
+                {% include "account/snippets/field.html" with field=form.password %}
+
+                <div class="flex items-start flex-wrap gap-2">
+                    <label for="{{ form.remember.id_for_label }}"
+                        class="flex items-center group cursor-pointer has-[input:checked]:text-brand-text">
+                        <input id="{{ form.remember.id_for_label }}" name="{{ form.remember.html_name }}"
+                            type="checkbox" class="sr-only"
+                            {% if form.remember.value %}checked{% endif %} />
+                        <!-- Case personnalisée -->
+                        <span
+                            class="flex h-4 w-4 shrink-0 items-center justify-center rounded outline-1 outline-brand-border bg-brand-background group-has-[input:checked]:bg-brand-primary group-has-[input:checked]:outline-brand-primary group-focus-within:outline-2 group-focus-within:outline-brand-primary"
+                            aria-hidden="true">
+                            <svg class="size-3 text-white opacity-0 group-has-[input:checked]:opacity-100"
+                                viewBox="0 0 12 10" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 5l3 3 7-7" />
+                            </svg>
+                        </span>
+                        <span class="ml-3 text-sm text-brand-text">Se souvenir de moi</span>
+                    </label>
+
+                    <a href="{% url 'account_reset_password' %}"
+                        class="ml-auto text-sm font-medium text-brand-title hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary rounded">
+                        Mot de passe oublié ?
+                    </a>
+                </div>
+
+                <button type="submit"
+                    class="w-full py-2 px-3.5 text-sm rounded-md font-semibold cursor-pointer tracking-wide text-white border border-brand-primary bg-brand-primary hover:bg-brand-primary-hover transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary">
+                    Se connecter
+                </button>
+            </form>
+
+            <div class="flex items-center gap-4 my-8">
+                <hr class="w-full border-brand-border" />
+                <p class="text-sm text-brand-text text-center">ou</p>
+                <hr class="w-full border-brand-border" />
+            </div>
+
+            {% include "account/snippets/google_button.html" %}
+
+            <div class="mt-8">
+                <button type="button" id="btn-back"
+                    class="block w-full text-center py-2 px-3.5 text-sm rounded-md font-semibold tracking-wide cursor-pointer btn-return focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary">
+                    Retour
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            var params = new URLSearchParams(window.location.search);
+            if (params.get("inactive")) {
+                window.showToast(
+                    "error",
+                    "Votre compte est inactif ou suspendu. Contactez l'administrateur.",
+                );
+            }
+        })();
+    </script>
+
+    <script>
+        (function () {
+            var btn = document.getElementById("btn-back");
+            if (!btn) return;
+
+            var fallback = "{% url 'account_signup' %}";
+            var ref = document.referrer || "";
+            var sameOrigin = false;
+            var refPath = "";
+            try {
+                var url = new URL(ref);
+                sameOrigin = url.origin === window.location.origin;
+                refPath = url.pathname;
+            } catch (e) {
+                sameOrigin = false;
+            }
+
+            var canGoBack =
+                window.history.length > 1 &&
+                sameOrigin &&
+                refPath.indexOf("/gestion/") !== 0 &&
+                refPath.indexOf("/admin/") !== 0 &&
+                refPath.indexOf("/accounts/login") !== 0;
+
+            btn.addEventListener("click", function () {
+                if (canGoBack) {
+                    window.history.back();
+                } else {
+                    window.location.href = fallback;
+                }
+            });
+        })();
+    </script>
+{% endblock main %}

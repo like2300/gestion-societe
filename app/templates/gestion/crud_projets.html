@@ -1,0 +1,234 @@
+{% extends "gestion/base_dashboard.html" %}
+{% load static %}
+
+{% block dash_title %}Projets — {{ societe.nom }}{% endblock %}
+
+{% block content %}
+    <style>
+        .resp-cell { display: inline-flex; align-items: center; gap: 0.45rem; }
+        .resp-avatar {
+            flex: 0 0 auto; width: 1.7rem; height: 1.7rem; border-radius: 9999px;
+            background: linear-gradient(135deg, var(--accent), #0ea5e9);
+            color: #fff; font-size: 0.66rem; font-weight: 800;
+            display: inline-flex; align-items: center; justify-content: center;
+            text-transform: uppercase;
+        }
+    </style>
+    <div class="page-head">
+        <div>
+            <h1>Projets</h1>
+            <p class="sub">{{ items|length }} projet(s)</p>
+        </div>
+        <div style="margin-left:auto">
+            <button type="button" class="btn-primary" data-crud-add>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2.2" stroke-linecap="round">
+                    <path d="M12 5v14M5 12h14" />
+                </svg>
+                Ajouter un projet
+            </button>
+        </div>
+    </div>
+
+    <div class="panel">
+        {% if items %}
+            <table class="crud-table">
+                <thead>
+                    <tr>
+                        <th>Projet</th>
+                        <th>Client</th>
+                        <th>Responsable</th>
+                        <th>Période</th>
+                        <th>Budget</th>
+                        <th>Statut</th>
+                        <th style="text-align:right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                        <tr>
+                            <td><span class="row-name">{{ item.nom }}</span>
+                                {% if item.description %}<br /><span class="row-muted">{{ item.description|truncatechars:50 }}</span>{% endif %}
+                            </td>
+                            <td>
+                                {% if item.client_nom %}<span class="row-name">{{ item.client_nom }}</span>{% endif %}
+                            </td>
+                            <td>
+                                {% if item.responsable_nom %}
+                                    <span class="resp-cell" title="Employé en charge du projet">
+                                        <span class="resp-avatar">{{ item.responsable_sigle }}</span>
+                                        <span class="row-name">{{ item.responsable_nom }}</span>
+                                    </span>
+                                {% else %}
+                                    <span class="row-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td><span class="row-muted">{{ item.date_debut }}</span>
+                                {% if item.date_fin %}<span class="row-muted"> → {{ item.date_fin }}</span>{% endif %}
+                            </td>
+                            <td><span class="row-name">{{ item.budget }}</span></td>
+                            <td><span class="badge-status {{ item.statut }}">{{ item.statut }}</span></td>
+                            <td>
+                                <div class="acts">
+                                    <button type="button" class="act edit" data-crud-edit="{{ forloop.counter0 }}"
+                                        aria-label="Modifier" title="Modifier">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                            stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="act del" data-crud-del="{{ forloop.counter0 }}"
+                                        data-del-url="{% url 'gestion:projet_delete' item.pk %}"
+                                        data-del-name="{{ item.del_name }}" aria-label="Supprimer" title="Supprimer">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                            stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 6h6v12H9z" />
+                    <path d="M12 3v3" />
+                    <path d="M5 9H3v6h2" />
+                    <path d="M19 9h2v6h-2" />
+                </svg>
+                <p>Aucun projet pour le moment.<br/>Cliquez sur « Ajouter un projet » pour commencer.</p>
+            </div>
+        {% endif %}
+    </div>
+{% endblock content %}
+
+{% block drawer %}
+    <div class="drawer-head">
+        <div>
+            <h2 id="drawer-title">Ajouter un projet</h2>
+            <p class="drawer-sub" id="drawer-sub">Renseignez les informations ci-dessous.</p>
+        </div>
+        <button class="drawer-close" data-drawer-close aria-label="Fermer">×</button>
+    </div>
+
+    <div class="drawer-body">
+        <form method="post" action="{% url 'gestion:projets' %}" id="obj-form" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="id" id="obj-id" value="{{ form.instance.pk|default:'' }}" />
+            {% if form.non_field_errors %}
+                <div class="form-errors">{{ form.non_field_errors }}</div>
+            {% endif %}
+            <div class="fgrid">
+                {% include "gestion/snippets/drawer_field.html" with field=form.nom span=True %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.client %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.responsable %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.statut %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.date_debut %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.date_fin %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.budget span=True %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.description span=True %}
+            </div>
+            <div class="factions">
+                <button type="button" class="btn-ghost" data-drawer-close>Annuler</button>
+                <button type="submit" class="btn-primary" id="submit-btn">Enregistrer</button>
+            </div>
+        </form>
+
+        <form method="post" id="delete-form" class="delete-panel" hidden>
+            {% csrf_token %}
+            <div class="del-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                </svg>
+            </div>
+            <p class="del-text">Supprimer <span id="del-name"></span> ?</p>
+            <p class="del-warn">Cette action est définitive et supprimera ce projet avec ses échéances et paiements.</p>
+            <div class="factions">
+                <button type="button" class="btn-ghost" data-drawer-close>Annuler</button>
+                <button type="submit" class="btn-danger">Confirmer la suppression</button>
+            </div>
+        </form>
+    </div>
+{% endblock drawer %}
+
+{% block extra_js %}
+    {{ items|json_script:"crud-data" }}
+    <script>
+        (function () {
+            var ITEMS = JSON.parse(document.getElementById("crud-data").textContent);
+            var form = document.getElementById("obj-form");
+            var deleteForm = document.getElementById("delete-form");
+            var objId = document.getElementById("obj-id");
+            var title = document.getElementById("drawer-title");
+            var sub = document.getElementById("drawer-sub");
+
+            function bind(sel, fn) {
+                var els = document.querySelectorAll(sel);
+                for (var i = 0; i < els.length; i++) els[i].addEventListener("click", fn);
+            }
+
+            function showPanel(which) {
+                form.hidden = which !== "form";
+                deleteForm.hidden = which !== "delete";
+            }
+
+            function setItem(item) {
+                for (var key in item) {
+                    if (key === "pk" || key === "del_url" || key === "del_name" || key === "client_nom") continue;
+                    var el = document.getElementById("id_" + key);
+                    if (el) el.value = item[key];
+                }
+            }
+
+            document.querySelector("[data-crud-add]").addEventListener("click", function () {
+                form.reset();
+                objId.value = "";
+                setItem({});
+                title.textContent = "Ajouter un projet";
+                sub.textContent = "Renseignez les informations ci-dessous.";
+                showPanel("form");
+                window.openDrawer();
+            });
+
+            bind("[data-crud-edit]", function () {
+                var item = ITEMS[parseInt(this.getAttribute("data-crud-edit"), 10)];
+                form.reset();
+                objId.value = item.pk;
+                setItem(item);
+                title.textContent = "Modifier : " + item.nom;
+                sub.textContent = "Ajustez les informations puis enregistrez.";
+                showPanel("form");
+                window.openDrawer();
+            });
+
+            bind("[data-crud-del]", function () {
+                var item = ITEMS[parseInt(this.getAttribute("data-crud-del"), 10)];
+                deleteForm.action = this.getAttribute("data-del-url");
+                document.getElementById("del-name").textContent = item.nom;
+                showPanel("delete");
+                window.openDrawer();
+            });
+
+            if (document.querySelector(".ffield .errors")) {
+                if (objId.value) {
+                    title.textContent = "Modifier le projet";
+                    sub.textContent = "Corrigez les erreurs puis enregistrez.";
+                }
+                showPanel("form");
+                window.openDrawer();
+            }
+
+            var params = new URLSearchParams(window.location.search);
+            if (params.get("ok")) {
+                window.showToast && window.showToast("success", "Projet sauvegardé avec succès.");
+            } else if (params.get("deleted")) {
+                window.showToast && window.showToast("success", "Projet supprimé.");
+            }
+        })();
+    </script>
+{% endblock extra_js %}

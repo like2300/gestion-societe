@@ -1,0 +1,539 @@
+{% extends "gestion/base_dashboard.html" %}
+{% load static %}
+
+{% block dash_title %}Connecteurs — {{ societe.nom }}{% endblock %}
+
+{% block content %}
+    <style>
+        .cx-page { padding: 1.4rem 1.6rem 3rem; max-width: 1240px; margin: 0 auto; }
+        .cx-topbar {
+            display: flex; align-items: flex-end; justify-content: space-between;
+            gap: 1rem; flex-wrap: wrap; margin-bottom: 1.1rem;
+        }
+        .cx-topbar h1 { margin: 0; font-size: 1.5rem; color: #0f172a; letter-spacing: -0.02em; }
+        .cx-sub { margin: 0.35rem 0 0; color: #64748b; font-size: 0.88rem; max-width: 52ch; }
+        .cx-stats { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .cx-stats span {
+            background: #f1f5f9; border: 1px solid #e2e8f0; color: #334155;
+            border-radius: 999px; padding: 0.4rem 0.85rem; font-size: 0.78rem; font-weight: 700;
+        }
+        .cx-flash {
+            border-radius: 0.7rem; padding: 0.75rem 1rem; font-size: 0.85rem;
+            margin-bottom: 1rem; border: 1px solid transparent;
+        }
+        .cx-flash.ok { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
+        .cx-flash.err { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+        .cx-onglets {
+            display: flex; gap: 0.25rem; margin-bottom: 1.1rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .cx-onglet {
+            text-decoration: none; color: #64748b; font-weight: 700; font-size: 0.88rem;
+            padding: 0.6rem 0.9rem; border-bottom: 2px solid transparent; margin-bottom: -1px;
+        }
+        .cx-onglet:hover { color: var(--accent); }
+        .cx-onglet.on { color: var(--accent); border-bottom-color: var(--accent); }
+        .cx-cherche { margin-bottom: 1.2rem; }
+        .cx-cherche-form { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .cx-cherche-input {
+            flex: 1; min-width: 240px; display: flex; align-items: center; gap: 0.5rem;
+            background: #fff; border: 1px solid #e2e8f0; border-radius: 0.7rem;
+            padding: 0.55rem 0.75rem;
+        }
+        .cx-cherche-input:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+        .cx-cherche-input input {
+            flex: 1; border: none; outline: none; font-size: 0.9rem; color: #0f172a; background: transparent;
+        }
+        .cx-cherche-note { margin: 0.6rem 0 0; color: #94a3b8; font-size: 0.78rem; }
+        .cx-section {
+            font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em;
+            color: #64748b; margin: 1.3rem 0 0.7rem; display: flex; align-items: center; gap: 0.5rem;
+        }
+        .cx-section span {
+            background: #f1f5f9; color: #475569; border-radius: 999px;
+            padding: 0.1rem 0.5rem; font-size: 0.72rem;
+        }
+        .cx-resultats { display: flex; flex-direction: column; gap: 0.6rem; }
+        .cx-resultat {
+            display: flex; align-items: center; gap: 0.8rem; background: #fff;
+            border: 1px solid #e2e8f0; border-radius: 0.85rem; padding: 0.8rem 0.9rem;
+        }
+        .cx-resultat-corps { flex: 1; min-width: 0; }
+        .cx-resultat-corps p { margin: 0.2rem 0 0; color: #64748b; font-size: 0.8rem; line-height: 1.4; }
+        .cx-resultat-act form { margin: 0; }
+        .cx-src {
+            font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em;
+            color: #94a3b8; font-weight: 700; margin-left: 0.35rem;
+        }
+        .cx-lien { color: var(--accent); font-size: 0.76rem; font-weight: 700; text-decoration: none; }
+        .cx-lien:hover { text-decoration: underline; }
+        .cx-filtres { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.1rem; }
+        .cx-pill {
+            display: inline-flex; align-items: center; gap: 0.4rem; text-decoration: none;
+            border: 1px solid #e2e8f0; background: #fff; color: #334155;
+            border-radius: 999px; padding: 0.42rem 0.85rem; font-size: 0.8rem; font-weight: 600;
+            transition: 0.15s;
+        }
+        .cx-pill:hover { border-color: var(--accent); color: var(--accent); }
+        .cx-pill.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .cx-pill b { font-weight: 800; opacity: 0.9; }
+        .cx-grille {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+        .cx-card {
+            background: #fff; border: 1px solid #e2e8f0; border-radius: 1rem;
+            padding: 1.1rem; display: flex; flex-direction: column; gap: 0.7rem;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        }
+        .cx-card.on { border-color: color-mix(in srgb, var(--accent) 35%, #e2e8f0); }
+        .cx-card-top { display: flex; align-items: center; gap: 0.7rem; }
+        .cx-ico {
+            width: 42px; height: 42px; border-radius: 0.75rem; display: grid; place-items: center;
+            font-size: 1.25rem; flex: 0 0 auto;
+        }
+        .cx-titles { flex: 1; min-width: 0; }
+        .cx-nom { font-weight: 800; color: #0f172a; font-size: 0.98rem; }
+        .cx-cat { color: #94a3b8; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .cx-badge {
+            border-radius: 999px; padding: 0.25rem 0.6rem; font-size: 0.68rem;
+            font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap;
+        }
+        .cx-badge.non_connecte { background: #f1f5f9; color: #64748b; }
+        .cx-badge.connecte { background: #ecfdf5; color: #047857; }
+        .cx-badge.erreur { background: #fef2f2; color: #b91c1c; }
+        .cx-desc { margin: 0; color: #475569; font-size: 0.84rem; line-height: 1.45; flex: 1; }
+        .cx-compte { font-size: 0.78rem; color: #334155; background: #f8fafc; border: 1px dashed #e2e8f0; border-radius: 0.55rem; padding: 0.4rem 0.6rem; }
+        .cx-erreur { font-size: 0.76rem; color: #b91c1c; background: #fef2f2; border-radius: 0.55rem; padding: 0.4rem 0.6rem; }
+        .cx-webhook { display: flex; flex-direction: column; gap: 0.3rem; }
+        .cx-webhook label { font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; }
+        .cx-copy { display: flex; gap: 0.35rem; }
+        .cx-copy input {
+            flex: 1; min-width: 0; border: 1px solid #e2e8f0; border-radius: 0.5rem;
+            padding: 0.4rem 0.5rem; font-size: 0.72rem; color: #475569; background: #f8fafc;
+        }
+        .cx-copy button {
+            border: 1px solid #e2e8f0; background: #fff; border-radius: 0.5rem;
+            padding: 0 0.6rem; font-size: 0.72rem; font-weight: 700; color: #334155; cursor: pointer;
+        }
+        .cx-masque { font-size: 0.72rem; color: #94a3b8; }
+        .cx-actions { display: flex; gap: 0.45rem; flex-wrap: wrap; }
+        .cx-actions form { margin: 0; }
+        .cx-btn {
+            border: 1px solid #e2e8f0; background: #fff; color: #334155; border-radius: 0.6rem;
+            padding: 0.5rem 0.9rem; font-size: 0.8rem; font-weight: 700; cursor: pointer;
+            text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem; transition: 0.15s;
+        }
+        .cx-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .cx-btn.prim { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .cx-btn.prim:hover { filter: brightness(1.05); color: #fff; }
+        .cx-btn.danger { color: #b91c1c; }
+        .cx-btn.danger:hover { border-color: #fca5a5; background: #fef2f2; color: #b91c1c; }
+        .cx-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .cx-vide { grid-column: 1 / -1; text-align: center; color: #94a3b8; padding: 2.5rem 1rem; }
+        .cx-journal { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.6rem; }
+        .cx-panel { background: #fff; border: 1px solid #e2e8f0; border-radius: 1rem; overflow: hidden; }
+        .cx-panel h3 { margin: 0; padding: 0.85rem 1rem; font-size: 0.85rem; color: #0f172a; border-bottom: 1px solid #e2e8f0; }
+        .cx-panel table { width: 100%; border-collapse: collapse; font-size: 0.76rem; }
+        .cx-panel th { text-align: left; color: #94a3b8; font-weight: 700; padding: 0.5rem 0.75rem; border-bottom: 1px solid #f1f5f9; }
+        .cx-panel td { padding: 0.5rem 0.75rem; border-bottom: 1px solid #f8fafc; color: #475569; }
+        .cx-panel .cx-empty { padding: 1.2rem; text-align: center; color: #cbd5e1; }
+        .cx-ok { color: #047857; font-weight: 700; }
+        .cx-ko { color: #b91c1c; font-weight: 700; }
+        .cx-modal {
+            position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45);
+            display: grid; place-items: center; z-index: 90; padding: 1rem;
+        }
+        .cx-modal[hidden] { display: none; }
+        .cx-modal-box {
+            background: #fff; border-radius: 1rem; padding: 1.3rem; width: min(440px, 100%);
+            box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+        }
+        .cx-modal-box h3 { margin: 0 0 0.3rem; color: #0f172a; font-size: 1.05rem; }
+        .cx-modal-box p { margin: 0 0 0.9rem; color: #64748b; font-size: 0.82rem; }
+        .cx-field { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.75rem; }
+        .cx-field label { font-size: 0.78rem; font-weight: 700; color: #334155; }
+        .cx-field input {
+            border: 1px solid #e2e8f0; border-radius: 0.55rem; padding: 0.55rem 0.65rem;
+            font-size: 0.85rem; color: #0f172a;
+        }
+        .cx-field input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+        .cx-field small { color: #94a3b8; font-size: 0.72rem; }
+        .cx-modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem; }
+        @media (max-width: 820px) {
+            .cx-journal { grid-template-columns: 1fr; }
+        }
+    </style>
+
+    <div class="cx-page">
+        <div class="cx-topbar">
+            <div>
+                <h1>Connecteurs</h1>
+                <p class="cx-sub">Reliez {{ societe.nom }} à ses outils externes : messagerie, paiements,
+                    notifications et webhooks. Chaque connexion est isolée par société et ses
+                    identifiants sont chiffrés.</p>
+            </div>
+            <div class="cx-stats">
+                <span>{{ nb_connectes }} actif{{ nb_connectes|pluralize }}</span>
+                <span>{{ nb_types }} disponible{{ nb_types|pluralize }}</span>
+            </div>
+        </div>
+
+        {% if flash_ok %}<div class="cx-flash ok">{{ flash_ok }}</div>{% endif %}
+        {% if flash_erreur %}<div class="cx-flash err">{{ flash_erreur }}</div>{% endif %}
+
+        <div class="cx-onglets">
+            <a href="{% url 'gestion:connecteurs' %}" class="cx-onglet {% if onglet != 'ajouter' %}on{% endif %}">Bibliothèque</a>
+            {% if est_createur %}
+                <a href="{% url 'gestion:connecteurs' %}?onglet=ajouter" class="cx-onglet {% if onglet == 'ajouter' %}on{% endif %}">Ajouter un connecteur</a>
+            {% endif %}
+        </div>
+
+        {% if onglet == 'ajouter' %}
+            <div class="cx-cherche">
+                <form method="get" action="{% url 'gestion:connecteurs' %}" class="cx-cherche-form">
+                    <input type="hidden" name="onglet" value="ajouter" />
+                    <div class="cx-cherche-input">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round">
+                            <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
+                        </svg>
+                        <input type="search" name="q" value="{{ requete }}" autofocus
+                            placeholder="Rechercher une application, un site, une API…" />
+                    </div>
+                    <button type="submit" class="cx-btn prim">Rechercher</button>
+                </form>
+                <p class="cx-cherche-note">
+                    Recherche dans les connecteurs fournis, un catalogue de services populaires et
+                    l'annuaire public d'API. {% if recherche and not recherche.online_ok %}<span class="cx-ko">Recherche en ligne momentanément indisponible.</span>{% endif %}
+                </p>
+            </div>
+
+            {% if recherche %}
+                {% if recherche.local %}
+                    <h2 class="cx-section">Déjà disponibles <span>{{ recherche.local|length }}</span></h2>
+                    <div class="cx-resultats">
+                        {% for r in recherche.local %}
+                            <article class="cx-resultat">
+                                <span class="cx-ico" style="background: {{ r.couleur }}1f; color: {{ r.couleur }};">{{ r.icone }}</span>
+                                <div class="cx-resultat-corps">
+                                    <div class="cx-nom">{{ r.nom }} <span class="cx-src">fourni</span></div>
+                                    <p>{{ r.description }}</p>
+                                </div>
+                                <div class="cx-resultat-act">
+                                    {% if r.deja %}
+                                        <span class="cx-badge connecte">Ajouté</span>
+                                    {% else %}
+                                        <form method="post" action="{% url 'gestion:connecteur_connecter' r.key %}">
+                                            {% csrf_token %}
+                                            <button class="cx-btn prim" type="submit">Connecter</button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </article>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                {% if recherche.internet %}
+                    <h2 class="cx-section">Trouvés sur Internet <span>{{ recherche.internet|length }}</span></h2>
+                    <div class="cx-resultats">
+                        {% for r in recherche.internet %}
+                            <article class="cx-resultat">
+                                <span class="cx-ico" style="background: {{ r.couleur }}1f; color: {{ r.couleur }};">{{ r.icone }}</span>
+                                <div class="cx-resultat-corps">
+                                    <div class="cx-nom">{{ r.nom }} <span class="cx-src">{{ r.fournisseur|default:r.source }}</span></div>
+                                    <p>{{ r.description|default:"—" }}</p>
+                                    {% if r.doc_url %}<a href="{{ r.doc_url }}" target="_blank" rel="noopener" class="cx-lien">Documentation ↗</a>{% endif %}
+                                </div>
+                                <div class="cx-resultat-act">
+                                    <form method="post" action="{% url 'gestion:connecteur_ajouter' %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="nom" value="{{ r.nom }}" />
+                                        <input type="hidden" name="fournisseur" value="{{ r.fournisseur }}" />
+                                        <input type="hidden" name="description" value="{{ r.description }}" />
+                                        <input type="hidden" name="categorie" value="{{ r.categorie }}" />
+                                        <input type="hidden" name="icone" value="{{ r.icone }}" />
+                                        <input type="hidden" name="couleur" value="{{ r.couleur }}" />
+                                        <input type="hidden" name="doc_url" value="{{ r.doc_url }}" />
+                                        <input type="hidden" name="base_url" value="{{ r.base_url }}" />
+                                        <input type="hidden" name="auth" value="{{ r.auth }}" />
+                                        <input type="hidden" name="source" value="{{ r.source }}" />
+                                        <input type="hidden" name="identifiant" value="{{ r.identifiant }}" />
+                                        <button class="cx-btn prim" type="submit">Ajouter</button>
+                                    </form>
+                                </div>
+                            </article>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                {% if not recherche.total %}
+                    <div class="cx-vide">
+                        Aucun résultat pour « {{ requete }} ». Essayez un autre nom, ou ajoutez un
+                        <strong>webhook personnalisé</strong> depuis la bibliothèque.
+                    </div>
+                {% endif %}
+            {% endif %}
+        {% else %}
+        <div class="cx-filtres">
+            <a href="{% url 'gestion:connecteurs' %}" class="cx-pill {% if not type_filtre %}on{% endif %}">Tous</a>
+            {% for cat in categories %}
+                <a href="?type={{ cat.key }}" class="cx-pill {% if type_filtre == cat.key %}on{% endif %}">
+                    {{ cat.label }} <b>{{ cat.count }}</b>
+                </a>
+            {% endfor %}
+        </div>
+
+        <div class="cx-grille">
+            {% for c in cartes %}
+                <article class="cx-card {% if c.connecte %}on{% endif %}">
+                    <div class="cx-card-top">
+                        <span class="cx-ico" style="background: {{ c.couleur }}1f; color: {{ c.couleur }};">{{ c.icone }}</span>
+                        <div class="cx-titles">
+                            <div class="cx-nom">{{ c.nom }}</div>
+                            <div class="cx-cat">{{ c.categorie_label }}</div>
+                        </div>
+                        <span class="cx-badge {{ c.statut|lower }}">{{ c.statut_label }}</span>
+                    </div>
+                    <p class="cx-desc">{{ c.description }}</p>
+
+                    {% if c.connecte and c.compte_externe %}
+                        <div class="cx-compte">Compte relié : {{ c.compte_externe }}</div>
+                    {% endif %}
+                    {% if c.connecte and c.derniere_sync %}
+                        <div class="cx-masque">Dernière synchro : {{ c.derniere_sync|date:"d/m/Y H:i" }}</div>
+                    {% endif %}
+                    {% if c.derniere_erreur %}
+                        <div class="cx-erreur">{{ c.derniere_erreur }}</div>
+                    {% endif %}
+
+                    {% if est_createur and c.webhook_url %}
+                        <div class="cx-webhook">
+                            <label>URL de webhook</label>
+                            <div class="cx-copy">
+                                <input readonly value="{{ c.webhook_url }}" onclick="this.select()" />
+                                <button type="button" data-copy>Copier</button>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if est_createur %}
+                        <div class="cx-actions">
+                            {% if not c.connecte %}
+                                {% if c.personnalise %}
+                                    <button class="cx-btn prim" type="button"
+                                        data-configurer="{{ c.pk }}" data-cle="{{ c.key }}">Configurer</button>
+                                {% elif c.auth_type == 'oauth2' %}
+                                    {% if c.oauth_pret %}
+                                        <form method="post" action="{% url 'gestion:connecteur_connecter' c.key %}">
+                                            {% csrf_token %}
+                                            <button class="cx-btn prim" type="submit">Connecter</button>
+                                        </form>
+                                    {% else %}
+                                        <button class="cx-btn" type="button" disabled
+                                            title="Renseignez les identifiants OAuth de l'application dans app/.env">
+                                            OAuth non configuré
+                                        </button>
+                                    {% endif %}
+                                {% elif c.auth_type == 'webhook' %}
+                                    <form method="post" action="{% url 'gestion:connecteur_connecter' c.key %}">
+                                        {% csrf_token %}
+                                        <button class="cx-btn prim" type="submit">Activer</button>
+                                    </form>
+                                {% else %}
+                                    <button class="cx-btn prim" type="button" data-connecter="{{ c.key }}">Connecter</button>
+                                {% endif %}
+                            {% else %}
+                                {% if c.personnalise %}
+                                    <button class="cx-btn" type="button"
+                                        data-configurer="{{ c.pk }}" data-cle="{{ c.key }}">Configurer</button>
+                                {% endif %}
+                                <form method="post" action="{% url 'gestion:connecteur_sync' c.pk %}">
+                                    {% csrf_token %}
+                                    <button class="cx-btn" type="submit">Synchroniser</button>
+                                </form>
+                                <form method="post" action="{% url 'gestion:connecteur_deconnecter' c.pk %}"
+                                    onsubmit="return confirm('Déconnecter ce service et effacer ses identifiants ?');">
+                                    {% csrf_token %}
+                                    <button class="cx-btn danger" type="submit">Déconnecter</button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </article>
+            {% empty %}
+                <div class="cx-vide">Aucun connecteur dans cette catégorie.</div>
+            {% endfor %}
+        </div>
+
+        {% if est_createur %}
+            {% if evenements or journaux %}
+                <div class="cx-journal">
+                    <div class="cx-panel">
+                        <h3>Derniers événements reçus</h3>
+                        {% if evenements %}
+                            <table>
+                                <thead>
+                                    <tr><th>Date</th><th>Connecteur</th><th>Événement</th><th>Signature</th></tr>
+                                </thead>
+                                <tbody>
+                                    {% for ev in evenements %}
+                                        <tr>
+                                            <td>{{ ev.cree_le|date:"d/m H:i" }}</td>
+                                            <td>{{ ev.connecteur }}</td>
+                                            <td>{{ ev.evenement|default:"—" }}</td>
+                                            <td>
+                                                {% if ev.signature_valide %}
+                                                    <span class="cx-ok">valide</span>
+                                                {% else %}
+                                                    <span class="cx-ko">non signée</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% else %}
+                            <div class="cx-empty">Aucun événement reçu.</div>
+                        {% endif %}
+                    </div>
+                    <div class="cx-panel">
+                        <h3>Dernières synchronisations</h3>
+                        {% if journaux %}
+                            <table>
+                                <thead>
+                                    <tr><th>Date</th><th>Connecteur</th><th>Statut</th><th>Éléments</th><th>Durée</th></tr>
+                                </thead>
+                                <tbody>
+                                    {% for log in journaux %}
+                                        <tr>
+                                            <td>{{ log.cree_le|date:"d/m H:i" }}</td>
+                                            <td>{{ log.connecteur }}</td>
+                                            <td>
+                                                {% if log.statut == 'OK' %}
+                                                    <span class="cx-ok">OK</span>
+                                                {% else %}
+                                                    <span class="cx-ko">Erreur</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ log.elements }}</td>
+                                            <td>{{ log.duree_ms }} ms</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% else %}
+                            <div class="cx-empty">Aucune synchronisation.</div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        {% endif %}
+        {% endif %}
+    </div>
+
+    <div class="cx-modal" id="cx-modal" hidden>
+        <div class="cx-modal-box">
+            <h3 id="cx-modal-title">Connecter</h3>
+            <p id="cx-modal-desc"></p>
+            <form id="cx-modal-form" method="post"
+                data-tpl-connecter="{% url 'gestion:connecteur_connecter' '__KEY__' %}"
+                data-tpl-configurer="{% url 'gestion:connecteur_configurer' 0 %}">
+                {% csrf_token %}
+                <div id="cx-modal-fields"></div>
+                <div class="cx-modal-actions">
+                    <button type="button" class="cx-btn" data-close>Annuler</button>
+                    <button type="submit" class="cx-btn prim">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{ cartes|json_script:"connecteurs-data" }}
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        (function () {
+            var dataEl = document.getElementById('connecteurs-data');
+            if (!dataEl) { return; }
+            var parCle = {};
+            try {
+                JSON.parse(dataEl.textContent).forEach(function (c) { parCle[c.key] = c; });
+            } catch (e) { /* ignore */ }
+
+            var modal = document.getElementById('cx-modal');
+            var form = document.getElementById('cx-modal-form');
+            var titre = document.getElementById('cx-modal-title');
+            var desc = document.getElementById('cx-modal-desc');
+            var champs = document.getElementById('cx-modal-fields');
+            if (!modal || !form) { return; }
+
+            function fermer() { modal.hidden = true; }
+
+            function ouvrir(cle, mode, pk) {
+                var c = parCle[cle];
+                if (!c) { return; }
+                titre.textContent = (mode === 'configurer' ? 'Configurer ' : 'Connecter ') + c.nom;
+                desc.textContent = c.description || '';
+                champs.innerHTML = '';
+                (c.champs || []).forEach(function (f) {
+                    var bloc = document.createElement('div');
+                    bloc.className = 'cx-field';
+                    var label = document.createElement('label');
+                    label.textContent = f.label + (f.required ? ' *' : '');
+                    var input = document.createElement('input');
+                    input.name = f.name;
+                    input.type = f.type === 'password' ? 'password' : (f.type === 'url' ? 'url' : 'text');
+                    input.placeholder = f.placeholder || '';
+                    input.autocomplete = 'new-password';
+                    if (f.required) { input.required = true; }
+                    bloc.appendChild(label);
+                    bloc.appendChild(input);
+                    if (f.help) {
+                        var aide = document.createElement('small');
+                        aide.textContent = f.help;
+                        bloc.appendChild(aide);
+                    }
+                    champs.appendChild(bloc);
+                });
+                var action;
+                if (mode === 'configurer') {
+                    action = form.getAttribute('data-tpl-configurer').replace('/0/configurer/', '/' + pk + '/configurer/');
+                } else {
+                    action = form.getAttribute('data-tpl-connecter').replace('__KEY__', encodeURIComponent(cle));
+                }
+                form.action = action;
+                modal.hidden = false;
+                var premier = champs.querySelector('input');
+                if (premier) { premier.focus(); }
+            }
+
+            document.querySelectorAll('[data-connecter]').forEach(function (btn) {
+                btn.addEventListener('click', function () { ouvrir(btn.getAttribute('data-connecter'), 'connecter', null); });
+            });
+            document.querySelectorAll('[data-configurer]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    ouvrir(btn.getAttribute('data-cle'), 'configurer', btn.getAttribute('data-configurer'));
+                });
+            });
+            document.querySelectorAll('[data-close]').forEach(function (btn) {
+                btn.addEventListener('click', fermer);
+            });
+            modal.addEventListener('click', function (ev) { if (ev.target === modal) { fermer(); } });
+            document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { fermer(); } });
+
+            document.querySelectorAll('[data-copy]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var input = btn.parentElement.querySelector('input');
+                    if (!input) { return; }
+                    input.select();
+                    try { document.execCommand('copy'); } catch (e) { /* ignore */ }
+                    var ancien = btn.textContent;
+                    btn.textContent = 'Copié';
+                    setTimeout(function () { btn.textContent = ancien; }, 1200);
+                });
+            });
+        })();
+    </script>
+{% endblock %}

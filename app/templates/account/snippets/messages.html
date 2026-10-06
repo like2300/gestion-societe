@@ -1,0 +1,11 @@
+{% comment %}
+Collecte des messages Django + erreurs de formulaire allauth pour le système
+de toasts JS (rendu par account/snippets/messages.html + JS de base_auth.html).
+
+Les toasts sont générés en JS à partir d'un JSON embarqué, ce qui évite les
+problèmes d'échappement des messages multi-lignes et des critères de mot de
+passe qui contiennent des balises HTML.
+{% endcomment %}
+<div id="toast-data"
+    data-toasts='[{% for message in messages %}{"type": "{{ message.tags|default:'info' }}", "text": "{{ message|escapejs }}"}{% if not forloop.last %}, {% endif %}{% endfor %}{% if form %}{% if form.non_field_errors %}{% for error in form.non_field_errors %}{"type": "error", "text": "{{ error|striptags|escapejs }}"}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}{% for f in form %}{% if f.errors %}{% for error in f.errors %}{"type": "error", "text": "{{ f.label }} : {{ error|striptags|escapejs }}"}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}{% endfor %}{% endif %}]'>
+</div>

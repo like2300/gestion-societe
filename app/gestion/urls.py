@@ -1,0 +1,103 @@
+from django.urls import path
+from django.views.generic import RedirectView
+
+from . import views
+
+app_name = "gestion"
+
+urlpatterns = [
+    path("dashboard/", views.dashboard, name="dashboard"),
+    path("notifications/lues/", views.notifications_lire, name="notifications_lire"),
+    path("notifications/supprimer/", views.notification_supprimer, name="notifications_supprimer"),
+    path("notifications/son/", views.notifications_son, name="notifications_son"),
+    path("notifications/etat/", views.notifications_etat, name="notifications_etat"),
+    path("notifications/donnees/", views.notifications_donnees, name="notifications_donnees"),
+    path("presence/ping/", views.presence_ping, name="presence_ping"),
+    path("employes/", views.employes, name="employes"),
+    path("employes/activite/", views.employes_activite, name="employes_activite"),
+    path("taches/", views.taches, name="taches"),
+    path("taches/livrable/<int:pk>/fichier/", views.tache_livrable_fichier, name="tache_livrable_fichier"),
+    path("employes/<int:pk>/supprimer/", views.employe_delete, name="employe_delete"),
+    path("employes/<int:pk>/messages/", views.employe_messages, name="employe_messages"),
+    path("messages/groupes/", views.groupes, name="groupes"),
+    path("messages/groupes/<int:pk>/messages/", views.groupe_messages, name="groupe_messages"),
+    path("messages/groupes/<int:pk>/config/", views.chat_groupe_config, name="chat_groupe_config"),
+    path("messages/groupes/<int:pk>/logo/", views.chat_groupe_logo, name="chat_groupe_logo"),
+    path("messages/fichier/<int:pk>/", views.chat_fichier, name="chat_fichier"),
+    path("messages/<int:pk>/supprimer/", views.chat_message_delete, name="chat_message_delete"),
+    path("clients/", views.clients, name="clients"),
+    path("clients/<int:pk>/supprimer/", views.client_delete, name="client_delete"),
+    path("projets/", views.projets, name="projets"),
+    path("projets/<int:pk>/supprimer/", views.projet_delete, name="projet_delete"),
+    path("societe/profil/", views.societe_profil, name="societe_profil"),
+path("profil/", views.profil, name="profil"),
+path(
+    "compte/",
+    RedirectView.as_view(pattern_name="gestion:profil", permanent=False),
+    name="compte",
+),
+    path("societe/creer/", views.societe_create, name="societe_create"),
+    path("equipe/rejoindre/", views.rejoindre_equipe, name="rejoindre_equipe"),
+    path("finances/", views.finances, name="finances"),
+    path("salaires/<int:pk>/payer/", views.salaire_payer, name="salaire_payer"),
+    path("salaires/generer/", views.salaire_generer_mois, name="salaire_generer_mois"),
+    path("salaires/employes/options/", views.salaire_employe_options, name="salaire_employe_options"),
+    path("echeances/<int:pk>/payer/", views.echeance_payer, name="echeance_payer"),
+    # KPay (Mobile Money) — encaissements, retraits, suivi et webhook
+    path("kpay/webhook/", views.kpay_webhook, name="kpay_webhook"),
+    path("kpay/echeances/<int:pk>/depot/", views.kpay_depot_echeance, name="kpay_depot_echeance"),
+    path("kpay/salaires/<int:pk>/payout/", views.kpay_payout_salaire, name="kpay_payout_salaire"),
+    path("kpay/operations/<int:pk>/actualiser/", views.kpay_actualiser, name="kpay_actualiser"),
+    path("connecteurs/", views.connecteurs, name="connecteurs"),
+    path("globe/", views.globe, name="globe"),
+    path("globe/donnees/", views.globe_donnees, name="globe_donnees"),
+    path("connecteurs/ajouter/", views.connecteur_ajouter, name="connecteur_ajouter"),
+    path(
+        "connecteurs/webhook/<int:pk>/<str:jeton>/",
+        views.connecteur_webhook,
+        name="connecteur_webhook",
+    ),
+    path(
+        "connecteurs/<int:pk>/configurer/",
+        views.connecteur_configurer,
+        name="connecteur_configurer",
+    ),
+    path(
+        "connecteurs/callback/<str:key>/",
+        views.connecteur_callback,
+        name="connecteur_callback",
+    ),
+    path(
+        "connecteurs/<int:pk>/deconnecter/",
+        views.connecteur_deconnecter,
+        name="connecteur_deconnecter",
+    ),
+    path(
+        "connecteurs/<int:pk>/sync/",
+        views.connecteur_sync,
+        name="connecteur_sync",
+    ),
+    path(
+        "connecteurs/<str:key>/connecter/",
+        views.connecteur_connecter,
+        name="connecteur_connecter",
+    ),
+    path("post-login/", views.post_login_redirect, name="post_login_redirect"),
+    path("ai/chat/", views.ai_chat, name="ai_chat"),
+    path("ai/rapport-pdf/", views.ai_report_pdf, name="ai_report_pdf"),
+    path("ai/conversations/", views.ia_conversations, name="ia_conversations"),
+    path(
+        "ai/conversations/<int:pk>/",
+        views.ia_conversation_messages,
+        name="ia_conversation_messages",
+    ),
+    path(
+        "ai/conversations/<int:pk>/supprimer/",
+        views.ia_conversation_supprimer,
+        name="ia_conversation_supprimer",
+    ),
+    path("reunions/creer/", views.reunions_creer, name="reunions_creer"),
+    path("reunions/<int:pk>/partager/", views.reunions_partager, name="reunions_partager"),
+    path("<str:module>/<int:pk>/supprimer/", views.crud_delete, name="crud_delete"),
+    path("<str:module>/", views.crud_page, name="crud"),
+]

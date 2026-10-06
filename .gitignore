@@ -1,0 +1,65 @@
+# ============================================
+# Projet Django — Gestionnaire de société
+# ============================================
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+
+# --- Environnements virtuels ---
+venv/
+.venv/
+env/
+ENV/
+env312/
+
+# --- Variables d'environnement (jamais versionnées) ---
+.env
+.env.*
+*.env
+!.env.example
+
+# --- Bases de données ---
+db.sqlite3
+*.sqlite3
+*.db
+
+# --- Fichiers utilisateur (médias, pièces jointes) ---
+media/
+chat_media/
+tache_media/
+
+# --- Collectstatic (STATIC_ROOT = app/static) ---
+# NB : app/gestions/static/ (sources) reste versionné.
+app/static/
+staticfiles/
+static_root/
+/static_collected/
+
+# --- Logs et sorties de tests ---
+*.log
+logs/
+out_*.txt
+
+# --- IDE / OS ---
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# --- Front-end ---
+node_modules/
+dist/
+build/
+
+# --- Qualité / traduction ---
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+*.pot
+
+# --- Documents personnels (dossiers de candidature, non poussés) ---
+app/instruction/*.pdf
+instruction/*.pdf

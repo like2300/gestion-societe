@@ -1,0 +1,330 @@
+{% extends "gestion/base_dashboard.html" %}
+
+{% block dash_title %}Mon profil — {{ user.prenom }} {{ user.nom }}{% endblock %}
+
+{% block content %}
+    <style>
+        .profile-grid {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 1rem;
+            align-items: start;
+            margin-top: 1.2rem;
+        }
+        .profile-photo {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.9rem;
+            padding: 1.8rem 1.4rem 1.5rem;
+            text-align: center;
+        }
+        .profile-avatar {
+            width: 7.2rem;
+            height: 7.2rem;
+            border-radius: 9999px;
+            background: linear-gradient(135deg, var(--accent), #0ea5e9);
+            color: #ffffff;
+            font-weight: 800;
+            font-size: 2.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            box-shadow: 0 14px 28px -14px var(--accent);
+            position: relative;
+        }
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .profile-name {
+            font-weight: 700;
+            color: #0f172a;
+            font-size: 1.1rem;
+            line-height: 1.2;
+        }
+        .profile-mail {
+            font-size: 0.8rem;
+            color: #64748b;
+            word-break: break-word;
+        }
+        .profile-badges {
+            display: flex;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .profile-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 0.2rem;
+        }
+        .profile-actions .drop-label {
+            width: 100%;
+        }
+        .file-photo {
+            display: none;
+        }
+        .btn-photo {
+            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            color: #334155;
+            border-radius: 0.6rem;
+            padding: 0.5rem 0.9rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            transition: all 0.15s ease;
+        }
+        .btn-photo:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .btn-photo-danger {
+            color: #dc2626;
+        }
+        .btn-photo-danger:hover {
+            border-color: #dc2626;
+            color: #dc2626;
+            background: #fef2f2;
+        }
+        .photo-tip {
+            font-size: 0.72rem;
+            color: #94a3b8;
+        }
+        .compte-infos {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 0.4rem 1.6rem;
+            padding: 0.9rem 1.1rem;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.78rem;
+            color: #64748b;
+        }
+        .compte-infos b {
+            color: #0f172a;
+            font-weight: 600;
+        }
+        .profile-toast {
+            position: fixed;
+            bottom: 1.4rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: #16a34a;
+            color: #ffffff;
+            padding: 0.7rem 1.3rem;
+            border-radius: 0.7rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 16px 34px -14px rgba(22, 163, 74, 0.7);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 90;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+        .profile-toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        @media (max-width: 900px) {
+            .profile-grid {
+                grid-template-columns: 1fr;
+            }
+            .compte-infos {
+                grid-template-columns: 1fr;
+            }
+        }
+        @media (prefers-color-scheme: dark) {
+            .profile-name { color: #f1f5f9; }
+            .profile-mail { color: #cbd5e1; }
+            .btn-photo { background: #0f172a; border-color: #334155; color: #e2e8f0; }
+            .btn-photo-danger:hover { background: #431407; }
+            .compte-infos { border-bottom-color: #334155; color: #cbd5e1; }
+            .compte-infos b { color: #f1f5f9; }
+            .photo-tip { color: #64748b; }
+        }
+    </style>
+
+    <div class="banner">
+        <div>
+            <h1>Mon profil</h1>
+            <p>{{ user.prenom }} {{ user.nom }} — vos informations personnelles et votre photo de profil.</p>
+        </div>
+    </div>
+
+    {% if not societe %}
+        <div class="panel"
+            style="padding:1.1rem 1.3rem;margin-top:1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+            <div>
+                <div style="font-weight:700;color:#0f172a">Vous n'avez pas encore rejoint de société</div>
+                <div style="font-size:0.82rem;color:#64748b">
+                    Choisissez une société existante de la plateforme pour demander à rejoindre son équipe.
+                </div>
+            </div>
+            <a href="{% url 'gestion:rejoindre_equipe' %}" class="btn-primary">Rejoindre une société</a>
+        </div>
+    {% endif %}
+
+    {% if request.GET.ok %}
+        <div class="profile-toast" id="profile-toast">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 6 9 17l-5-5" />
+            </svg>
+            Profil enregistré avec succès
+        </div>
+    {% endif %}
+
+    <div class="profile-grid">
+        <div class="panel profile-photo">
+            <div class="profile-avatar" id="profile-avatar">
+                {% if user.photo_profil %}
+                    <img src="{{ MEDIA_PREFIX }}{{ user.photo_profil }}" alt="Photo de profil" data-avatar-img />
+                {% else %}
+                    <span id="profile-initials">{{ user.prenom|first }}{{ user.nom|first }}</span>
+                {% endif %}
+            </div>
+            <div>
+                <div class="profile-name">{{ user.prenom }} {{ user.nom }}</div>
+                <div class="profile-mail">{{ user.email }}</div>
+            </div>
+            <div class="profile-badges">
+                <span class="badge-status" style="background:var(--accent-soft);color:var(--accent)">
+                    {{ user.get_role_admin_display }}
+                </span>
+                <span class="badge-status {{ user.statut }}">{{ user.get_statut_display }}</span>
+            </div>
+            <div class="profile-actions">
+                <label for="id_photo_profil" class="btn-photo" role="button" tabindex="0">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                    </svg>
+                    Changer la photo
+                </label>
+                {% if user.photo_profil %}
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="supprimer_photo" value="1" />
+                        <button type="submit" class="btn-photo btn-photo-danger">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                            </svg>
+                            Retirer
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+            <div class="photo-tip">PNG, JPG, JPEG, GIF — 5 Mo max.</div>
+        </div>
+
+        <div class="panel" style="overflow:hidden">
+            <div class="compte-infos">
+                <span><b>Rôle :</b> {{ user.get_role_admin_display }}</span>
+                <span><b>Statut :</b> {{ user.get_statut_display }}</span>
+                <span><b>Membre depuis :</b> {{ user.created_at|date:"d/m/Y" }}</span>
+                <span><b>Dernière modification :</b> {{ user.updated_at|date:"d/m/Y H:i" }}</span>
+                <span><b>Accès admin :</b> {{ user.is_staff|yesno:"Oui,Non" }}</span>
+                <span><b>Compte actif :</b> {{ user.is_active|yesno:"Oui,Non" }}</span>
+            </div>
+
+            <form method="post" enctype="multipart/form-data" style="padding:1.2rem 1.4rem 1.4rem">
+                {% csrf_token %}
+                {% if form.errors %}
+                    <div class="form-errors">
+                        <strong>Veuillez corriger les erreurs ci-dessous :</strong>
+                        <p style="margin:0.3rem 0 0">
+                            {{ form.non_field_errors }}
+                        </p>
+                    </div>
+                {% endif %}
+
+                <div class="fgrid">
+                    {% for field in form %}
+                        {% if not field.is_hidden %}
+                            <div class="ffield {% if field.name == 'email' or field.name == 'numero_piece_identite' %}fspan-2{% endif %}"
+                                data-ffield-name="{{ field.name }}">
+                                <label for="{{ field.id_for_label }}">
+                                    {{ field.label }}{% if field.field.required %}<span class="req"> *</span>{% endif %}
+                                </label>
+                                {{ field }}
+                                {% if field.errors %}
+                                    <ul class="errors">
+                                        {% for error in field.errors %}<li>{{ error }}</li>{% endfor %}
+                                    </ul>
+                                {% endif %}
+                                {% if field.help_text %}
+                                    <p style="font-size:0.72rem;color:#94a3b8;margin:0.3rem 0 0">{{ field.help_text }}</p>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+
+                <div class="factions">
+                    {% if societe %}
+                        <a href="{% url 'gestion:dashboard' %}" class="btn-ghost">Retour</a>
+                    {% endif %}
+                    <button type="submit" class="btn-primary">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 20h9" />
+                            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                        </svg>
+                        Enregistrer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% block extra_js %}
+        <script>
+            (function () {
+                var toast = document.getElementById("profile-toast");
+                if (toast) {
+                    setTimeout(function () { toast.classList.add("show"); }, 60);
+                    setTimeout(function () { toast.classList.remove("show"); }, 3200);
+                }
+
+                var input = document.getElementById("id_photo_profil");
+                var avatar = document.getElementById("profile-avatar");
+                var label = document.querySelector('label[for="id_photo_profil"]');
+                if (input && label) {
+                    label.addEventListener("keydown", function (e) {
+                        if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            input.click();
+                        }
+                    });
+                    input.addEventListener("change", function () {
+                        var file = input.files && input.files[0];
+                        if (!file) return;
+                        if (!/^image\//.test(file.type)) {
+                            alert("Veuillez sélectionner une image (PNG, JPG, JPEG, GIF).");
+                            input.value = "";
+                            return;
+                        }
+                        var reader = new FileReader();
+                        reader.onload = function (ev) {
+                            avatar.innerHTML = '<img src="' + ev.target.result + '" alt="Aperçu" />';
+                        };
+                        reader.readAsDataURL(file);
+                    });
+                }
+            })();
+        </script>
+    {% endblock extra_js %}
+{% endblock content %}

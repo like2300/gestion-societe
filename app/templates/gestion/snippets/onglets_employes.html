@@ -1,0 +1,62 @@
+<style>
+    .sub-tabs {
+        display: flex;
+        gap: 0.4rem;
+        margin: 0.4rem 0 1rem;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .sub-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.42rem 1rem;
+        border-radius: 9999px;
+        font-size: 0.86rem;
+        font-weight: 600;
+        color: #475569;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        text-decoration: none;
+        transition: all 0.15s ease;
+    }
+    .sub-tab:hover {
+        color: var(--accent);
+        border-color: var(--accent);
+    }
+    .sub-tab.active {
+        color: #fff;
+        background: var(--accent);
+        border-color: var(--accent);
+    }
+    .sub-tab-badge {
+        background: rgba(255, 255, 255, 0.25);
+        border-radius: 9999px;
+        padding: 0 0.45rem;
+        font-size: 0.75rem;
+    }
+    .sub-tab:not(.active) .sub-tab-badge {
+        background: #e2e8f0;
+        color: #475569;
+    }
+</style>
+
+<div class="sub-tabs">
+    <a class="sub-tab{% if onglet_employes == 'liste' %} active{% endif %}"
+        href="{% url 'gestion:employes' %}">
+        Employés
+    </a>
+    {% if 'taches' in modules_autorises %}
+    <a class="sub-tab{% if onglet_employes == 'taches' %} active{% endif %}"
+        href="{% url 'gestion:taches' %}">
+        Tâches
+        <span class="sub-tab-badge">{{ nav_counts.taches }}</span>
+    </a>
+    {% endif %}
+    {% if est_createur %}
+    <a class="sub-tab{% if onglet_employes == 'activite' %} active{% endif %}"
+        href="{% url 'gestion:employes_activite' %}">
+        Activité
+    </a>
+    {% endif %}
+</div>

@@ -1,0 +1,28 @@
+{% extends "account/base_auth.html" %}
+{% load i18n %}
+
+{% block title %}Finaliser l'inscription{% endblock %}
+
+{% block main %}
+    <div class="rounded-lg px-6 py-8 max-w-lg mx-auto w-full md:px-8 lg:max-w-md">
+        <h1 class="text-3xl mb-4 font-semibold text-brand-title">Finaliser l'inscription</h1>
+        <p class="text-sm text-brand-text leading-relaxed mb-8">
+            Vous êtes sur le point d'utiliser votre compte
+            <strong class="text-brand-text">{{ socialaccount.get_provider.name|default:"Google" }}</strong>
+            pour vous connecter. En dernière étape, veuillez compléter le formulaire suivant.
+        </p>
+
+        <form method="post" action="{% url 'socialaccount_signup' %}" class="space-y-6" novalidate>
+            {% csrf_token %}
+
+            {% include "account/snippets/field.html" with field=form.email %}
+            {% include "account/snippets/field.html" with field=form.password1 %}
+            {% include "account/snippets/field.html" with field=form.password2 %}
+
+            <button type="submit"
+                class="w-full py-2 px-3.5 text-sm rounded-md font-semibold cursor-pointer tracking-wide text-white border border-brand-primary bg-brand-primary hover:bg-brand-primary-hover transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary">
+                Créer mon compte
+            </button>
+        </form>
+    </div>
+{% endblock main %}

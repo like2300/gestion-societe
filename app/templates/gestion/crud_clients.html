@@ -1,0 +1,545 @@
+{% extends "gestion/base_dashboard.html" %}
+{% load static %}
+
+{% block dash_title %}Clients — {{ societe.nom }}{% endblock %}
+
+{% block content %}
+    <style>
+        .cl-row.is-open { background: var(--accent-soft); }
+        .cl-row.is-open td:first-child { border-left: 3px solid var(--accent); }
+
+        .cl-row-suivi td { padding: 0; background: var(--surface-2, #f8fafc); }
+        .suivi-panel { padding: 1rem 1.25rem 1.25rem; border-top: 1px dashed #d7e0ea; }
+        .suivi-panel h4 { margin: 0 0 0.6rem; font-size: 0.85rem; color: #475569; letter-spacing: .02em; }
+
+        .suivi-stats { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1rem; }
+        .suivi-stat { min-width: 96px; flex: 1; background: #fff; border: 1px solid #e2e8f0;
+            border-radius: 0.75rem; padding: 10px 14px; }
+        .suivi-stat b { display: block; font-size: 1.15rem; color: var(--accent); line-height: 1.1; }
+        .suivi-stat span { font-size: 0.75rem; color: #64748b; }
+
+        .suivi-provenance { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1rem; }
+        .prov-tile { flex: 1 1 190px; background: #fff; border: 1px solid #e2e8f0; border-radius: 0.75rem;
+            padding: 10px 14px; }
+        .prov-tile b { display: block; font-size: 0.9rem; color: #0f172a; margin-bottom: 2px; }
+        .prov-tile span { font-size: 0.72rem; color: #64748b; display: block; }
+        .prov-tile .prov-label { font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
+            letter-spacing: .05em; color: #94a3b8; margin-bottom: 3px; }
+        .prov-tile .prov-ok { color: #047857; font-weight: 600; }
+        .prov-tile .prov-muted { color: #94a3b8; }
+
+        .suivi-equipe { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.8rem;
+            border-top: 1px dashed #d7e0ea; padding-top: 0.8rem; }
+        .eq-pill { display: inline-flex; align-items: center; gap: 6px; background: #fff;
+            border: 1px solid #e2e8f0; border-radius: 999px; padding: 4px 10px 4px 4px; font-size: 0.74rem; }
+        .eq-sigle { width: 24px; height: 24px; border-radius: 50%; background: var(--accent);
+            color: #fff; font-size: 0.64rem; font-weight: 700; display: inline-flex; align-items: center;
+            justify-content: center; }
+        .eq-pill b { color: #0f172a; font-weight: 600; }
+        .eq-pill span { color: #64748b; }
+
+        .suivi-projets { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0.8rem; }
+        .suivi-projet { background: #fff; border: 1px solid #e2e8f0; border-radius: 0.8rem; padding: 12px 14px; }
+        .sp-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+        .sp-nom { font-weight: 600; color: #0f172a; }
+        .sp-head .badge-status { margin-left: auto; padding: 1px 8px; font-size: 0.7rem; }
+        .sp-prog { font-weight: 700; color: var(--accent); font-size: 0.9rem; }
+
+        .sp-bar { height: 6px; border-radius: 999px; background: #eef2f7; overflow: hidden; margin-bottom: 0.6rem; }
+        .sp-bar span { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+
+        .sp-tache { display: flex; gap: 0.5rem; align-items: flex-start; background: var(--accent-soft);
+            padding: 8px 10px; border-radius: 0.6rem; margin-bottom: 0.55rem; }
+        .sp-tache b { display: block; font-size: 0.82rem; color: #0f172a; }
+        .sp-tache .sp-muted { font-size: 0.72rem; color: #64748b; }
+        .sp-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+            margin-top: 4px; flex: none; animation: pulse 1.6s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+        .sp-rien { font-size: 0.75rem; color: #94a3b8; padding: 4px 2px 6px; }
+
+        .sp-ligne { display: flex; justify-content: space-between; font-size: 0.74rem; color: #475569;
+            margin-bottom: 0.5rem; }
+        .sp-chefs { display: flex; align-items: center; gap: 0.35rem; margin-bottom: 0.5rem; }
+        .sp-chef { width: 26px; height: 26px; border-radius: 50%; background: var(--accent);
+            color: #fff; font-size: 0.68rem; font-weight: 700; display: inline-flex; align-items: center;
+            justify-content: center; }
+        .sp-chefs .sp-muted { font-size: 0.72rem; color: #94a3b8; }
+
+        .sp-eches { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+        .sp-ech { font-size: 0.72rem; padding: 4px 8px; border-radius: 6px; background: #f1f5f9;
+            border: 1px solid #e2e8f0; color: #334155; display: inline-flex; gap: 0.35rem; }
+        .sp-ech.URGENT { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+        .sp-ech.TRES_URGENT { background: #fef2f2; border-color: #f87171; color: #991b1b; }
+        .sp-ech.PROCHAINEMENT { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+        .sp-ech.BIENTOT { background: #f0f9ff; border-color: #bae6fd; color: #075985; }
+        .sp-ech .ech-num { font-weight: 700; }
+        .sp-ech .ech-st { font-weight: 600; }
+
+        .suivi-timeline { margin-top: 1rem; border-top: 1px solid #e2e8f0; padding-top: 0.9rem; }
+        .tl-item { display: flex; gap: 0.7rem; padding: 7px 0; border-bottom: 1px dashed #edf1f6; }
+        .tl-item:last-child { border-bottom: none; }
+        .tl-date { flex: none; width: 118px; font-size: 0.72rem; color: #94a3b8; padding-top: 2px; }
+        .tl-item::before { content: ''; flex: none; width: 8px; height: 8px; border-radius: 50%;
+            background: #cbd5e1; margin-top: 5px; }
+        .tl-item[data-tl-type="document"]::before { background: #f59e0b; }
+        .tl-item[data-tl-type="progres"]::before { background: var(--accent); }
+        .tl-item[data-tl-type="statut"]::before { background: #ec4899; }
+        .tl-item[data-tl-type="commentaire"]::before { outline: 2px solid #e2e8f0; }
+        .tl-body b { display: block; font-size: 0.8rem; color: #0f172a; }
+        .tl-body > span { display: block; font-size: 0.76rem; color: #475569; }
+        .tl-meta { font-size: 0.68rem !important; color: #94a3b8 !important; }
+
+        .suivi-msg { font-size: 0.8rem; color: #94a3b8; padding: 8px 2px; }
+        .act.suivi { color: var(--accent); }
+        .cl-row-suivi { animation: fadein .2s ease; }
+        @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+
+    <div class="page-head">
+        <div>
+            <h1>Clients</h1>
+            <p class="sub">{{ items|length }} client(s)
+                {% if sans_logo %}<strong> · {{ sans_logo }} sans logo</strong>{% endif %}
+            </p>
+        </div>
+        <div style="margin-left:auto">
+            <button type="button" class="btn-primary" data-crud-add>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2.2" stroke-linecap="round">
+                    <path d="M12 5v14M5 12h14" />
+                </svg>
+                Ajouter un client
+            </button>
+        </div>
+    </div>
+
+    {% if acces_prospection %}
+    <div class="panel" style="margin-bottom:1rem">
+        <div style="display:flex;flex-wrap:wrap;gap:.8rem;align-items:center">
+            <div style="flex:1;min-width:200px">
+                <span class="row-name" style="font-size:1.05rem">Prospection commerciale</span>
+                {% if prospection.total %}<span class="row-muted"> · {{ prospection.total }}
+                    prospect(s)</span>{% else %}<span class="row-muted"> · aucune ligne pour le moment</span>{% endif %}
+            </div>
+            {% for st in prospection.statuts %}
+                <span class="badge-status {{ st.code }}" {% if not st.count %}style="opacity:.55"{% endif %}>
+                    {{ st.label }}{% if st.count %} · {{ st.count }}{% endif %}
+                </span>
+            {% endfor %}
+            <a href="{{ prospection.url }}" class="btn-primary" style="text-decoration:none"
+                title="Ouvrir le pipeline de prospection">Gérer la prospection</a>
+        </div>
+        {% if prospection.prospects %}
+        <table class="crud-table" style="margin-top:.7rem">
+            <thead>
+                <tr>
+                    <th>Prospect</th>
+                    <th>Statut</th>
+                    <th>Responsable</th>
+                    <th style="text-align:right">Budget</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pr in prospection.prospects %}
+                <tr>
+                    <td><span class="row-name">{{ pr.nom }}</span></td>
+                    <td><span class="badge-status {{ pr.statut }}">{{ pr.statut_label }}</span></td>
+                    <td>{% if pr.responsable_nom %}<span class="row-muted">{{ pr.responsable_nom }}</span>
+                        {% else %}<span class="row-muted">—</span>{% endif %}</td>
+                    <td style="text-align:right"><span class="row-muted">{{ pr.budget }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="panel">
+        {% if items %}
+            <table class="crud-table">
+                <thead>
+                    <tr>
+                        <th>Client</th>
+                        <th>Logo</th>
+                        <th>Type</th>
+                        <th>Contact</th>
+                        <th>Localisation</th>
+                        <th>Docs</th>
+                        <th>Statut</th>
+                        <th style="text-align:right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                        <tr class="cl-row" data-cl-row="{{ forloop.counter0 }}">
+                            <td><span class="row-name">{{ item.nom }}</span></td>
+                            <td>
+                                {% if item.logo %}
+                                    <div style="width:2rem;height:2rem;border-radius:0.5rem;overflow:hidden;border:1px solid #e2e8f0">
+                                        <img src="{{ MEDIA_PREFIX }}{{ item.logo }}" alt="{{ item.nom }}"
+                                            style="width:100%;height:100%;object-fit:cover" />
+                                    </div>
+                                {% else %}
+                                    <span class="badge-status SANS">Sans logo</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.type_nom %}<span class="row-name">{{ item.type_nom }}</span>{% endif %}
+                            </td>
+                            <td><span class="row-muted">{{ item.telephone_1 }}</span><br />
+                                <span class="row-muted">{{ item.email }}</span></td>
+                            <td><span class="row-muted">{{ item.ville }}</span>
+                                {% if item.pays %}<span class="row-muted">, {{ item.pays }}</span>{% endif %}</td>
+                            <td>
+                                {% if item.n_documents %}
+                                    <span class="badge-status" style="background:var(--accent-soft);color:var(--accent)">
+                                        {{ item.n_documents }} document(s)
+                                    </span>
+                                {% else %}
+                                    <span class="row-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td><span class="badge-status {{ item.statut }}">{{ item.statut }}</span></td>
+                            <td>
+                                <div class="acts">
+                                    <button type="button" class="act suivi" data-suivi-toggle="{{ forloop.counter0 }}"
+                                        aria-label="Suivi de l'activité" title="Suivi de l'activité">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                            stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M3 3v18h18" />
+                                            <path d="M7 14l3-3 3 2 4-5" />
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="act edit" data-crud-edit="{{ forloop.counter0 }}"
+                                        aria-label="Modifier" title="Modifier">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                            stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="act del" data-crud-del="{{ forloop.counter0 }}"
+                                        data-del-url="{% url 'gestion:client_delete' item.pk %}"
+                                        data-del-name="{{ item.del_name }}" aria-label="Supprimer" title="Supprimer">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                            stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="cl-row-suivi" data-suivi-row="{{ forloop.counter0 }}" hidden>
+                            <td colspan="8">
+                                <div class="suivi-panel">
+                                    {% if not item.acces_projets %}
+                                        <div class="suivi-msg">
+                                            Le suivi de l'activité n'est pas disponible : ce compte n'a pas accès
+                                            aux modules Projets / Tâches.
+                                        </div>
+                                    {% else %}
+                                        <div class="suivi-stats">
+                                            <div class="suivi-stat"><b>{{ item.n_projets }}</b><span>Projets</span></div>
+                                            {% if item.acces_taches %}
+                                                <div class="suivi-stat"><b>{{ item.suivi.n_taches }}</b><span>Tâches</span></div>
+                                                <div class="suivi-stat"><b>{{ item.suivi.n_terminees }}</b><span>Terminées</span></div>
+                                            {% endif %}
+                                            <div class="suivi-stat"><b>{{ item.suivi.progression }} %</b><span>Progression</span></div>
+                                            {% if item.acces_echeances %}
+                                                <div class="suivi-stat"><b>{{ item.suivi.budget_total }}</b><span>Budget</span></div>
+                                                <div class="suivi-stat"><b>{{ item.suivi.encaisse_total }}</b><span>Encaissé</span></div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="suivi-provenance">
+                                            <div class="prov-tile">
+                                                <span class="prov-label">Origine</span>
+                                                <b>{{ item.suivi.provenance.source_label }}</b>
+                                                {% if item.suivi.provenance.date_creation %}
+                                                    <span>Fiche depuis le {{ item.suivi.provenance.date_creation }}</span>
+                                                {% endif %}
+                                            </div>
+                                            {% if item.acces_prospection %}
+                                                <div class="prov-tile">
+                                                    <span class="prov-label">Prospection</span>
+                                                    {% if item.suivi.provenance.prospection %}
+                                                        <b>{{ item.suivi.provenance.prospection.nom }}</b>
+                                                        <span>{{ item.suivi.provenance.prospection.statut_label }}
+                                                            {% if item.suivi.provenance.prospection.responsable_nom %} ·
+                                                                {{ item.suivi.provenance.prospection.responsable_nom }}{% endif %}
+                                                            · {{ item.suivi.provenance.prospection.date_prospection }}</span>
+                                                    {% else %}
+                                                        <b class="prov-muted">Client direct</b>
+                                                        <span>Aucune ligne de prospection liée.</span>
+                                                    {% endif %}
+                                                </div>
+                                            {% endif %}
+                                            {% if item.acces_employes %}
+                                                <div class="prov-tile">
+                                                    <span class="prov-label">Fiche créée par</span>
+                                                    <b>{{ item.suivi.provenance.cree_par|default:"Compte externe" }}</b>
+                                                </div>
+                                                <div class="prov-tile">
+                                                    <span class="prov-label">Responsable client</span>
+                                                    {% if item.suivi.provenance.responsable %}
+                                                        <b>{{ item.suivi.provenance.responsable.nom }}</b>
+                                                        <span class="prov-ok">{{ item.suivi.provenance.responsable.portefeuille }} client(s) à charge ·
+                                                            {{ item.suivi.provenance.responsable.statut }}</span>
+                                                    {% else %}
+                                                        <b class="prov-muted">Aucun</b>
+                                                        <span>À attribuer dans la fiche.</span>
+                                                    {% endif %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        {% if item.acces_taches and item.acces_employes and item.suivi.equipe %}
+                                            <h4>Qui travaille sur ce client</h4>
+                                            <div class="suivi-equipe">
+                                                {% for m in item.suivi.equipe %}
+                                                    <span class="eq-pill" title="{{ m.nom }} · {{ m.statut }}">
+                                                        <span class="eq-sigle">{{ m.sigle }}</span>
+                                                        <b>{{ m.nom }}</b>
+                                                        <span>{{ m.en_cours }} en cours · {{ m.terminees }} terminées</span>
+                                                    </span>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                        {% if item.suivi.projets %}
+                                            <div class="suivi-projets">
+                                                {% for p in item.suivi.projets %}
+                                                    <div class="suivi-projet">
+                                                        <div class="sp-head">
+                                                            <span class="sp-nom">{{ p.nom }}</span>
+                                                            <span class="badge-status {{ p.statut }}">{{ p.statut_label }}</span>
+                                                            <span class="sp-prog">{{ p.progression }} %</span>
+                                                        </div>
+                                                        <div class="sp-bar"><span style="width:{{ p.progression }}%"></span></div>
+                                                        {% if p.tache_en_cours %}
+                                                            <div class="sp-tache">
+                                                                <span class="sp-dot"></span>
+                                                                <div>
+                                                                    <b>{{ p.tache_en_cours.titre }}</b>
+                                                                    <span class="sp-muted">
+                                                                        En cours · {{ p.tache_en_cours.assignee_nom }}
+                                                                        · {{ p.tache_en_cours.progres }} %
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        {% else %}
+                                                            <div class="sp-rien">Aucune tâche en cours.</div>
+                                                        {% endif %}
+                                                        <div class="sp-ligne">
+                                                            <span>Étape : {{ p.etape_en_cours }}</span>
+                                                            <span>{{ p.etapes_atteintes }}/{{ p.etapes_totales }} étapes</span>
+                                                        </div>
+                                                        {% if p.responsables and item.acces_employes %}
+                                                            <div class="sp-chefs">
+                                                                {% for r in p.responsables %}
+                                                                    <span class="sp-chef" title="{{ r.nom }} · {{ r.statut }}">{{ r.sigle }}</span>
+                                                                {% endfor %}
+                                                                <span class="sp-muted">Responsable(s)</span>
+                                                            </div>
+                                                        {% endif %}
+                                                        {% if p.echeances and item.acces_echeances %}
+                                                            <div class="sp-eches">
+                                                                {% for e in p.echeances %}
+                                                                    <span class="sp-ech {{ e.jalon }}" title="{{ e.jalon_label }}">
+                                                                        <span class="ech-num">{{ e.numero }}</span>
+                                                                        <span class="ech-dat">{{ e.date_aff }}</span>
+                                                                        <span class="ech-mt">{{ e.montant }}</span>
+                                                                        <span class="ech-st">{{ e.statut_label }}</span>
+                                                                    </span>
+                                                                {% endfor %}
+                                                            </div>
+                                                        {% endif %}
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            <div class="suivi-msg">Aucun projet lié à ce client.</div>
+                                        {% endif %}
+                                        {% if item.acces_taches and item.suivi.timeline %}
+                                            <div class="suivi-timeline">
+                                                <h4>Activités récentes — espace Employés &amp; Tâches</h4>
+                                                {% for e in item.suivi.timeline %}
+                                                    <div class="tl-item" data-tl-type="{{ e.type }}">
+                                                        <span class="tl-date">{{ e.date_aff }}</span>
+                                                        <div class="tl-body">
+                                                            <b>{{ e.titre }}</b>
+                                                            <span>{{ e.texte }}</span>
+                                                            <span class="tl-meta">
+                                                                {% if e.employe %} {{ e.employe }}{% endif %}
+                                                                {% if e.auteur %} · par {{ e.auteur }}{% endif %}
+                                                                {% if e.projet %} · {{ e.projet }}{% endif %}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="4" width="20" height="13" rx="2" />
+                    <path d="M8 21h8m-4-4v4" />
+                </svg>
+                <p>Aucun client pour le moment.<br/>Cliquez sur « Ajouter un client » pour commencer.</p>
+            </div>
+        {% endif %}
+    </div>
+{% endblock content %}
+
+{% block drawer %}
+    <div class="drawer-head">
+        <div>
+            <h2 id="drawer-title">Ajouter un client</h2>
+            <p class="drawer-sub" id="drawer-sub">Renseignez les informations ci-dessous.</p>
+        </div>
+        <button class="drawer-close" data-drawer-close aria-label="Fermer">×</button>
+    </div>
+
+    <div class="drawer-body">
+        <form method="post" action="{% url 'gestion:clients' %}" id="obj-form" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="id" id="obj-id" value="{{ form.instance.pk|default:'' }}" />
+            {% if form.non_field_errors %}
+                <div class="form-errors">{{ form.non_field_errors }}</div>
+            {% endif %}
+            <div class="fgrid">
+                {% include "gestion/snippets/drawer_field.html" with field=form.logo span=True %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.nom span=True %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.type_client %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.source %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.responsable %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.statut %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.telephone_1 %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.telephone_2 %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.email span=True %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.adresse span=True %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.ville %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.pays %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.document span=True %}
+            </div>
+            <div class="factions">
+                <button type="button" class="btn-ghost" data-drawer-close>Annuler</button>
+                <button type="submit" class="btn-primary" id="submit-btn">Enregistrer</button>
+            </div>
+        </form>
+
+        <form method="post" id="delete-form" class="delete-panel" hidden>
+            {% csrf_token %}
+            <div class="del-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                </svg>
+            </div>
+            <p class="del-text">Supprimer <span id="del-name"></span> ?</p>
+            <p class="del-warn">Cette action est définitive et supprimera ce client. Les projets associés seront également supprimés.</p>
+            <div class="factions">
+                <button type="button" class="btn-ghost" data-drawer-close>Annuler</button>
+                <button type="submit" class="btn-danger">Confirmer la suppression</button>
+            </div>
+        </form>
+    </div>
+{% endblock drawer %}
+
+{% block extra_js %}
+    {{ items_js|json_script:"crud-data" }}
+    <script>
+        (function () {
+            var ITEMS = JSON.parse(document.getElementById("crud-data").textContent);
+            var form = document.getElementById("obj-form");
+            var deleteForm = document.getElementById("delete-form");
+            var objId = document.getElementById("obj-id");
+            var title = document.getElementById("drawer-title");
+            var sub = document.getElementById("drawer-sub");
+
+            function bind(sel, fn) {
+                var els = document.querySelectorAll(sel);
+                for (var i = 0; i < els.length; i++) els[i].addEventListener("click", fn);
+            }
+
+            function showPanel(which) {
+                form.hidden = which !== "form";
+                deleteForm.hidden = which !== "delete";
+            }
+
+            function bindToggleSuivi(btn) {
+                btn.addEventListener("click", function () {
+                    var idx = btn.getAttribute("data-suivi-toggle");
+                    var row = document.querySelector('[data-suivi-row="' + idx + '"]');
+                    var main = document.querySelector('[data-cl-row="' + idx + '"]');
+                    if (!row) return;
+                    var opened = !row.hidden;
+                    row.hidden = opened;
+                    if (main) main.classList.toggle("is-open", !opened);
+                    if (btn.querySelector("svg"))
+                        btn.querySelector("svg").style.transform = opened ? "" : "rotate(90deg)";
+                });
+            }
+            var btnsSuivi = document.querySelectorAll("[data-suivi-toggle]");
+            for (var i = 0; i < btnsSuivi.length; i++) bindToggleSuivi(btnsSuivi[i]);
+
+            function setItem(item) {
+                for (var key in item) {
+                    if (["pk", "del_url", "del_name", "type_nom", "logo", "n_documents"].indexOf(key) !== -1) continue;
+                    var el = document.getElementById("id_" + key);
+                    if (el) el.value = item[key];
+                }
+            }
+
+            document.querySelector("[data-crud-add]").addEventListener("click", function () {
+                form.reset();
+                objId.value = "";
+                setItem({});
+                title.textContent = "Ajouter un client";
+                sub.textContent = "Renseignez les informations ci-dessous.";
+                showPanel("form");
+                window.openDrawer();
+            });
+
+            bind("[data-crud-edit]", function () {
+                var item = ITEMS[parseInt(this.getAttribute("data-crud-edit"), 10)];
+                form.reset();
+                objId.value = item.pk;
+                setItem(item);
+                title.textContent = "Modifier : " + item.nom;
+                sub.textContent = "Ajustez les informations puis enregistrez.";
+                showPanel("form");
+                window.openDrawer();
+            });
+
+            bind("[data-crud-del]", function () {
+                var item = ITEMS[parseInt(this.getAttribute("data-crud-del"), 10)];
+                deleteForm.action = this.getAttribute("data-del-url");
+                document.getElementById("del-name").textContent = item.nom;
+                showPanel("delete");
+                window.openDrawer();
+            });
+
+            if (document.querySelector(".ffield .errors")) {
+                if (objId.value) {
+                    title.textContent = "Modifier le client";
+                    sub.textContent = "Corrigez les erreurs puis enregistrez.";
+                }
+                showPanel("form");
+                window.openDrawer();
+            }
+
+            var params = new URLSearchParams(window.location.search);
+            if (params.get("ok")) {
+                window.showToast && window.showToast("success", "Client sauvegardé avec succès.");
+            } else if (params.get("deleted")) {
+                window.showToast && window.showToast("success", "Client supprimé.");
+            }
+        })();
+    </script>
+{% endblock extra_js %}

@@ -1,0 +1,37 @@
+{% extends "account/base_auth.html" %}
+{% load i18n %}
+
+{% block title %}Confirmation d'email{% endblock %}
+
+{% block main %}
+    <div class="rounded-lg px-6 py-8 max-w-lg mx-auto w-full md:px-8 lg:max-w-md">
+        <h1 class="text-3xl mb-6 font-semibold text-brand-title">Confirmation d'email</h1>
+
+        {% if confirmation %}
+            {% if user.is_authenticated %}
+                <p class="text-sm text-brand-text leading-relaxed mb-8">
+                    Confirmez que l'adresse <strong class="text-brand-text">{{ confirmation.email_address.email }}</strong>
+                    appartient bien au compte connecté.
+                </p>
+            {% else %}
+                <p class="text-sm text-brand-text leading-relaxed mb-8">
+                    Cliquez sur le bouton ci-dessous pour confirmer l'adresse
+                    <strong class="text-brand-text">{{ confirmation.email_address.email }}</strong>.
+                    Vous serez invité à vous connecter.
+                </p>
+            {% endif %}
+            <form method="post" action="{% url 'account_confirm_email' confirmation.key %}">
+                {% csrf_token %}
+                <button type="submit"
+                    class="w-full py-2 px-3.5 text-sm rounded-md font-semibold cursor-pointer tracking-wide text-white border border-brand-primary bg-brand-primary hover:bg-brand-primary-hover transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary">
+                    Confirmer l'adresse email
+                </button>
+            </form>
+        {% else %}
+            <div class="px-4 py-3 text-sm rounded-md bg-red-50 text-red-800">
+                Ce lien de confirmation est invalide ou a expiré.
+            </div>
+            <a href="{% url 'account_login' %}" class="mt-4 block text-center w-full py-2 px-3.5 text-sm rounded-md font-semibold tracking-wide text-white border border-brand-primary bg-brand-primary hover:bg-brand-primary-hover transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary btn-return">Retour à la connexion</a>
+        {% endif %}
+    </div>
+{% endblock main %}

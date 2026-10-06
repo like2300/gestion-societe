@@ -1,0 +1,57 @@
+{% comment %}
+Rendu générique d'un champ de formulaire allauth/Django avec le style Tailwind du design.
+Usage : {% include "account/snippets/field.html" with field=form.login %}
+- Les erreurs ne s'affichent PAS ici : elles sont montrées en toasts
+  (voir account/snippets/messages.html + validation JS de base_auth.html).
+- Les champs "password" ont un bouton afficher/masquer (JS dans base_auth.html).
+- Style : fond transparent, seule la bordure basse bleue (variable du thème).
+{% endcomment %}
+{% if field %}
+<div>
+    <label for="{{ field.id_for_label }}"
+        class="mb-2 text-brand-text font-medium text-sm inline-block">
+        {{ field.label }}
+    </label>
+
+    {% if field.field.widget.input_type == "password" %}
+        <div class="relative">
+            <button type="button" data-toggle-password
+                aria-label="Afficher ou masquer le mot de passe" aria-pressed="false"
+                class="absolute top-1/2 right-2 -translate-y-1/2 p-0.5 flex cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary rounded">
+                <svg xmlns="http://www.w3.org/2000/svg" class="size-[18px] fill-slate-400 text-slate-400 overflow-visible"
+                    viewBox="0 0 128 128" aria-hidden="true">
+                    <path
+                        d="M64 104C22.127 104 1.367 67.496.504 65.943a4 4 0 0 1 0-3.887C1.367 60.504 22.127 24 64 24s62.633 36.504 63.496 38.057a4 4 0 0 1 0 3.887C126.633 67.496 105.873 104 64 104zM8.707 63.994C13.465 71.205 32.146 96 64 96c31.955 0 50.553-24.775 55.293-31.994C114.535 56.795 95.854 32 64 32 32.045 32 13.447 56.775 8.707 63.994zM64 88c-13.234 0-24-10.766-24-24s10.766-24 24-24 24 10.766 24 24-10.766 24-24 24zm0-40c-8.822 0-16 7.178-16 16s7.178 16 16 16 16-7.178 16-16-7.178-16-16-16z">
+                    </path>
+                    <path data-eye-strike class="block" d="M10.586 10.586l106.828 106.828" stroke="currentColor"
+                        stroke-width="10" stroke-linecap="round"></path>
+                </svg>
+            </button>
+
+            <input type="password"
+                name="{{ field.html_name }}"
+                id="{{ field.id_for_label }}"
+                {% if field.field.required %}required{% endif %}
+                autocomplete="{{ field.field.widget.attrs.autocomplete|default:'new-password' }}"
+                data-password-field
+                class="input-flow px-3 py-2.5 pr-10 text-sm text-brand-text {% if field.errors %}input-invalid{% endif %}" />
+        </div>
+
+    {% else %}
+        <input type="{% if field.field.widget.input_type %}{{ field.field.widget.input_type }}{% else %}text{% endif %}"
+            name="{{ field.html_name }}"
+            id="{{ field.id_for_label }}"
+            {% if field.field.required %}required{% endif %}
+            {% if field.field.widget.input_type != "hidden" %}placeholder="{{ field.label }}"{% endif %}
+            value="{{ field.value|default:'' }}"
+            autocomplete="{{ field.field.widget.attrs.autocomplete|default:'off' }}"
+            class="input-flow px-3 py-2.5 text-sm text-brand-text {% if field.errors %}input-invalid{% endif %}" />
+    {% endif %}
+
+    {% if field.help_text and field.field.widget.input_type != "password" %}
+        <div class="mt-1.5 help-text text-xs text-brand-text">
+            {{ field.help_text|safe }}
+        </div>
+    {% endif %}
+</div>
+{% endif %}

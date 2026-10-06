@@ -1,0 +1,428 @@
+{% extends "gestion/crud_generic.html" %}
+
+{% block prelude %}
+    {% if centre %}
+        <style>
+            .ech-centre { padding: 0; }
+            .ech-head {
+                display: flex; flex-wrap: wrap; align-items: center; gap: 0.55rem 1rem;
+                padding: 1rem 1rem 0.85rem;
+            }
+            .ech-head-titre { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+            .ech-head-titre h3 {
+                margin: 0; font-size: 0.95rem; color: #0f172a;
+                display: flex; align-items: center; gap: 0.5rem;
+            }
+            .ech-head-titre h3 svg { color: var(--accent); flex: none; }
+            .ech-sub { margin: 0; font-size: 0.72rem; color: #64748b; max-width: 44rem; }
+            .ech-head-date {
+                margin-left: auto; font-size: 0.7rem; color: #334155;
+                background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 9999px;
+                padding: 0.28rem 0.65rem; white-space: nowrap;
+            }
+            .ech-stats {
+                display: flex; flex-wrap: wrap; gap: 0.4rem;
+                padding: 0.6rem 1rem;
+                background: #f8fafc; border-top: 1px solid #eef2f7;
+                border-bottom: 1px solid #eef2f7;
+            }
+            .ech-stat {
+                font-size: 0.7rem; font-weight: 600; border-radius: 9999px;
+                padding: 0.22rem 0.6rem; color: #475569;
+                background: #f1f5f9; border: 1px solid #e2e8f0;
+            }
+            .ech-stat b { font-variant-numeric: tabular-nums; font-weight: 800; }
+            .ech-stat.urgence { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+            .ech-stat.jour { background: #fff7ed; border-color: #fed7aa; color: #c2410c; }
+            .ech-stat.proche { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+            .ech-stat.loin { background: #f1f5f9; border-color: #e2e8f0; color: #475569; }
+            .ech-tools {
+                display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem;
+                padding: 0.75rem 1rem 0.6rem;
+            }
+            .ech-filtre {
+                font-size: 0.72rem; font-weight: 600; border: 1px solid #e2e8f0;
+                border-radius: 9999px; padding: 0.28rem 0.7rem;
+                background: #fff; color: #475569; cursor: pointer;
+            }
+            .ech-filtre:hover { border-color: #cbd5e1; }
+            .ech-filtre .n { opacity: 0.7; font-variant-numeric: tabular-nums; }
+            .ech-filtre.is-active { background: var(--accent); border-color: var(--accent); color: #fff; }
+            .ech-filtre.is-retard:not(.is-active) { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+            .ech-recherche { margin-left: auto; position: relative; }
+            .ech-recherche input {
+                width: 11.5rem; max-width: 100%; border: 1px solid #e2e8f0;
+                border-radius: 0.55rem; padding: 0.34rem 0.6rem 0.34rem 1.75rem;
+                font-size: 0.72rem; outline: none; background: #fff;
+            }
+            .ech-recherche input:focus { border-color: var(--accent); }
+            .ech-recherche svg {
+                position: absolute; left: 0.55rem; top: 50%; transform: translateY(-50%);
+                width: 0.85rem; height: 0.85rem; color: #94a3b8; pointer-events: none;
+            }
+            .ech-legend {
+                display: flex; flex-wrap: wrap; gap: 0.5rem 1rem;
+                padding: 0.15rem 1rem 0.85rem;
+            }
+            .ech-legend span {
+                font-size: 0.66rem; color: #475569;
+                display: inline-flex; align-items: center; gap: 0.32rem;
+            }
+            .ech-legend i { width: 0.55rem; height: 0.55rem; border-radius: 9999px; display: inline-block; }
+            .ech-cols {
+                display: grid; grid-template-columns: minmax(0, 1.7fr) auto auto auto auto auto;
+                gap: 0.8rem; align-items: center; padding: 0.35rem 1rem 0.55rem;
+            }
+            .ech-cols span {
+                font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
+                letter-spacing: 0.07em; color: #94a3b8;
+            }
+            .ech-cols .c-montant, .ech-cols .c-actions { text-align: right; }
+            .ech-groupe { padding: 0.85rem 1rem 1rem; }
+            .ech-groupe + .ech-groupe { border-top: 1px solid #eef2f7; }
+            .ech-groupe-titre {
+                display: flex; align-items: center; gap: 0.45rem;
+                font-weight: 700; font-size: 0.8rem; letter-spacing: 0.02em;
+                color: #334155; margin: 0 0 0.55rem;
+            }
+            .ech-count {
+                font-size: 0.68rem; background: var(--accent); color: #fff;
+                border-radius: 9999px; padding: 0.05rem 0.45rem;
+            }
+            .ech-liste { display: flex; flex-direction: column; gap: 0.45rem; }
+            .ech-row {
+                display: grid;
+                grid-template-columns: minmax(0, 1.7fr) auto auto auto auto auto;
+                align-items: center; gap: 0.8rem;
+                border: 1px solid #eef2f7; border-radius: 0.6rem;
+                padding: 0.5rem 0.7rem; background: #fff;
+            }
+            .ech-row.r-rappel { border-left-width: 3px; }
+            .ech-row.r-RETARD { border-left-color: #dc2626; }
+            .ech-row.r-J0 { border-left-color: #ea580c; }
+            .ech-row.r-J1 { border-left-color: #d97706; }
+            .ech-row.r-J3 { border-left-color: #d97706; }
+            .ech-row.r-J7 { border-left-color: #0284c7; }
+            .ech-row.r-J30 { border-left-color: #64748b; }
+            .ech-main { display: flex; align-items: center; gap: 0.55rem; min-width: 0; }
+            .ech-type {
+                flex: none; font-size: 0.62rem; font-weight: 700;
+                text-transform: uppercase; letter-spacing: 0.04em;
+                padding: 0.14rem 0.45rem; border-radius: 9999px; color: #fff;
+            }
+            .ech-type.t-echeances { background: #f59e0b; }
+            .ech-type.t-taches { background: #10b981; }
+            .ech-type.t-salaires { background: #f43f5e; }
+            .ech-type.t-contrats { background: #0ea5e9; }
+            .ech-type.t-projets { background: #6366f1; }
+            .ech-type.t-documents { background: #8b5cf6; }
+            .ech-titre { display: flex; flex-direction: column; min-width: 0; }
+            .ech-libelle {
+                font-weight: 600; color: #0f172a; text-decoration: none;
+                font-size: 0.82rem; white-space: nowrap; overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .ech-libelle:hover { color: var(--accent); }
+            .ech-element {
+                font-size: 0.68rem; color: #64748b; white-space: nowrap;
+                overflow: hidden; text-overflow: ellipsis;
+            }
+            .ech-date { display: flex; flex-direction: column; align-items: flex-end; }
+            .ech-jour { font-weight: 600; font-size: 0.78rem; color: #334155; }
+            .ech-temps { font-size: 0.68rem; color: #64748b; }
+            .ech-montant {
+                font-variant-numeric: tabular-nums; font-weight: 600;
+                font-size: 0.8rem; color: #0f172a; min-width: 4.5rem;
+                text-align: right;
+            }
+            .ech-statut {
+                font-size: 0.68rem; font-weight: 600; border-radius: 9999px;
+                padding: 0.16rem 0.5rem;
+            }
+            .ech-statut.s-A_VENIR, .ech-statut.s-PREVU { background: #eff6ff; color: #1d4ed8; }
+            .ech-statut.s-PARTIELLE, .ech-statut.s-PARTIEL { background: #fef3c7; color: #92400e; }
+            .ech-statut.s-PAYEE, .ech-statut.s-PAYE, .ech-statut.s-TERMINEE,
+            .ech-statut.s-TERMINE, .ech-statut.s-ATTEINT { background: #ecfdf5; color: #047857; }
+            .ech-statut.s-RETARD { background: #fee2e2; color: #b91c1c; }
+            .ech-statut.s-EN_COURS { background: #e0f2fe; color: #0369a1; }
+            .ech-statut.s-ACTIF { background: #ecfdf5; color: #047857; }
+            .ech-statut.s-EN_ATTENTE, .ech-statut.s-A_FAIRE { background: #f1f5f9; color: #475569; }
+            .ech-statut.s-SUSPENDU, .ech-statut.s-ANNULE, .ech-statut.s-RESILIE {
+                background: #f3f4f6; color: #6b7280;
+            }
+            .ech-jalon {
+                font-size: 0.7rem; font-weight: 700; border-radius: 9999px;
+                padding: 0.16rem 0.5rem; color: #fff; min-width: 5.5rem;
+                text-align: center;
+            }
+            .ech-jalon.j-RETARD { background: #dc2626; }
+            .ech-jalon.j-J0 { background: #ea580c; }
+            .ech-jalon.j-J1, .ech-jalon.j-J3 { background: #d97706; }
+            .ech-jalon.j-J7 { background: #0284c7; }
+            .ech-jalon.j-J30 { background: #64748b; }
+            .ech-actions { display: flex; align-items: center; gap: 0.4rem; }
+            .ech-payer-form { display: inline-flex; }
+            .ech-payer {
+                border: 1px solid #059669; background: #ecfdf5; color: #047857;
+                font-weight: 700; font-size: 0.74rem; border-radius: 0.5rem;
+                padding: 0.3rem 0.6rem; cursor: pointer;
+            }
+            .ech-payer:hover { background: #059669; color: #fff; }
+            .ech-vide {
+                padding: 1.4rem 1rem; text-align: center; font-size: 0.78rem;
+                color: #94a3b8;
+            }
+        </style>
+
+        <div class="panel ech-centre">
+            <div class="ech-head">
+                <div class="ech-head-titre">
+                    <h3>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round">
+                            <rect x="3" y="4" width="18" height="18" rx="2" />
+                            <path d="M16 2v4M8 2v4M3 10h18M9 16h.01M15 16h.01" />
+                        </svg>
+                        Centre d'échéances
+                        <span class="ech-count">{{ centre_total }}</span>
+                    </h3>
+                    <p class="ech-sub">
+                        Tous les paiements et suivis regroupés par proximité : projets,
+                        tâches, salaires à venir, contrats, documents. Filtrez par horizon
+                        ou recherchez un intitulé pour vous concentrer sur l'essentiel.
+                    </p>
+                </div>
+                <span class="ech-head-date" title="Date du jour">
+                    Aujourd'hui, {{ aujourdhui_aff }}
+                </span>
+            </div>
+
+            <div class="ech-stats" role="status">
+                <span class="ech-stat">Suivi : <b>{{ centre_counts.total }}</b></span>
+                <span class="ech-stat urgence">En retard : <b>{{ centre_counts.en_retard }}</b></span>
+                <span class="ech-stat jour">Aujourd'hui : <b>{{ centre_counts.aujourdhui }}</b></span>
+                <span class="ech-stat proche">J-1 à J-7 : <b>{{ centre_counts.bientot }}</b></span>
+                <span class="ech-stat loin">Au-delà : <b>{{ centre_counts.apres }}</b></span>
+            </div>
+
+            <div class="ech-tools">
+                <button type="button" class="ech-filtre is-active" data-filtre="toutes"
+                    title="Afficher toutes les échéances">
+                    Toutes <span class="n">{{ centre_total }}</span>
+                </button>
+                {% for g in centre %}
+                    <button type="button" class="ech-filtre{% if g.groupe == 'En retard' %} is-retard{% endif %}"
+                        data-filtre="{{ g.groupe }}" title="Afficher « {{ g.groupe }} »">
+                        {{ g.groupe }} <span class="n">{{ g.items|length }}</span>
+                    </button>
+                {% endfor %}
+                <div class="ech-recherche">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8" />
+                        <path d="m21 21-4.3-4.3" />
+                    </svg>
+                    <input type="text" id="ech-recherche" placeholder="Rechercher une échéance…"
+                        aria-label="Rechercher une échéance" />
+                </div>
+            </div>
+
+            <div class="ech-legend">
+                <span><i style="background:#dc2626"></i> En retard</span>
+                <span><i style="background:#ea580c"></i> Jour J</span>
+                <span><i style="background:#d97706"></i> J-3 / J-1</span>
+                <span><i style="background:#0284c7"></i> J-7</span>
+                <span><i style="background:#64748b"></i> J-30</span>
+            </div>
+
+            <div class="ech-cols" aria-hidden="true">
+                <span>Échéance</span>
+                <span>Date</span>
+                <span class="c-montant">Montant</span>
+                <span>État</span>
+                <span>Priorité</span>
+                <span class="c-actions">Action</span>
+            </div>
+
+            {% for g in centre %}
+                <div class="ech-groupe" data-groupe="{{ g.groupe }}">
+                    <div class="ech-groupe-titre">
+                        {{ g.groupe }}<span class="ech-count">{{ g.items|length }}</span>
+                    </div>
+                    <div class="ech-liste">
+                        {% for i in g.items %}
+                            <div class="ech-row{% if i.jalon %} r-rappel r-{{ i.jalon }}{% endif %}">
+                                <div class="ech-main">
+                                    <span class="ech-type t-{{ i.module }}">{{ i.module_label }}</span>
+                                    <span class="ech-titre">
+                                        <a class="ech-libelle" href="{{ i.lien }}">{{ i.libelle }}</a>
+                                        {% if i.element %}
+                                            <span class="ech-element">{{ i.element }}</span>
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                <span class="ech-date">
+                                    <span class="ech-jour">{{ i.date_prevue|date:"d/m/Y"|default:"—" }}</span>
+                                    <span class="ech-temps">{{ i.temps }}</span>
+                                </span>
+                                <span class="ech-montant">{{ i.montant_aff }}</span>
+                                <span class="ech-statut s-{{ i.statut }}">{{ i.statut_label }}</span>
+                                {% if i.jalon %}
+                                    <span class="ech-jalon j-{{ i.jalon }}">{{ i.jalon_label }}</span>
+                                {% else %}
+                                    <span></span>
+                                {% endif %}
+                                <span class="ech-actions">
+                                    {% if i.payer %}
+                                        <form method="post" action="{% url 'gestion:echeance_payer' i.ech_pk %}"
+                                            class="ech-payer-form">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="date_paiement" value="{{ aujourdhui_iso }}" />
+                                            <button type="submit" class="ech-payer"
+                                                title="Valider comme payée : l'encaissement est enregistré dans Paiements">
+                                                Valider
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                    <a class="ech-libelle" href="{{ i.lien }}" title="Ouvrir l'élément"
+                                        style="font-size:0.74rem;border:1px solid #e2e8f0;border-radius:0.5rem;padding:0.3rem 0.6rem;color:#334155;background:#fff;text-decoration:none">
+                                        Ouvrir
+                                    </a>
+                                </span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+
+            <div class="ech-vide" id="ech-vide" hidden>
+                Aucune échéance ne correspond à ce filtre ou à cette recherche.
+            </div>
+        </div>
+    {% endif %}
+{% endblock prelude %}
+
+{% block row_actions %}
+    {% if not item.paye %}
+        <form method="post" action="{% url 'gestion:echeance_payer' item.pk %}" class="payer-form">
+            {% csrf_token %}
+            <input type="date" name="date_paiement" class="payer-date" aria-label="Date d'encaissement"
+                title="Date d'encaissement (défaut : aujourd'hui)" />
+            <button type="submit" class="act pay" aria-label="Valider le paiement"
+                title="Valider comme payée : l'encaissement est enregistré automatiquement dans Paiements">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 6 9 17l-5-5" />
+                </svg>
+            </button>
+        </form>
+        {% if kpay_configuree %}
+            <form method="post" action="{% url 'gestion:kpay_depot_echeance' item.pk %}" class="kpay-form"
+                title="Encaisser via Mobile Money (KPay) : le client reçoit une demande de validation sur son téléphone">
+                {% csrf_token %}
+                <input type="tel" name="telephone" class="kpay-tel" value="{{ item.telephone|default:'' }}"
+                    placeholder="+237..." aria-label="Téléphone du client" required />
+                <select name="provider" class="kpay-prov" aria-label="Opérateur Mobile Money">
+                    {% for code, label, pays, devise in kpay_providers %}
+                        <option value="{{ code }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="act kpay" aria-label="Encaisser via Mobile Money"
+                    title="Envoyer la demande de paiement Mobile Money (KPay)">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="5" width="20" height="14" rx="2" />
+                        <path d="M2 10h20" />
+                    </svg>
+                </button>
+            </form>
+            {% if item.kpay_statut %}
+                <span class="kpay-badge kpay-{{ item.kpay_statut }}"
+                    title="Dernière opération KPay : {{ item.kpay_statut }}">{{ item.kpay_statut }}</span>
+            {% endif %}
+        {% endif %}
+    {% endif %}
+{% endblock row_actions %}
+
+{% block extra_js %}
+    {{ block.super }}
+    <script>
+        (function () {
+            function pad(n) { return String(n).padStart(2, "0"); }
+            function iso(d) {
+                return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+            }
+            var dates = document.querySelectorAll(".payer-date");
+            for (var i = 0; i < dates.length; i++) {
+                if (!dates[i].value) dates[i].value = iso(new Date());
+            }
+            var params = new URLSearchParams(window.location.search);
+            if (params.get("paye")) {
+                window.showToast && window.showToast("success",
+                    "Échéance validée comme payée : encaissement enregistré dans Paiements.");
+            } else if (params.get("kpay_dep")) {
+                window.showToast && window.showToast("success",
+                    "Demande Mobile Money envoyée : le client doit valider sur son téléphone.");
+            } else if (params.get("kpay_champs")) {
+                window.showToast && window.showToast("error",
+                    "Téléphone et opérateur Mobile Money requis pour l'encaissement.");
+            } else if (params.get("kpay_deja")) {
+                window.showToast && window.showToast("warning",
+                    "Un encaissement Mobile Money est déjà en cours pour cette échéance.");
+            } else if (params.get("kpay_err")) {
+                window.showToast && window.showToast("error", "KPay n'est pas configuré (clés manquantes).");
+            } else if (params.get("kpay_erreur")) {
+                window.showToast && window.showToast("error",
+                    "KPay a refusé l'initiation : " + params.get("kpay_erreur"));
+            }
+
+            /* Filtres du centre d'échéances : horizon + recherche. */
+            var filtres = document.querySelectorAll(".ech-filtre");
+            var lignes = document.querySelectorAll(".ech-row");
+            var groupes = document.querySelectorAll(".ech-groupe");
+            var recherche = document.getElementById("ech-recherche");
+            var vide = document.getElementById("ech-vide");
+            var filtreActif = "toutes";
+
+            function appliquer() {
+                var terme = (recherche.value || "").trim().toLowerCase();
+                var visibles = 0;
+                for (var i = 0; i < lignes.length; i++) {
+                    var ligne = lignes[i];
+                    var groupeOk = filtreActif === "toutes" ||
+                        ligne.closest(".ech-groupe").getAttribute("data-groupe") === filtreActif;
+                    var searchOk = !terme ||
+                        ligne.textContent.toLowerCase().indexOf(terme) !== -1;
+                    var ok = groupeOk && searchOk;
+                    ligne.style.display = ok ? "" : "none";
+                    if (ok) visibles++;
+                }
+                var groupesVisibles = 0;
+                for (var j = 0; j < groupes.length; j++) {
+                    var rows = groupes[j].querySelectorAll(".ech-row");
+                    var any = false;
+                    for (var k = 0; k < rows.length; k++) {
+                        if (rows[k].style.display !== "none") { any = true; break; }
+                    }
+                    groupes[j].style.display = any ? "" : "none";
+                    if (any) groupesVisibles++;
+                }
+                vide.hidden = groupesVisibles > 0;
+            }
+
+            if (recherche) {
+                for (var f = 0; f < filtres.length; f++) {
+                    filtres[f].addEventListener("click", function () {
+                        filtreActif = this.getAttribute("data-filtre");
+                        for (var x = 0; x < filtres.length; x++) {
+                            filtres[x].classList.toggle("is-active", filtres[x] === this);
+                        }
+                        appliquer();
+                    });
+                }
+                recherche.addEventListener("input", appliquer);
+            }
+        })();
+    </script>
+{% endblock extra_js %}

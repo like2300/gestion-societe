@@ -1,0 +1,27 @@
+{% extends "account/base_auth.html" %}
+{% load i18n %}
+
+{% block title %}Déconnexion{% endblock %}
+
+{% block main %}
+    <div class="rounded-lg px-6 py-8 max-w-lg mx-auto w-full md:px-8 lg:max-w-md">
+        <h1 class="text-3xl mb-4 font-semibold text-brand-title">Déconnexion</h1>
+
+        <p class="text-sm text-brand-text leading-relaxed mb-8">
+            Voulez-vous vraiment vous déconnecter de votre session ?
+        </p>
+
+        <form method="post" action="{% url 'account_logout' %}">
+            {% csrf_token %}
+            <button type="submit"
+                class="w-full py-2 px-3.5 text-sm rounded-md font-semibold cursor-pointer tracking-wide text-white border border-brand-primary bg-brand-primary hover:bg-brand-primary-hover transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary">
+                Se déconnecter
+            </button>
+        </form>
+
+        <div class="mt-8">
+            <a href="{% url 'account_login' %}"
+                class="block text-center w-full py-2 px-3.5 text-sm rounded-md font-semibold tracking-wide text-white border border-brand-primary bg-brand-primary hover:bg-brand-primary-hover transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary btn-return">Retour à la connexion</a>
+        </div>
+    </div>
+{% endblock main %}

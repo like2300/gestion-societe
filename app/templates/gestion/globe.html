@@ -1,0 +1,194 @@
+{% extends "gestion/base_dashboard.html" %}
+{% load static %}
+
+{% block dash_title %}Globe — {{ societe.nom }}{% endblock %}
+
+{% block content %}
+    <style>
+        .gl-page { padding: 1.4rem 1.6rem 3rem; max-width: 1240px; margin: 0 auto; }
+        .gl-topbar {
+            display: flex; align-items: flex-end; justify-content: space-between;
+            gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;
+        }
+        .gl-topbar h1 { margin: 0; font-size: 1.5rem; color: #0f172a; letter-spacing: -0.02em; }
+        .gl-sub { margin: 0.35rem 0 0; color: #64748b; font-size: 0.88rem; max-width: 62ch; }
+        .gl-stats { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .gl-stats span {
+            background: #f1f5f9; border: 1px solid #e2e8f0; color: #334155;
+            border-radius: 999px; padding: 0.4rem 0.85rem; font-size: 0.78rem; font-weight: 700;
+        }
+        .gl-carte {
+            position: relative; border-radius: 1rem; overflow: hidden;
+            background: radial-gradient(120% 130% at 50% 20%, #0a1c33 0%, #060e1d 55%, #040810 100%);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            box-shadow: 0 18px 50px -18px rgba(2, 132, 199, 0.55);
+            min-height: 520px; display: flex; flex-direction: column;
+        }
+        #globe3d { width: 100%; min-height: 520px; flex: 1; touch-action: none; cursor: grab; }
+        #globe3d:active { cursor: grabbing; }
+        .gl-loader {
+            position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+            color: #7dd3fc; font-size: 0.9rem; letter-spacing: 0.05em; gap: 0.6rem; z-index: 5;
+        }
+        .gl-loader.spin { content: ""; width: 22px; height: 22px; border-radius: 50%;
+            border: 2px solid rgba(125, 211, 252, 0.25); border-top-color: #7dd3fc;
+            animation: gl-rot 0.9s linear infinite; }
+        @keyframes gl-rot { to { transform: rotate(360deg); } }
+        .gl-barre {
+            display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+            padding: 0.7rem 1rem; background: rgba(6, 14, 29, 0.82);
+            border-top: 1px solid rgba(148, 163, 184, 0.15);
+        }
+        .gl-chip {
+            display: inline-flex; align-items: center; gap: 0.45rem; cursor: pointer;
+            border-radius: 999px; padding: 0.42rem 0.85rem; font-size: 0.78rem; font-weight: 700;
+            color: #cbd5e1; background: rgba(148, 163, 184, 0.12); border: 1px solid rgba(148, 163, 184, 0.25);
+            user-select: none; transition: all 0.15s ease;
+        }
+        .gl-chip:hover { border-color: var(--accent); color: #fff; }
+        .gl-chip.on { background: rgba(255, 255, 255, 0.08); border-color: currentColor; color: #fff; }
+        .gl-puce { width: 0.55rem; height: 0.55rem; border-radius: 50%; display: inline-block; }
+        .gl-legende { display: flex; gap: 0.8rem; flex-wrap: wrap; margin-left: auto; align-items: center; }
+        .gl-legende span { display: inline-flex; align-items: center; gap: 0.4rem; color: #94a3b8; font-size: 0.76rem; }
+        .gl-legende .gl-puce { width: 0.5rem; height: 0.5rem; }
+        .gl-refresh {
+            border: 1px solid rgba(148, 163, 184, 0.25); background: transparent; color: #cbd5e1;
+            border-radius: 999px; padding: 0.42rem 0.8rem; font-size: 0.78rem; font-weight: 700; cursor: pointer;
+        }
+        .gl-refresh:hover { border-color: var(--accent); color: #fff; }
+        .gl-detail {
+            display: none; position: absolute; left: 1rem; top: 1rem; max-width: 290px; min-width: 220px;
+            background: rgba(6, 14, 29, 0.9); border: 1px solid rgba(148, 163, 184, 0.22);
+            border-radius: 0.8rem; padding: 0.8rem 0.95rem; color: #e2e8f0; z-index: 6;
+            backdrop-filter: blur(6px);
+        }
+        .gl-detail.on { display: block; }
+        .gl-chemin { display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; font-size: 0.75rem; color: #7dd3fc; margin-bottom: 0.5rem; }
+        .gl-chemin button {
+            background: none; border: none; color: #7dd3fc; cursor: pointer; font-size: 0.75rem;
+            font-weight: 700; padding: 0.1rem 0.2rem; border-radius: 0.3rem;
+        }
+        .gl-chemin button:hover { text-decoration: underline; }
+        .gl-chemin em { color: #cbd5e1; font-style: normal; }
+        .gl-detail h3 { margin: 0 0 0.6rem; font-size: 1rem; color: #fff; }
+        .gl-ligne { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.82rem; padding: 0.25rem 0; color: #cbd5e1; }
+        .gl-ligne b { color: #fff; font-variant-numeric: tabular-nums; }
+        .gl-ligne .gl-desact { color: #475569; }
+        .gl-sous { margin-top: 0.6rem; border-top: 1px dashed rgba(148, 163, 184, 0.25); padding-top: 0.5rem; max-height: 190px; overflow: auto; }
+        .gl-sous div { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.78rem; padding: 0.22rem 0; color: #94a3b8; }
+        .gl-note { margin: 1rem 0 0; color: #64748b; font-size: 0.78rem; }
+        .gl-maj { font-size: 0.72rem; color: #94a3b8; }
+        .gl-sources { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+        .gl-src { background: rgba(148, 163, 184, 0.1); border: 1px solid rgba(148, 163, 184, 0.2); color: #cbd5e1;
+            border-radius: 999px; padding: 0.28rem 0.7rem; font-size: 0.72rem; font-weight: 700; }
+        .gl-modes {
+            display: inline-flex; gap: 0.25rem; padding: 0.22rem;
+            background: rgba(6, 14, 29, 0.82); border: 1px solid rgba(148, 163, 184, 0.18);
+            border-radius: 999px; margin-left: auto;
+        }
+        .gl-mode {
+            border: none; cursor: pointer; border-radius: 999px; padding: 0.42rem 0.95rem;
+            font-size: 0.78rem; font-weight: 800; color: #94a3b8; background: transparent;
+            transition: all 0.15s ease; white-space: nowrap;
+        }
+        .gl-mode:hover { color: #e2e8f0; }
+        .gl-mode.on {
+            background: rgba(2, 132, 199, 0.22); color: #7dd3fc;
+            box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.55);
+        }
+        .gl-dispo { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.9rem; }
+        /* Infobulle de survol (layer tooltips de globe.gl) */
+        .gl-carte .scene-tooltip {
+            pointer-events: none; position: absolute; z-index: 20; top: 0; left: 0;
+            background: rgba(6, 14, 29, 0.92); color: #e2e8f0;
+            border: 1px solid rgba(125, 211, 252, 0.35); border-radius: 0.7rem;
+            padding: 0.55rem 0.7rem; font-size: 0.78rem; line-height: 1.35;
+            backdrop-filter: blur(6px); box-shadow: 0 10px 30px -12px rgba(2, 132, 199, 0.5);
+            white-space: nowrap;
+        }
+        .gl-carte .scene-tooltip b { color: #fff; }
+        .gl-carte .scene-tooltip .tt-titre { font-size: 0.86rem; color: #fff; font-weight: 800;
+            margin-bottom: 0.25rem; letter-spacing: -0.01em; }
+        .gl-carte .scene-tooltip .tt-ligne { display: flex; align-items: center; gap: 0.4rem; color: #cbd5e1; }
+        .gl-carte .scene-tooltip .tt-valeur { margin-left: auto; padding-left: 1rem; color: #fff;
+            font-variant-numeric: tabular-nums; font-weight: 700; }
+        .gl-carte .scene-tooltip .tt-vide { color: #475569; font-style: italic; }
+        @media (max-width: 720px) { .gl-detail { left: 0.6rem; right: 0.6rem; max-width: none; } #globe3d { min-height: 400px; } }
+    </style>
+
+    <div class="gl-page">
+        <div class="gl-topbar">
+            <div>
+                <h1>Globe interactif</h1>
+                <p class="gl-sub">Choisissez une vue pour y voir clair : « Global » mélange tout,
+                    « Plateforme » affiche l'activité interne (clients, commandes, CA, prospects),
+                    « Réseaux sociaux » ne montre que l'activité de vos comptes connectés
+                    (Facebook, Instagram, LinkedIn, X, TikTok, YouTube).</p>
+            </div>
+            <div class="gl-stats">
+                <span>Sources connectées</span>
+            </div>
+        </div>
+
+        <div class="gl-dispo">
+            <div id="gl-sources" class="gl-sources"></div>
+            <div class="gl-modes" id="gl-modes">
+                <button type="button" class="gl-mode on" data-mode="tous">Global</button>
+                <button type="button" class="gl-mode" data-mode="plateforme">Plateforme</button>
+                <button type="button" class="gl-mode" data-mode="sociaux">Réseaux sociaux</button>
+            </div>
+        </div>
+
+        <div class="gl-carte" style="margin-top: 0.9rem;">
+            <div id="gl-loader" class="gl-loader">
+                <span class="gl-loader spin"></span> Chargement des données géographiques…
+            </div>
+            <div id="gl-detail" class="gl-detail"></div>
+            <div id="globe3d"></div>
+            <div class="gl-barre">
+                <div id="gl-filtres"></div>
+                <div class="gl-legende" id="gl-legende"></div>
+                <button type="button" id="gl-refresh" class="gl-refresh">Actualiser</button>
+            </div>
+        </div>
+
+        <div id="gl-totaux" style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:0.9rem;"></div>
+        <p class="gl-note">Les données sont agrégées par pays, région et ville : aucun nom de client ni montant
+            privé ne transite par le globe. Les coordonnées sont indicatives (répertoire géographique embarqué).</p>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    {% load static %}
+    <script src="{% static 'gestion/vendor/globe.gl/globe.gl.min.js' %}"></script>
+    <script type="module">
+        const { BusinessGlobe } = await import("{% static 'gestion/globe.js' %}");
+        const globe = new BusinessGlobe({
+            container: document.getElementById("globe3d"),
+            url: "{% url 'gestion:globe_donnees' %}",
+            accent: "{{ accent }}",
+            loader: document.getElementById("gl-loader"),
+            detail: document.getElementById("gl-detail"),
+            filtres: document.getElementById("gl-filtres"),
+            legende: document.getElementById("gl-legende"),
+            sources: document.getElementById("gl-sources"),
+            totaux: document.getElementById("gl-totaux"),
+            bouton: document.getElementById("gl-refresh"),
+            controlesMode: document.getElementById("gl-modes"),
+            mode: "tous",
+            assets: {
+                terre: "{% static 'gestion/vendor/img/earth-blue-marble.jpg' %}",
+                relief: "{% static 'gestion/vendor/img/earth-topology.png' %}",
+                eau: "{% static 'gestion/vendor/img/earth-water.png' %}",
+                ciel: "{% static 'gestion/vendor/img/night-sky.png' %}",
+                pays: "{% static 'gestion/vendor/geojson/ne_110m_admin_0_countries.geojson' %}",
+            },
+        });
+        window.businessGlobe = globe;
+        globe.lancer().catch(function (err) {
+            var el = document.getElementById("gl-loader");
+            el.innerHTML = "Impossible de charger le globe : " + String(err && err.message || err);
+            el.style.color = "#fca5a5";
+        });
+    </script>
+{% endblock %}

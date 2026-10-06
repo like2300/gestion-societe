@@ -1,0 +1,705 @@
+<!doctype html>
+<html lang="fr">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>
+            {% block title %}Authentification{% endblock %} | Gestionnaire de
+            société
+        </title>
+        <!-- Tailwind v4 via CDN (remplacer par un build CSS en production) -->
+        <script src="https://cdn.tailwindcss.com"></script>
+        <!--
+            Thème Tailwind centralisé (tokens @theme).
+            Modifier les couleurs ici change le thème de toutes les pages,
+            qui héritent toutes de ce gabarit.
+            Pendant pour un futur build CLI : tailwind.config.js (mêmes valeurs).
+        -->
+        <style type="text/tailwindcss">
+            @theme {
+                --color-brand-background: #ffffff;
+                --color-brand-title: #2563eb;
+                --color-brand-text: #000000;
+                --color-brand-border: #0ea5e9;
+                --color-brand-primary: #0284c7;
+                --color-brand-primary-hover: #0369a1;
+            }
+        </style>
+        <style>
+            /* ===== Garanties du thème (CSS standard, s'appliquent toujours) ===== */
+
+            /* Boutons principaux : fond bleu ciel + texte blanc */
+            .bg-brand-primary {
+                background-color: var(--color-brand-primary, #0284c7) !important;
+                border: 1px solid var(--color-brand-primary, #0284c7) !important;
+                color: #ffffff !important;
+            }
+            .bg-brand-primary:hover,
+            .bg-brand-primary:focus-visible {
+                background-color: var(--color-brand-primary-hover, #0369a1) !important;
+                border-color: var(--color-brand-primary-hover, #0369a1) !important;
+            }
+
+            /* Boutons "Retour à la connexion" : sans fond, juste une bordure bleue */
+            .btn-return {
+                background-color: transparent !important;
+                border: 2px solid var(--color-brand-border, #0ea5e9) !important;
+                color: var(--color-brand-title, #2563eb) !important;
+            }
+            .btn-return:hover,
+            .btn-return:focus-visible {
+                background-color: transparent !important;
+                border-color: var(--color-brand-primary-hover, #0369a1) !important;
+                color: var(--color-brand-primary-hover, #0369a1) !important;
+            }
+
+            /* Champs : fond transparent + bordure basse bleue (variable du thème) */
+            .input-flow {
+                width: 100%;
+                background: transparent;
+                border: none;
+                border-radius: 0;
+                outline: none;
+                border-bottom: 2px solid var(--color-brand-border, #0ea5e9) !important;
+                transition: border-color 0.2s ease;
+            }
+            .input-flow::placeholder {
+                color: #94a3b8;
+            }
+            .input-flow:focus {
+                border-bottom-color: var(--color-brand-title, #2563eb) !important;
+            }
+
+            /* Champs de fichier (logo, PDF) */
+            .file-flow {
+                width: 100%;
+                padding: 0.5rem 0.75rem;
+                background: rgba(255, 255, 255, 0.06);
+                border: 1px solid var(--color-brand-border, #0ea5e9);
+                border-radius: 0.5rem;
+                color: var(--color-brand-text, #000000);
+                font-size: 0.875rem;
+                cursor: pointer;
+            }
+            .file-flow::file-selector-button {
+                background: var(--color-brand-primary, #0284c7);
+                color: #ffffff;
+                border: none;
+                border-radius: 0.375rem;
+                padding: 0.375rem 0.75rem;
+                margin-right: 0.75rem;
+                font-weight: 600;
+                cursor: pointer;
+            }
+
+            /* Couleurs globales du thème (secours si le CDN ne compile pas) */
+            .bg-brand-background {
+                background-color: var(--color-brand-background, #ffffff) !important;
+            }
+            .border-brand-border {
+                border-color: var(--color-brand-border, #0ea5e9) !important;
+            }
+            .text-brand-title {
+                color: var(--color-brand-title, #2563eb) !important;
+            }
+            .text-brand-text {
+                color: var(--color-brand-text, #000000) !important;
+            }
+
+            /* Fond des pages d'authentification : image pleine page */
+            body {
+                background-color: #0f172a;
+                background-image: url("https://i.pinimg.com/736x/03/01/9f/03019fcffdc6e6d797f95500b6083365.jpg");
+                background-size: cover;
+                background-position: center;
+                background-repeat: no-repeat;
+                background-attachment: fixed;
+            }
+
+            /* ===== Animation des images de présentation ===== */
+            @keyframes brand-in {
+                from {
+                    opacity: 0;
+                    transform: translateY(16px) scale(0.98);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0) scale(1);
+                }
+            }
+            .animate-brand-in {
+                animation: brand-in 0.7s ease-out both;
+            }
+
+            /* Retirer le fond blanc des images de présentation */
+            .img-nobg {
+                mix-blend-mode: multiply !important;
+            }
+
+            /* Animation flottante continue (image de droite des formulaires) */
+            @keyframes brand-float {
+                0%,
+                100% {
+                    transform: translateY(0);
+                }
+                50% {
+                    transform: translateY(-14px);
+                }
+            }
+            .animate-brand-float {
+                animation: brand-float 5s ease-in-out infinite;
+            }
+
+            /* ===== Écran de chargement plein écran ===== */
+            #page-loader {
+                position: fixed;
+                inset: 0;
+                z-index: 9999;
+                background-color: #0f172a;
+                background-image: url("https://i.pinimg.com/originals/4f/93/20/4f932047f96fa94a01bf0f51cada47e9.gif");
+                background-size: cover;
+                background-position: center;
+                background-repeat: no-repeat;
+                transition: opacity 0.45s ease, visibility 0.45s ease;
+            }
+            #page-loader.loader-hidden {
+                opacity: 0;
+                visibility: hidden;
+                pointer-events: none;
+            }
+
+            /* ===== Animations des toasts ===== */
+            @keyframes toast-in {
+                from {
+                    opacity: 0;
+                    transform: translateX(24px) scale(0.97);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateX(0) scale(1);
+                }
+            }
+            @keyframes toast-out {
+                from {
+                    opacity: 1;
+                    transform: translateX(0) scale(1);
+                    max-height: 200px;
+                    margin-bottom: 0.75rem;
+                }
+                to {
+                    opacity: 0;
+                    transform: translateX(24px) scale(0.97);
+                    max-height: 0;
+                    margin-bottom: 0;
+                }
+            }
+            .toast {
+                animation: toast-in 0.25s ease-out both;
+            }
+            .toast.toast-closing {
+                animation: toast-out 0.3s ease-in both;
+                overflow: hidden;
+            }
+
+            /* ===== Barre de progression de disparition ===== */
+            @keyframes toast-timer {
+                from {
+                    width: 100%;
+                }
+                to {
+                    width: 0%;
+                }
+            }
+            .toast .toast-timer {
+                animation: toast-timer linear both;
+            }
+
+            /* ===== Critères du mot de passe (help_text allauth = <ul>) ===== */
+            .help-text ul {
+                list-style: disc;
+                padding-left: 1rem;
+                margin-top: 0.25rem;
+                display: grid;
+                gap: 0.25rem;
+            }
+
+            /* ===== Champ invalide détecté par la validation JS ===== */
+            .input-invalid {
+                border-bottom: 2px solid rgb(239 68 68) !important;
+            }
+        </style>
+    </head>
+    <body class="antialiased text-brand-text">
+        <div id="page-loader" aria-hidden="true"></div>
+        <script>
+            (function () {
+                var loader = document.getElementById("page-loader");
+                if (!loader) return;
+                function hide() {
+                    loader.classList.add("loader-hidden");
+                    setTimeout(function () {
+                        loader.remove();
+                    }, 500);
+                }
+                if (document.readyState === "complete") {
+                    hide();
+                } else {
+                    window.addEventListener("load", hide);
+                    setTimeout(hide, 5000);
+                }
+            })();
+        </script>
+        {% block body %}
+        <main>
+            <div
+                class="min-h-screen flex flex-col items-center justify-center px-4 py-8 md:p-8"
+            >
+                {% block main %}{% endblock main %}
+            </div>
+        </main>
+        {% endblock body %}
+
+        <!-- Conteneur global des toasts -->
+        <div
+            id="toast-container"
+            class="fixed top-4 right-4 z-50 flex flex-col gap-3 w-[calc(100%-2rem)] max-w-sm pointer-events-none"
+            aria-live="polite"
+            aria-atomic="true"
+        ></div>
+
+        <script>
+            (function () {
+                "use strict";
+
+                var ICONS = {
+                    success:
+                        '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>',
+                    error: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9.303 3.376c.866 1.5-.217 3.374-1.948 3.374H4.645c-1.73 0-2.813-1.874-1.948-3.374L10.05 3.378c.866-1.5 3.032-1.5 3.898 0l7.354 12.748ZM12 15.75h.007v.008H12v-.008Z" /></svg>',
+                    warning:
+                        '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>',
+                    info: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg>',
+                };
+
+                var STYLES = {
+                    success: {
+                        box: "bg-green-50 text-green-800 outline-green-300",
+                        bar: "bg-green-500",
+                    },
+                    error: {
+                        box: "bg-red-50 text-red-800 outline-red-300",
+                        bar: "bg-red-500",
+                    },
+                    warning: {
+                        box: "bg-yellow-50 text-yellow-800 outline-yellow-300",
+                        bar: "bg-yellow-500",
+                    },
+                    info: {
+                        box: "bg-blue-50 text-blue-800 outline-blue-300",
+                        bar: "bg-blue-500",
+                    },
+                };
+
+                var DURATION = 6000; // ms avant disparition automatique
+
+                function showToast(type, text) {
+                    type = STYLES[type] ? type : "info";
+                    var s = STYLES[type];
+
+                    var el = document.createElement("div");
+                    el.className =
+                        "toast pointer-events-auto relative flex items-start gap-3 px-4 py-3 pr-10 text-sm rounded-md outline-1 -outline-offset-1 shadow-lg " +
+                        s.box;
+                    el.setAttribute(
+                        "role",
+                        type === "error" ? "alert" : "status",
+                    );
+
+                    var icon = document.createElement("span");
+                    icon.className = "shrink-0 mt-0.5";
+                    icon.innerHTML = ICONS[type];
+
+                    var msg = document.createElement("span");
+                    msg.className = "leading-snug break-words";
+                    msg.textContent = text; // textContent => pas d'injection HTML
+
+                    var close = document.createElement("button");
+                    close.type = "button";
+                    close.setAttribute("aria-label", "Fermer");
+                    close.className =
+                        "absolute top-2.5 right-2.5 p-1 rounded opacity-60 hover:opacity-100 cursor-pointer";
+                    close.innerHTML =
+                        '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>';
+
+                    var bar = document.createElement("span");
+                    bar.className =
+                        "toast-timer absolute left-0 bottom-0 h-0.5 rounded " +
+                        s.bar;
+                    bar.style.animationDuration = DURATION + "ms";
+
+                    el.appendChild(icon);
+                    el.appendChild(msg);
+                    el.appendChild(close);
+                    el.appendChild(bar);
+
+                    var timer = setTimeout(dismiss, DURATION);
+
+                    function dismiss() {
+                        clearTimeout(timer);
+                        el.classList.add("toast-closing");
+                        el.addEventListener(
+                            "animationend",
+                            function () {
+                                el.remove();
+                            },
+                            { once: true },
+                        );
+                    }
+
+                    close.addEventListener("click", dismiss);
+                    el.addEventListener("mouseenter", function () {
+                        bar.style.animationPlayState = "paused";
+                    });
+                    el.addEventListener("mouseleave", function () {
+                        bar.style.animationPlayState = "running";
+                    });
+
+                    var container = document.getElementById(
+                        "toast-container",
+                    );
+                    // Les erreurs s'affichent au-dessus des autres toasts
+                    if (type === "error") {
+                        container.insertBefore(el, container.firstChild);
+                    } else {
+                        container.appendChild(el);
+                    }
+                }
+
+                // Toasts JSON depuis account/snippets/messages.html
+                var dataNode = document.getElementById("toast-data");
+                if (dataNode) {
+                    try {
+                        JSON.parse(
+                            dataNode.getAttribute("data-toasts") || "[]",
+                        ).forEach(function (t) {
+                            showToast(t.type, t.text);
+                        });
+                    } catch (e) {
+                        /* JSON invalide : on ignore silencieusement */
+                    }
+                }
+
+                // API globale pour les autres scripts (validation, etc.)
+                window.showToast = showToast;
+            })();
+        </script>
+
+        <script>
+            (function () {
+                "use strict";
+                // Afficher / masquer les champs mot de passe (account/snippets/field.html)
+                document.addEventListener("click", function (ev) {
+                    var btn = ev.target.closest("[data-toggle-password]");
+                    if (!btn) return;
+                    var input = btn.parentElement.querySelector(
+                        "[data-password-field]",
+                    );
+                    if (!input) return;
+                    var showing = input.type === "text";
+                    input.type = showing ? "password" : "text";
+                    // Barre oblique de l'icône œil : visible = mot de passe masqué
+                    var strike = btn.querySelector("[data-eye-strike]");
+                    if (strike) strike.classList.toggle("hidden", showing);
+                    btn.setAttribute(
+                        "aria-pressed",
+                        showing ? "false" : "true",
+                    );
+                    input.focus();
+                });
+            })();
+        </script>
+
+        <script>
+            (function () {
+                "use strict";
+                /* ============================================================
+           Contrôle du mot de passe (password1) côté client.
+           Les 4 règles reprennent les validateurs Django configurés :
+           - UserAttributeSimilarityValidator
+           - MinimumLengthValidator (8)
+           - CommonPasswordValidator
+           - NumericPasswordValidator
+           Les erreurs sont remontées par toast à la soumission.
+           ============================================================ */
+                var COMMON = [
+                    "password",
+                    "motdepasse",
+                    "123456",
+                    "12345678",
+                    "123456789",
+                    "1234567890",
+                    "1234567",
+                    "qwerty",
+                    "azerty",
+                    "azerty123",
+                    "qwerty123",
+                    "abc123",
+                    "password1",
+                    "iloveyou",
+                    "admin",
+                    "welcome",
+                    "monkey",
+                    "dragon",
+                    "sunshine",
+                    "princess",
+                    "letmein",
+                    "football",
+                    "baseball",
+                    "master",
+                    "111111",
+                    "000000",
+                    "121212",
+                    "654321",
+                    "1q2w3e4r",
+                    "soleil",
+                    "chocolat",
+                    "bonjour",
+                    "loulou",
+                    "doudou",
+                ];
+
+                // Email / nom d'utilisateur saisis dans le formulaire (règle "ressemble")
+                function personalParts(form) {
+                    var parts = [];
+                    form.querySelectorAll(
+                        'input[type="email"], input[autocomplete="email"], input[autocomplete="username"]',
+                    ).forEach(function (input) {
+                        var v = (input.value || "").toLowerCase();
+                        if (!v) return;
+                        parts.push(v);
+                        v.split(/[^a-z0-9]+/).forEach(function (p) {
+                            if (p.length >= 3) parts.push(p);
+                        });
+                    });
+                    return parts;
+                }
+
+                // Retourne l'état de chaque règle : 'ok' | 'ko' | 'neutral'
+                function evalRules(form, pw) {
+                    if (!pw)
+                        return {
+                            length: "neutral",
+                            similar: "neutral",
+                            common: "neutral",
+                            numeric: "neutral",
+                        };
+                    var low = pw.toLowerCase();
+                    var state = {};
+                    state.length = pw.length >= 8 ? "ok" : "ko";
+                    state.common = COMMON.indexOf(low) !== -1 ? "ko" : "ok";
+                    state.numeric = /^\d+$/.test(pw) ? "ko" : "ok";
+                    var parts = personalParts(form);
+                    if (!parts.length) {
+                        state.similar = "ok"; // pas d'info perso à comparer (reset, changement)
+                    } else {
+                        state.similar = parts.some(function (p) {
+                            return (
+                                p &&
+                                (p === low ||
+                                    (p.length >= 4 && low.indexOf(p) !== -1))
+                            );
+                        })
+                            ? "ko"
+                            : "ok";
+                    }
+                    return state;
+                }
+
+                // Utilisé par la validation à la soumission (script ci-dessous)
+                window.passwordRulesOk = function (form) {
+                    var pw = form.querySelector('input[name="password1"]');
+                    if (!pw || !pw.value) return true; // géré par les contrôles "obligatoire"
+                    var st = evalRules(form, pw.value);
+                    return (
+                        st.length !== "ko" &&
+                        st.similar !== "ko" &&
+                        st.common !== "ko" &&
+                        st.numeric !== "ko"
+                    );
+                };
+            })();
+        </script>
+
+        <script>
+            (function () {
+                "use strict";
+                /* ============================================================
+           Validation côté client de TOUS les formulaires d'auth.
+           - Champs requis vides -> toast + bordure basse rouge
+           - Format email invalide -> toast
+           - Mots de passe différents (password1 != password2) -> toast
+           S'exécute AVANT la soumission ; le serveur revalide toujours.
+           ============================================================ */
+                var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+                function isEmailInput(input) {
+                    return (
+                        (input.getAttribute("type") || "").toLowerCase() ===
+                            "email" ||
+                        (input.getAttribute("autocomplete") || "") === "email"
+                    );
+                }
+
+                document.querySelectorAll("form").forEach(function (form) {
+                    form.addEventListener("submit", function (ev) {
+                        var errors = [];
+                        var firstBad = null;
+
+                        form.querySelectorAll(
+                            'input[type="email"], input:not([type="hidden"],[type="checkbox"],[type="submit"],[type="button"])',
+                        ).forEach(function (input) {
+                            input.classList.remove("input-invalid");
+                            var val = (input.value || "").trim();
+                            var label = input.closest("div")
+                                ? (
+                                      input
+                                          .closest("div")
+                                          .querySelector("label") || {}
+                                  ).textContent || "Ce champ"
+                                : "Ce champ";
+                            label = label.trim() || "Ce champ";
+
+                            if (input.hasAttribute("required") && !val) {
+                                errors.push(label + " est obligatoire.");
+                                input.classList.add("input-invalid");
+                                if (!firstBad) firstBad = input;
+                                return;
+                            }
+                            if (
+                                val &&
+                                isEmailInput(input) &&
+                                !EMAIL_RE.test(val)
+                            ) {
+                                errors.push("Adresse email invalide : " + val);
+                                input.classList.add("input-invalid");
+                                if (!firstBad) firstBad = input;
+                                return;
+                            }
+                            if (
+                                val &&
+                                input.hasAttribute("data-password-field") &&
+                                input.name === "password1"
+                            ) {
+                                if (
+                                    window.passwordRulesOk &&
+                                    !window.passwordRulesOk(form)
+                                ) {
+                                    errors.push(
+                                        "Le mot de passe ne respecte pas les critères indiqués ci-dessous.",
+                                    );
+                                    input.classList.add("input-invalid");
+                                    if (!firstBad) firstBad = input;
+                                    return;
+                                }
+                            }
+                        });
+
+                        // Fichiers obligatoires + format (logo image, document PDF)
+                        form.querySelectorAll(
+                            'input[type="file"]',
+                        ).forEach(function (input) {
+                            input.classList.remove("input-invalid");
+                            var file = input.files ? input.files[0] : null;
+                            var label = input.closest("div")
+                                ? (
+                                      input
+                                          .closest("div")
+                                          .querySelector("label") || {}
+                                  ).textContent || "Ce champ"
+                                : "Ce champ";
+                            label = label.trim() || "Ce champ";
+
+                            if (input.hasAttribute("required") && !file) {
+                                errors.push(label + " est obligatoire.");
+                                input.classList.add("input-invalid");
+                                if (!firstBad) firstBad = input;
+                                return;
+                            }
+                            if (file && input.hasAttribute("accept")) {
+                                var name = file.name.toLowerCase();
+                                var accepted = input
+                                    .getAttribute("accept")
+                                    .split(",")
+                                    .map(function (a) {
+                                        return a.trim().toLowerCase();
+                                    })
+                                    .filter(Boolean);
+                                var ok = accepted.some(function (a) {
+                                    if (a.charAt(0) === ".")
+                                        return name.endsWith(a);
+                                    if (a.indexOf("/") !== -1) {
+                                        if (
+                                            file.type &&
+                                            file.type.toLowerCase() === a
+                                        )
+                                            return true;
+                                        if (
+                                            a === "application/pdf" &&
+                                            name.endsWith(".pdf")
+                                        )
+                                            return true;
+                                        if (
+                                            a.indexOf("image/") === 0 &&
+                                            /\.(png|jpe?g|gif|webp|svg|xbm)$/.test(
+                                                name,
+                                            )
+                                        )
+                                            return true;
+                                    }
+                                    return false;
+                                });
+                                if (!ok) {
+                                    errors.push(
+                                        label +
+                                            " : type de fichier non autorisé (PDF obligatoire).",
+                                    );
+                                    input.classList.add("input-invalid");
+                                    if (!firstBad) firstBad = input;
+                                }
+                            }
+                        });
+
+                        // Cohérence des deux mots de passe
+                        var p1 = form.querySelector('[name="password1"]');
+                        var p2 = form.querySelector('[name="password2"]');
+                        if (p1 && p2 && p1.value !== p2.value) {
+                            errors.push(
+                                "Les deux mots de passe ne correspondent pas.",
+                            );
+                            p1.classList.add("input-invalid");
+                            p2.classList.add("input-invalid");
+                            if (!firstBad) firstBad = p2;
+                        }
+
+                        if (errors.length) {
+                            ev.preventDefault();
+                            errors.forEach(function (t) {
+                                window.showToast("error", t);
+                            });
+                            if (firstBad) firstBad.focus();
+                        }
+                    });
+                });
+
+                // Retire le contour rouge dès que l'utilisateur corrige
+                document.addEventListener("input", function (ev) {
+                    if (ev.target.classList)
+                        ev.target.classList.remove("input-invalid");
+                });
+                document.addEventListener("change", function (ev) {
+                    if (ev.target.classList)
+                        ev.target.classList.remove("input-invalid");
+                });
+            })();
+        </script>
+    </body>
+</html>

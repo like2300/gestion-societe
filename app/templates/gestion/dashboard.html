@@ -1,0 +1,663 @@
+{% extends "gestion/base_dashboard.html" %}
+{% load static %}
+
+{% block dash_title %}Tableau de bord — {{ societe.nom }}{% endblock %}
+
+{% block content %}
+    <section class="banner">
+        <div>
+            <h1>Bonjour, {{ user.prenom }} 👋</h1>
+            <p>Bienvenue sur le tableau de bord de <strong>{{ societe.nom }}</strong>
+                {% if societe.slogan %} — {{ societe.slogan }}{% endif %}.</p>
+        </div>
+    </section>
+
+    {% if demandes_adhesion %}
+        <section class="panel" style="padding:1.1rem 1.3rem;margin-top:1rem">
+            <h2 class="modules-title" style="margin-bottom:0.8rem">
+                Demandes pour rejoindre l'équipe
+                <span style="font-size:0.8rem;font-weight:600;color:#64748b">({{ demandes_adhesion|length }})</span>
+            </h2>
+            <div style="display:flex;flex-direction:column;gap:0.6rem">
+                {% for demande in demandes_adhesion %}
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;border:1px solid #e2e8f0;border-radius:0.6rem;padding:0.75rem 0.9rem">
+                        <div>
+                            <div style="font-weight:600;color:#0f172a">
+                                {{ demande.user.prenom }} {{ demande.user.nom }}
+                                {% if not demande.user.prenom and not demande.user.nom %}—{% endif %}
+                            </div>
+                            <div style="font-size:0.78rem;color:#64748b">
+                                {{ demande.user.email }} · demandé le {{ demande.created_at|date:"d/m/Y" }}
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:0.5rem">
+                            <form method="post" action="{% url 'gestion:dashboard' %}" class="m-0">
+                                {% csrf_token %}
+                                <input type="hidden" name="demande_id" value="{{ demande.pk }}" />
+                                <input type="hidden" name="action" value="adhesion_accepter" />
+                                <button type="submit" class="btn-primary"
+                                    style="padding:0.4rem 0.9rem;font-size:0.8rem">Accepter</button>
+                            </form>
+                            <form method="post" action="{% url 'gestion:dashboard' %}" class="m-0">
+                                {% csrf_token %}
+                                <input type="hidden" name="demande_id" value="{{ demande.pk }}" />
+                                <input type="hidden" name="action" value="adhesion_refuser" />
+                                <button type="submit" class="btn-ghost"
+                                    style="padding:0.4rem 0.9rem;font-size:0.8rem">Refuser</button>
+                            </form>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+    {% endif %}
+
+    <style>
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 1rem;
+        }
+        .stat-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.9rem;
+            padding: 1rem 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.9rem;
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+        }
+        .stat-card:hover {
+            box-shadow: 0 14px 28px -18px rgba(2, 132, 199, 0.55);
+            transform: translateY(-2px);
+        }
+        .stat-ico {
+            flex: none;
+            width: 2.7rem;
+            height: 2.7rem;
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent);
+            background: var(--accent-soft);
+        }
+        .stat-ico svg {
+            width: 1.35rem;
+            height: 1.35rem;
+        }
+        .stat-num {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #0f172a;
+            line-height: 1.1;
+        }
+        .stat-lbl {
+            font-size: 0.76rem;
+            color: #64748b;
+        }
+        .modules-title {
+            font-weight: 700;
+            color: #0f172a;
+            margin: 0 0 0.8rem;
+            font-size: 1rem;
+        }
+        .chart-panel {
+            padding: 0;
+            overflow: hidden;
+        }
+        .chart-toggle {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            padding: 0.95rem 1.1rem;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            text-align: left;
+            color: inherit;
+            font: inherit;
+            transition: background 0.15s ease;
+        }
+        .chart-toggle:hover {
+            background: #f8fafc;
+        }
+        .chart-toggle-ico {
+            flex: none;
+            width: 2.3rem;
+            height: 2.3rem;
+            border-radius: 0.65rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--accent-soft);
+            color: var(--accent);
+        }
+        .chart-toggle-ico svg {
+            width: 1.2rem;
+            height: 1.2rem;
+        }
+        .chart-toggle-txt {
+            display: flex;
+            flex-direction: column;
+            gap: 0.1rem;
+            min-width: 0;
+        }
+        .chart-toggle-title {
+            font-weight: 700;
+            font-size: 0.92rem;
+            color: #0f172a;
+        }
+        .chart-toggle-sub {
+            font-size: 0.73rem;
+            color: #64748b;
+        }
+        .chart-toggle-badge {
+            margin-left: auto;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--accent);
+            background: var(--accent-soft);
+            border-radius: 9999px;
+            padding: 0.2rem 0.65rem;
+            white-space: nowrap;
+        }
+        .chart-chevron {
+            flex: none;
+            width: 1.1rem;
+            height: 1.1rem;
+            color: #94a3b8;
+            transition: transform 0.2s ease;
+        }
+        .chart-toggle[aria-expanded="true"] .chart-chevron {
+            transform: rotate(180deg);
+        }
+        .chart-body {
+            padding: 0.3rem 1.2rem 1rem;
+            border-top: 1px solid #f1f5f9;
+        }
+        .chart-body[hidden] {
+            display: none !important;
+        }
+        .chart-scroll {
+            overflow-x: auto;
+            padding-bottom: 0.3rem;
+        }
+        .chart-inner {
+            display: flex;
+            align-items: flex-end;
+            gap: 0.7rem;
+            min-width: 660px;
+            padding: 1.5rem 0.3rem 0;
+        }
+        .chart-yaxis {
+            flex: none;
+            width: 2.2rem;
+            display: flex;
+            flex-direction: column;
+        }
+        .chart-yaxis .y-plot {
+            position: relative;
+            height: 152px;
+        }
+        .chart-yaxis .y-tick {
+            position: absolute;
+            right: 0;
+            transform: translateY(50%);
+            font-size: 0.62rem;
+            color: #94a3b8;
+            white-space: nowrap;
+        }
+        .chart-yaxis .y-label-spacer {
+            height: 22px;
+        }
+        .bars {
+            flex: 1;
+            display: flex;
+            align-items: flex-end;
+            gap: 0.7rem;
+        }
+        .bar-col {
+            flex: 1 1 0;
+            min-width: 42px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: inherit;
+        }
+        .bar-plot {
+            position: relative;
+            width: 100%;
+            height: 152px;
+            border-radius: 0.5rem 0.5rem 0.2rem 0.2rem;
+            background-color: #f8fafc;
+            background-image: repeating-linear-gradient(
+                to top,
+                #edf1f6 0,
+                #edf1f6 1px,
+                transparent 1px,
+                transparent 25%
+            );
+        }
+        .bar-fill {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 0.5rem 0.5rem 0 0;
+            background: var(--bar, var(--accent));
+            background: linear-gradient(
+                180deg,
+                color-mix(in srgb, var(--bar, var(--accent)) 78%, #ffffff),
+                var(--bar, var(--accent))
+            );
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transition: height 0.55s ease, filter 0.15s ease;
+        }
+        .bar-col:hover .bar-fill {
+            filter: brightness(1.08);
+        }
+        .bar-value {
+            position: absolute;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 0.74rem;
+            font-weight: 700;
+            color: #0f172a;
+            transform: translateY(-3px);
+        }
+        .bar-col.zero .bar-value {
+            color: #cbd5e1;
+        }
+        .bar-col.zero .bar-plot::after {
+            content: "";
+            position: absolute;
+            left: 22%;
+            right: 22%;
+            bottom: 0;
+            height: 3px;
+            border-radius: 3px;
+            background: #cbd5e1;
+        }
+        .bar-label {
+            height: 22px;
+            margin-top: 0.15rem;
+            font-size: 0.64rem;
+            color: #64748b;
+            text-align: center;
+            line-height: 1.05;
+        }
+        .bar-col:hover .bar-label {
+            color: var(--accent);
+        }
+        .chart-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem 1rem;
+            margin-top: 0.9rem;
+            font-size: 0.72rem;
+            color: #64748b;
+        }
+        .chart-legend .lg {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .chart-legend .lg-dot {
+            width: 0.6rem;
+            height: 0.6rem;
+            border-radius: 0.2rem;
+            flex: none;
+        }
+        .chart-foot {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+            margin-top: 0.7rem;
+            font-size: 0.74rem;
+            color: #64748b;
+        }
+        .chart-foot b {
+            color: var(--accent);
+            font-size: 0.85rem;
+        }
+        .modules {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.9rem;
+        }
+        .module {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.8rem;
+            padding: 0.9rem 1rem;
+            text-decoration: none;
+            color: #0f172a;
+            transition: all 0.18s ease;
+        }
+        .module:hover {
+            border-color: var(--accent);
+            box-shadow: 0 12px 24px -18px var(--accent);
+            transform: translateY(-2px);
+        }
+        .module .m-ico {
+            flex: none;
+            width: 2.2rem;
+            height: 2.2rem;
+            border-radius: 0.6rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--accent-soft);
+            color: var(--accent);
+        }
+        .module .m-ico svg {
+            width: 1.1rem;
+            height: 1.1rem;
+        }
+        .module .m-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        .module .m-count {
+            font-size: 0.72rem;
+            color: #64748b;
+        }
+        .module .m-count b {
+            color: var(--accent);
+        }
+        @media (max-width: 1023px) {
+            .stats {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+            .modules {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+        @media (max-width: 520px) {
+            .modules {
+                grid-template-columns: 1fr;
+            }
+        }
+        @media (prefers-color-scheme: dark) {
+            .stat-card,
+            .module {
+                background: #1e293b;
+                border-color: #334155;
+            }
+            .stat-card:hover,
+            .module:hover {
+                border-color: var(--accent);
+            }
+            .stat-num,
+            .modules-title,
+            .module .m-name,
+            .chart-toggle-title,
+            .bar-value {
+                color: #f1f5f9;
+            }
+            .chart-toggle:hover {
+                background: #0f172a;
+            }
+            .chart-body {
+                border-color: #334155;
+            }
+            .bar-plot {
+                background-color: #0f172a;
+                background-image: repeating-linear-gradient(
+                    to top,
+                    #1e293b 0,
+                    #1e293b 1px,
+                    transparent 1px,
+                    transparent 25%
+                );
+            }
+            .bar-label {
+                color: #94a3b8;
+            }
+            .bar-col.zero .bar-value {
+                color: #475569;
+            }
+            .bar-col.zero .bar-plot::after {
+                background: #475569;
+            }
+        }
+    </style>
+
+    <section class="stats">
+        {% if 'employes' in modules_autorises %}
+        <a class="stat-card" href="{% url 'gestion:employes' %}" style="text-decoration:none">
+            <div class="stat-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                </svg>
+            </div>
+            <div>
+                <div class="stat-num">{{ counts.employes }}</div>
+                <div class="stat-lbl">Employés ({{ counts.employes_actifs }} actifs
+                    {% if counts.employes_sans_contrat %} · {{ counts.employes_sans_contrat }} sans contrat{% endif %})</div>
+            </div>
+        </a>
+        {% endif %}
+        {% if 'clients' in modules_autorises %}
+        <a class="stat-card" href="{% url 'gestion:clients' %}" style="text-decoration:none">
+            <div class="stat-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="4" width="20" height="13" rx="2" />
+                    <path d="M8 21h8m-4-4v4" />
+                </svg>
+            </div>
+            <div>
+                <div class="stat-num">{{ counts.clients }}</div>
+                <div class="stat-lbl">Clients</div>
+            </div>
+        </a>
+        {% endif %}
+        {% if 'projets' in modules_autorises %}
+        <a class="stat-card" href="{% url 'gestion:projets' %}" style="text-decoration:none">
+            <div class="stat-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 3v18h18" />
+                    <path d="m7 14 4-4 3 3 5-6" />
+                </svg>
+            </div>
+            <div>
+                <div class="stat-num">{{ counts.projets }}</div>
+                <div class="stat-lbl">Projets ({{ counts.projets_en_cours }} en cours)</div>
+            </div>
+        </a>
+        {% endif %}
+        {% if 'finances' in modules_autorises %}
+        <div class="stat-card">
+            <div class="stat-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                </svg>
+            </div>
+            <div>
+                <div class="stat-num">{{ counts.solde|floatformat:"0g" }}</div>
+                <div class="stat-lbl">Solde (finances)</div>
+            </div>
+        </div>
+        {% endif %}
+    </section>
+
+    <section class="panel chart-panel">
+        <button type="button" class="chart-toggle" id="chart-toggle" aria-expanded="false" aria-controls="chart-body">
+            <span class="chart-toggle-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 3v18h18" />
+                    <rect x="7" y="11" width="3" height="7" rx="0.6" />
+                    <rect x="12.5" y="7" width="3" height="11" rx="0.6" />
+                    <rect x="18" y="13" width="3" height="5" rx="0.6" />
+                </svg>
+            </span>
+            <span class="chart-toggle-txt">
+                <span class="chart-toggle-title">Activité de la plateforme</span>
+                <span class="chart-toggle-sub">Diagramme par module — cliquez pour afficher</span>
+            </span>
+            <span class="chart-toggle-badge">{{ activite.total }} enregistrement{{ activite.total|pluralize }}</span>
+            <svg class="chart-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m6 9 6 6 6-6" />
+            </svg>
+        </button>
+
+        <div class="chart-body" id="chart-body" hidden>
+            <div class="chart-scroll">
+                <div class="chart-inner">
+                    <div class="chart-yaxis" aria-hidden="true">
+                        <div class="y-plot">
+                            {% for t in activite.ticks %}
+                                <span class="y-tick" style="bottom: {{ t.pct }}%">{{ t.value }}</span>
+                            {% endfor %}
+                        </div>
+                        <div class="y-label-spacer"></div>
+                    </div>
+                    <div class="bars">
+                        {% for b in activite.bars %}
+                            <a class="bar-col{% if not b.value %} zero{% endif %}" href="{{ b.url }}"
+                                style="--bar: {{ b.color }}"
+                                title="{{ b.label }} · {{ b.family }} : {{ b.value }} enregistrement{{ b.value|pluralize }}"
+                                aria-label="{{ b.label }} : {{ b.value }}">
+                                <span class="bar-plot">
+                                    <span class="bar-fill" style="height: {{ b.pct }}%"></span>
+                                    <span class="bar-value" style="bottom: {{ b.pct }}%">{{ b.value }}</span>
+                                </span>
+                                <span class="bar-label">{{ b.short }}</span>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="chart-legend">
+                {% for f in activite.familles %}
+                    <span class="lg"><span class="lg-dot" style="background: {{ f.color }}"></span>{{ f.label }}</span>
+                {% endfor %}
+            </div>
+            <div class="chart-foot">
+                <span>Total : <b>{{ activite.total }}</b> enregistrement{{ activite.total|pluralize }} sur l'ensemble des modules.</span>
+                <span style="margin-left:auto">Échelle : 0 – {{ activite.scale_max }}</span>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h2 class="modules-title">Tous les modules</h2>
+        <div class="modules">
+            {% if 'employes' in modules_autorises %}
+            <a class="module" href="{% url 'gestion:employes' %}">
+                <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg></span>
+                <span><span class="m-name">Employés</span><br /><span class="m-count"><b>{{ counts.employes }}</b> — {{ counts.employes_actifs }} actifs</span></span>
+            </a>
+            {% endif %}
+            {% if 'clients' in modules_autorises %}
+            <a class="module" href="{% url 'gestion:clients' %}">
+                <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2" /><path d="M8 21h8m-4-4v4" /></svg></span>
+                <span><span class="m-name">Clients</span><br /><span class="m-count"><b>{{ counts.clients }}</b> enregistrés</span></span>
+            </a>
+            {% endif %}
+            {% if 'projets' in modules_autorises %}
+            <a class="module" href="{% url 'gestion:projets' %}">
+                <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h6v12H9z" /><path d="M12 3v3" /><path d="M5 9H3v6h2" /><path d="M19 9h2v6h-2" /></svg></span>
+                <span><span class="m-name">Projets</span><br /><span class="m-count"><b>{{ counts.projets }}</b> — {{ counts.projets_en_cours }} en cours</span></span>
+            </a>
+            {% endif %}
+            {% if 'finances' in modules_autorises %}
+<a class="module" href="{% url 'gestion:finances' %}">
+                <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8" /><path d="M14 7h7v7" /></svg></span>
+                <span><span class="m-name">Finances</span><br /><span class="m-count">Synthèse &amp; soldes</span></span>
+            </a>
+            {% endif %}
+            {% if 'depenses' in modules_autorises %}
+            <a class="module" href="{% url 'gestion:crud' 'depenses' %}">
+                <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg></span>
+                <span><span class="m-name">Dépenses</span><br /><span class="m-count"><b>{{ counts.depenses }}</b> enregistrées</span></span>
+            </a>
+            {% endif %}
+            {% if 'salaires' in modules_autorises %}
+            <a class="module" href="{% url 'gestion:crud' 'salaires' %}">
+                <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2" /><circle cx="12" cy="12" r="3" /></svg></span>
+                <span><span class="m-name">Salaires</span><br /><span class="m-count">Paiements du personnel</span></span>
+            </a>
+            {% endif %}
+            {% if 'contrats' in modules_autorises %}
+            <a class="module" href="{% url 'gestion:crud' 'contrats' %}">
+                <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z" /><path d="M14 2v6h6" /></svg></span>
+                <span><span class="m-name">Contrats</span><br /><span class="m-count">CDI, CDD, STAGE…</span></span>
+            </a>
+            {% endif %}
+            {% if 'echeances' in modules_autorises %}
+            <a class="module" href="{% url 'gestion:crud' 'echeances' %}">
+                <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg></span>
+                <span><span class="m-name">Échéances</span><br /><span class="m-count">À venir &amp; encaissées</span></span>
+            </a>
+            {% endif %}
+            {% if 'paiements' in modules_autorises %}
+            <a class="module" href="{% url 'gestion:crud' 'paiements' %}">
+                <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></svg></span>
+                <span><span class="m-name">Paiements</span><br /><span class="m-count">Encaissements clients</span></span>
+            </a>
+            {% endif %}
+            {% if 'roles' in modules_autorises %}
+            <a class="module" href="{% url 'gestion:crud' 'roles' %}">
+                <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4a5 5 0 1 0 0 10 5 5 0 0 0 0-10Z" /><path d="M4 20a8 8 0 0 1 16 0" /></svg></span>
+                <span><span class="m-name">Rôles &amp; Permissions</span><br /><span class="m-count">Accès équipe</span></span>
+            </a>
+            {% endif %}
+            {% if 'fonctions' in modules_autorises %}
+            <a class="module" href="{% url 'gestion:crud' 'fonctions' %}">
+                <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" /></svg></span>
+                <span><span class="m-name">Fonctions</span><br /><span class="m-count">Postes de travail</span></span>
+            </a>
+            {% endif %}
+            {% if 'documents' in modules_autorises %}
+            <a class="module" href="{% url 'gestion:crud' 'documents' %}">
+                <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /><path d="M14 2v5h5" /></svg></span>
+                <span><span class="m-name">Documents</span><br /><span class="m-count">{{ counts.documents }} fichiers</span></span>
+            </a>
+            {% endif %}
+            {% if 'societe' in modules_autorises %}
+            <a class="module" href="{% url 'gestion:societe_profil' %}">
+                <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M6 21v-5m6 5v-8m6 8V8m-6 3V6m6 2 3-3-3-3" /></svg></span>
+                <span><span class="m-name">Ma société</span><br /><span class="m-count">Profil &amp; paramètres</span></span>
+            </a>
+            {% endif %}
+        </div>
+    </section>
+{% endblock content %}
+
+{% block extra_js %}
+    <script>
+        (function () {
+            var btn = document.getElementById("chart-toggle");
+            var body = document.getElementById("chart-body");
+            if (!btn || !body) return;
+            btn.addEventListener("click", function () {
+                var open = btn.getAttribute("aria-expanded") === "true";
+                btn.setAttribute("aria-expanded", open ? "false" : "true");
+                body.hidden = open;
+                var sub = btn.querySelector(".chart-toggle-sub");
+                if (sub) {
+                    sub.textContent = open
+                        ? "Diagramme par module — cliquez pour afficher"
+                        : "Diagramme par module — cliquez pour masquer";
+                }
+            });
+        })();
+    </script>
+{% endblock extra_js %}

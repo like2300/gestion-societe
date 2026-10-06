@@ -1,0 +1,199 @@
+{% extends "gestion/base_dashboard.html" %}
+{% load static %}
+
+{% block dash_title %}Ma société — {{ societe.nom }}{% endblock %}
+
+{% block content %}
+    <style>
+        .modes-paiement-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 0.5rem;
+        }
+        .mode-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.6rem;
+            padding: 0.5rem 0.7rem;
+            font-size: 0.82rem;
+            color: #0f172a;
+            background: #ffffff;
+            cursor: pointer;
+            user-select: none;
+        }
+        .mode-chip:hover { border-color: var(--accent); }
+        .mode-chip input { accent-color: var(--accent); margin: 0; }
+        .mode-chip:has(input:checked) {
+            border-color: var(--accent);
+            background: var(--accent-soft);
+            color: var(--accent);
+            font-weight: 600;
+        }
+        .mode-help {
+            font-size: 0.74rem;
+            color: #64748b;
+            margin-top: 0.4rem;
+        }
+        @media (prefers-color-scheme: dark) {
+            .mode-chip { background: #0f172a; border-color: #334155; color: #f1f5f9; }
+        }
+    </style>
+    <div class="banner">
+        <div>
+            <h1>Ma société</h1>
+            <p>{{ societe.nom }} — informations générales et documents.</p>
+        </div>
+        <button type="button" class="btn-primary" data-open-config
+            style="margin-left:auto;background:rgba(255,255,255,0.2);box-shadow:none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+            </svg>
+            Configurer la société
+        </button>
+    </div>
+
+    <div class="panel" style="padding:1.2rem 1.4rem">
+        <div style="display:flex;gap:1.2rem;align-items:center;flex-wrap:wrap">
+            <div style="width:5.5rem;height:5.5rem;border-radius:1rem;overflow:hidden;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);font-size:1.6rem;flex:none">
+                {% if societe.logo %}
+                    <img src="{{ MEDIA_PREFIX }}{{ societe.logo }}" alt="Logo {{ societe.nom }}"
+                        style="width:100%;height:100%;object-fit:cover" />
+                {% else %}
+                    {{ societe.nom|first }}
+                {% endif %}
+            </div>
+            <div style="min-width:0">
+                <div class="row-name" style="font-size:1.15rem">{{ societe.nom }}</div>
+                <div class="row-muted">{{ societe.slogan|default:"Aucun slogan" }}</div>
+                <div class="row-muted" style="text-transform:capitalize">{{ societe.pays }}</div>
+                <div style="margin-top:0.45rem">
+                    <span class="badge-status ACTIF">{{ societe.statut }}</span>
+                    <span class="badge-status" style="background:var(--accent-soft);color:var(--accent)">
+                        Couleur {{ societe.get_couleur_display }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.9rem">
+        {% for label, value in counts.items %}
+            <div class="panel" style="padding:1rem 1.1rem">
+                <div style="font-size:0.72rem;color:#64748b;text-transform:uppercase;letter-spacing:.05em">{{ label }}</div>
+                <div class="row-name" style="font-size:1.4rem">{{ value }}</div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="panel">
+        <div class="page-head" style="padding:1rem 1.1rem;border-bottom:1px solid #e2e8f0">
+            <div>
+                <h1 style="font-size:1.05rem">Documents de la société</h1>
+                <p class="sub">RCCM, NIU, licences…</p>
+            </div>
+        </div>
+        {% if documents %}
+            <div style="display:flex;flex-direction:column">
+                {% for doc in documents %}
+                    <div style="display:flex;align-items:center;gap:0.7rem;padding:0.75rem 1.1rem;border-bottom:1px solid #f1f5f9">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color:#64748b;flex:none">
+                            <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+                            <path d="M14 2v5h5" />
+                        </svg>
+                        <div style="min-width:0">
+                            <div class="row-name">{{ doc.type_document }}</div>
+                            {% if doc.numero_document %}<div class="row-muted">N° {{ doc.numero_document }}</div>{% endif %}
+                        </div>
+                        <div style="margin-left:auto;display:flex;gap:0.4rem;align-items:center">
+                            {% if doc.date_expiration %}
+                                <span class="row-muted">Expire le {{ doc.date_expiration|date:"d/m/Y" }}</span>
+                            {% endif %}
+                            <a href="{{ MEDIA_PREFIX }}{{ doc.fichier }}" target="_blank" class="btn-ghost">
+                                Télécharger
+                            </a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <p>Aucun document pour le moment.</p>
+            </div>
+        {% endif %}
+    </div>
+{% endblock content %}
+
+{% block drawer %}
+    <div class="drawer-head">
+        <div>
+            <h2>Configurer la société</h2>
+            <p class="drawer-sub">Modifiez les informations et personnalisez votre dashboard (couleur, logo).</p>
+        </div>
+        <button class="drawer-close" data-drawer-close aria-label="Fermer">×</button>
+    </div>
+
+    <div class="drawer-body">
+        <form method="post" action="{% url 'gestion:societe_profil' %}"
+            enctype="multipart/form-data" id="config-form" novalidate>
+            {% csrf_token %}
+            {% if config_form.non_field_errors %}
+                <div class="form-errors">{{ config_form.non_field_errors }}</div>
+            {% endif %}
+            <div class="fgrid">
+                {% for field in config_form.visible_fields %}
+                    {% if field.name == "slogan" or field.name == "logo" %}
+                        {% include "gestion/snippets/drawer_field.html" with field=field span=True %}
+                    {% elif field.name == "modes_paiement" %}
+                        <div class="ffield fspan-2">
+                            <label>Modes de paiement disponibles</label>
+                            <div class="modes-paiement-grid">
+                                {% for checkbox in field %}
+                                    <label class="mode-chip">
+                                        {{ checkbox.tag }}{{ checkbox.choice_label }}
+                                    </label>
+                                {% endfor %}
+                            </div>
+                            {% if field.help_text %}<p class="mode-help">{{ field.help_text }}</p>{% endif %}
+                            {% if field.errors %}
+                                <ul class="errors">
+                                    {% for error in field.errors %}<li>{{ error }}</li>{% endfor %}
+                                </ul>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        {% include "gestion/snippets/drawer_field.html" with field=field %}
+                    {% endif %}
+                {% endfor %}
+            </div>
+            <div class="factions">
+                <button type="button" class="btn-ghost" data-drawer-close>Annuler</button>
+                <button type="submit" class="btn-primary">Enregistrer</button>
+            </div>
+        </form>
+    </div>
+{% endblock drawer %}
+
+{% block extra_js %}
+    <script>
+        (function () {
+            var btn = document.querySelector("[data-open-config]");
+            if (btn) {
+                btn.addEventListener("click", function () {
+                    window.openDrawer();
+                });
+            }
+            {% if open_config %}
+            window.openDrawer();
+            {% endif %}
+            var params = new URLSearchParams(window.location.search);
+            if (params.get("ok")) {
+                window.showToast && window.showToast("success", "Société mise à jour avec succès.");
+            }
+        })();
+    </script>
+{% endblock extra_js %}

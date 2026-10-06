@@ -1,0 +1,66 @@
+{% extends "account/base_auth.html" %}
+{% load i18n socialaccount %}
+
+{% block title %}Créer un compte{% endblock %}
+
+{% block main %}
+    {% provider_login_url 'google' process='signup' as provider_login_url %}
+    <div class="grid items-center gap-x-10 gap-y-16 max-w-6xl w-full lg:grid-cols-2">
+        <!-- Colonne gauche : présentation (sur le dégradé) -->
+        <div class="hidden lg:block max-w-lg max-lg:mx-auto">
+            <img src="https://i.pinimg.com/736x/5f/f7/3d/5ff73d34334f4441cc02ee33b6ecd16f.jpg"
+                alt="Illustration inscription"
+                class="w-full rounded-lg animate-brand-in img-nobg" />
+
+            <div class="text-sm mt-8 text-brand-text">
+                Déjà inscrit ?
+                <a href="{% url 'account_login' %}"
+                    class="text-brand-title font-semibold underline ml-1">Connectez-vous</a>
+            </div>
+        </div>
+
+        <!-- Colonne droite : carte blanche du formulaire -->
+        <div class="rounded-lg px-6 py-8 max-w-lg mx-auto w-full md:px-8 lg:max-w-md">
+            <h1 class="text-3xl mb-10 font-semibold text-brand-title">Créer un compte</h1>
+
+            <form method="post" action="{% url 'account_signup' %}" class="space-y-6" novalidate>
+                {% csrf_token %}
+
+                <div>
+                    <label for="{{ form.type_compte.id_for_label }}"
+                        class="mb-2 text-brand-text font-medium text-sm inline-block">
+                        {{ form.type_compte.label }}
+                    </label>
+                    <select name="{{ form.type_compte.html_name }}"
+                        id="{{ form.type_compte.id_for_label }}"
+                        class="input-flow px-3 py-2.5 text-sm text-brand-text {% if form.type_compte.errors %}input-invalid{% endif %}">
+                        {% for value, label in form.type_compte.field.choices %}
+                            <option value="{{ value }}"{% if form.type_compte.value == value %} selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    <p class="mt-1.5 text-xs text-brand-text">
+                        Choisissez « Employé » si votre administrateur vous a déjà
+                        enregistré dans l'équipe (même adresse e-mail).
+                    </p>
+                </div>
+
+                {% include "account/snippets/field.html" with field=form.email %}
+                {% include "account/snippets/field.html" with field=form.password1 %}
+                {% include "account/snippets/field.html" with field=form.password2 %}
+
+                <button type="submit"
+                    class="w-full py-2 px-3.5 text-sm rounded-md font-semibold cursor-pointer tracking-wide text-white border border-brand-primary bg-brand-primary hover:bg-brand-primary-hover transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary">
+                    Créer mon compte
+                </button>
+            </form>
+
+            <div class="flex items-center gap-4 my-8">
+                <hr class="w-full border-brand-border" />
+                <p class="text-sm text-brand-text text-center">ou</p>
+                <hr class="w-full border-brand-border" />
+            </div>
+
+            {% include "account/snippets/google_button.html" %}
+        </div>
+    </div>
+{% endblock main %}
