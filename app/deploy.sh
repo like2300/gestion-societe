@@ -5,7 +5,7 @@
 # =====================================================================
 set -e
 
-APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/app" && pwd)"
+APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$APP_DIR"
 
 echo "== [1/6] Environnement Python =="
