@@ -284,7 +284,12 @@ EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "20"))
 
-if os.getenv("EMAIL_CONSOLE", "True").lower() in ("true", "1", "yes"):
+EMAIL_CONSOLE = os.getenv("EMAIL_CONSOLE")
+if EMAIL_CONSOLE is None:
+    # Par défaut: console en développement, SMTP en production.
+    EMAIL_CONSOLE = "True" if DEBUG else "False"
+
+if EMAIL_CONSOLE.lower() in ("true", "1", "yes"):
     # Dev : les emails s'affichent dans la console, aucun serveur SMTP requis
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 else:

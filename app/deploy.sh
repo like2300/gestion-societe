@@ -18,7 +18,7 @@ echo "== [2/6] Variables d'environnement (production) =="
 export DJANGO_DEBUG="${DJANGO_DEBUG:-False}"
 export DJANGO_ALLOWED_HOSTS="${DJANGO_ALLOWED_HOSTS:-127.0.0.1,localhost,appsfortesting.alwaysdata.net}"
 export DJANGO_SECRET_KEY="${DJANGO_SECRET_KEY:-django-insecure-dev-only-key-change-me-before-any-deployment}"
-export EMAIL_CONSOLE="${EMAIL_CONSOLE:-True}"
+export EMAIL_CONSOLE="${EMAIL_CONSOLE:-False}"
 
 echo "== [3/6] Migrations =="
 python3 manage.py migrate --noinput
