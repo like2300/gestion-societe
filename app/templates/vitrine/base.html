@@ -16,11 +16,11 @@
     <meta property="og:url" content="{{ SITE_URL }}{{ request.path }}" />
     <meta property="og:title" content="Archi — Pilotez votre entreprise" />
     <meta property="og:description" content="{{ SEO_DESCRIPTION }}" />
-    <meta property="og:image" content="{{ SITE_URL }}{{ images.dashboard }}" />
+    <meta property="og:image" content="{{ SITE_URL }}{{ images.og_image }}" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Archi — Pilotez votre entreprise" />
     <meta name="twitter:description" content="{{ SEO_DESCRIPTION }}" />
-    <meta name="twitter:image" content="{{ SITE_URL }}{{ images.dashboard }}" />
+    <meta name="twitter:image" content="{{ SITE_URL }}{{ images.og_image }}" />
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
@@ -30,7 +30,7 @@
         "operatingSystem": "Web",
         "description": "{{ SEO_DESCRIPTION|escapejs }}",
         "url": "{{ SITE_URL }}/",
-        "image": "{{ SITE_URL }}/static/vitrine/captures/dashboard.png"
+        "image": "{{ SITE_URL }}{{ images.og_image }}"
     }
     </script>
     <link rel="sitemap" type="application/xml" href="{{ SITE_URL }}/sitemap.xml" />

@@ -2823,6 +2823,7 @@ IMAGES_VITRINE = (
     ("logo_footer", "Logo dans le pied de page"),
     ("logo_app", "Logo de l'application (connexion, favicon)"),
     ("favicon", "Favicon du site"),
+    ("og_image", "Image de partage (WhatsApp, réseaux sociaux)"),
 )
 
 IMAGES_VITRINE_DEFAUT = {
@@ -2838,6 +2839,7 @@ IMAGES_VITRINE_DEFAUT = {
     "logo_footer": "",
     "logo_app": "",
     "favicon": "vitrine/favicon.svg",
+    "og_image": "vitrine/og/og-image.png",
 }
 
 
