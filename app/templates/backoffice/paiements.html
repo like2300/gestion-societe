@@ -1,0 +1,34 @@
+{% extends "backoffice/base.html" %}
+{% load ui %}
+{% block titre %}Paiements{% endblock %}
+{% block contenu %}
+<div class="page-titre"><h2>Paiements</h2><p>Validez les paiements déclarés : l'abonnement est activé et le client reçoit un e-mail.</p></div>
+<div class="filtres">
+    <a href="?statut=EN_ATTENTE" class="{% if statut == 'EN_ATTENTE' %}on{% endif %}">À valider</a>
+    <a href="?statut=CONFIRME" class="{% if statut == 'CONFIRME' %}on{% endif %}">Confirmés</a>
+    <a href="?statut=ANNULE" class="{% if statut == 'ANNULE' %}on{% endif %}">Rejetés</a>
+    <a href="?statut=" class="{% if not statut %}on{% endif %}">Tous</a>
+</div>
+<div class="carte tableau">
+    <table>
+        <thead><tr><th>Société</th><th>Montant</th><th>Moyen</th><th>Référence</th><th>Statut</th><th style="text-align:right">Actions</th></tr></thead>
+        <tbody>
+        {% for p in paiements %}
+            <tr>
+                <td><b>{{ p.abonnement.societe.nom }}</b><small>{{ p.abonnement.forfait.nom }}</small></td>
+                <td><b>{{ p.montant|dollars }}</b><small>{{ p.date_paiement|date:"d/m/Y" }}</small></td>
+                <td>{{ p.mode_paiement.nom }}{% if p.telephone %}<small>{{ p.telephone }}</small>{% endif %}</td>
+                <td>{{ p.reference|default:"—" }}</td>
+                <td><span class="etat {{ p.statut }}">{{ p.get_statut_display }}</span></td>
+                <td><div class="actions">
+                    {% if p.statut == "EN_ATTENTE" %}
+                        <form method="post" action="{% url 'backoffice:paiement_action' p.pk 'valider' %}">{% csrf_token %}<button class="b ok">Valider</button></form>
+                        <form method="post" action="{% url 'backoffice:paiement_action' p.pk 'rejeter' %}" onsubmit="return confirm('Rejeter ce paiement ?')">{% csrf_token %}<button class="b non">Rejeter</button></form>
+                    {% endif %}
+                </div></td>
+            </tr>
+        {% empty %}<tr><td colspan="6" class="vide">Aucun paiement.</td></tr>{% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,6 +1,7 @@
 """Signaux : journalisation des connexions et traçage de la présence."""
 
 from django.contrib.auth.signals import user_logged_in, user_logged_out
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.utils import timezone
 
@@ -110,3 +111,35 @@ def _user_agent(request):
         return (getattr(request, "META", {}) or {}).get("HTTP_USER_AGENT", "")[:300]
     except Exception:
         return ""
+
+
+# ---------------------------------------------------------------------------
+# Google Workspace : échéances et tâches poussées dans Google Agenda
+# ---------------------------------------------------------------------------
+def _agenda(objet_type, instance, suppression=False):
+    try:
+        from . import google_workspace
+
+        google_workspace.planifier(objet_type, instance, suppression=suppression)
+    except Exception:
+        pass  # jamais bloquant
+
+
+@receiver(post_save, sender="gestion.EcheancePaiement")
+def echeance_vers_agenda(sender, instance, **kwargs):
+    _agenda("echeance", instance)
+
+
+@receiver(post_delete, sender="gestion.EcheancePaiement")
+def echeance_retiree_agenda(sender, instance, **kwargs):
+    _agenda("echeance", instance, suppression=True)
+
+
+@receiver(post_save, sender="gestion.Tache")
+def tache_vers_agenda(sender, instance, **kwargs):
+    _agenda("tache", instance)
+
+
+@receiver(post_delete, sender="gestion.Tache")
+def tache_retiree_agenda(sender, instance, **kwargs):
+    _agenda("tache", instance, suppression=True)

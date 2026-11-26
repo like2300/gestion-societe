@@ -1,0 +1,123 @@
+{% extends "vitrine/base.html" %}
+
+{% block titre %}Archi — Paiement de l'abonnement — {{ societe.nom }}{% endblock %}
+
+{% block style %}
+    main { padding: 3rem 0 5rem; background: var(--fond); min-height: 70vh; }
+    .boite { width: min(720px, 100% - 32px); margin: 0 auto; display: flex; flex-direction: column; gap: 1rem; }
+    .carte { background: #fff; border: 1px solid var(--trait); border-radius: 20px; padding: 1.6rem; }
+    .recap { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: center; }
+    .recap h1 { margin: 0 0 .2rem; font-size: 1.4rem; color: var(--encre); letter-spacing: -.02em; }
+    .recap p { margin: 0; color: var(--doux); font-size: .9rem; }
+    .recap .total { text-align: right; }
+    .recap .total b { font-size: 2rem; color: var(--encre); letter-spacing: -.03em; }
+    .statut { display: inline-flex; align-items: center; gap: .4rem; padding: .3rem .75rem; border-radius: 999px; font-size: .78rem; font-weight: 700; }
+    .statut.EN_ATTENTE { background: #fffbeb; color: #b45309; }
+    .statut.ACTIF { background: #ecfdf5; color: #047857; }
+    .statut.EXPIRE, .statut.SUSPENDU { background: #fef2f2; color: #b91c1c; }
+    h2 { margin: 0 0 .3rem; font-size: 1.05rem; color: var(--encre); }
+    .sous { margin: 0 0 1rem; color: var(--doux); font-size: .88rem; }
+    .champs { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; margin-bottom: 1rem; }
+    @media (max-width: 560px) { .champs { grid-template-columns: 1fr; } }
+    label { display: flex; flex-direction: column; gap: .3rem; font-size: .8rem; font-weight: 600; color: var(--encre); }
+    input, select { height: 46px; border-radius: 12px; border: 1px solid var(--trait); padding: 0 .9rem; font: inherit; font-weight: 400; color: var(--encre); background: #fff; }
+    input:focus, select:focus { outline: 2px solid #bfdbfe; border-color: var(--bleu); }
+    .attente { display: flex; gap: .8rem; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 1rem; border-radius: 14px; background: #eff6ff; color: #1e40af; font-size: .9rem; }
+    .ok { text-align: center; padding: 2.4rem 1.6rem; }
+    .ok .rond { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto 1rem; background: #ecfdf5; color: #059669; }
+    .securise { text-align: center; font-size: .8rem; color: var(--doux); }
+{% endblock %}
+
+{% block contenu %}
+<main>
+    <div class="boite">
+        <section class="carte recap">
+            <div>
+                <span class="statut {{ abo.statut }}">{{ abo.get_statut_display }}</span>
+                <h1 style="margin-top:.6rem">{{ societe.nom }}</h1>
+                <p>Forfait <b>{{ forfait.nom }}</b> · {{ forfait.duree_jours }} jours{% if abo.statut == "ACTIF" %} · actif jusqu'au {{ abo.date_fin|date:"d/m/Y" }}{% endif %}</p>
+            </div>
+            <div class="total">
+                <p>Montant</p>
+                <b>{{ forfait.prix_affiche }}</b>
+            </div>
+        </section>
+
+        {% if abo.statut == "ACTIF" and not paiement_kpay and not declare %}
+            <section class="carte ok">
+                <div class="rond"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+                <h2>Votre abonnement est actif</h2>
+                <p class="sous">Merci ! Tout est prêt.</p>
+                <a class="btn btn-plein btn-grand" href="{% url 'gestion:post_login_redirect' %}">Accéder à mon espace</a>
+            </section>
+        {% elif abo.statut == "SUSPENDU" %}
+            <section class="carte"><h2>Abonnement suspendu</h2><p class="sous">Contactez le support pour le réactiver.</p></section>
+        {% elif not forfait.prix %}
+            <section class="carte"><h2>Forfait gratuit</h2><p class="sous">Aucun paiement n'est nécessaire.</p></section>
+        {% else %}
+            {% if declare %}
+                <div class="attente"><span>Paiement déclaré (réf. <b>{{ declare.reference }}</b>) le {{ declare.date_paiement|date:"d/m/Y" }} : en cours de vérification. Vous recevrez un e-mail dès l'activation.</span></div>
+            {% endif %}
+
+            {% if kpay_ok %}
+            <section class="carte">
+                <h2>Payer par Mobile Money</h2>
+                <p class="sous">Recevez une demande de paiement sur votre téléphone et validez-la avec votre code secret. L'activation est immédiate.</p>
+                {% if paiement_kpay %}
+                    <form method="post" class="attente">
+                        {% csrf_token %}<input type="hidden" name="action" value="verifier" />
+                        <span>Demande envoyée au <b>{{ paiement_kpay.telephone }}</b>. Validez-la sur votre téléphone.</span>
+                        <button type="submit" class="btn btn-plein">J'ai validé</button>
+                    </form>
+                {% else %}
+                <form method="post">
+                    {% csrf_token %}<input type="hidden" name="action" value="mobile" />
+                    <div class="champs">
+                        <label>Numéro de téléphone<input type="tel" name="telephone" placeholder="Ex : 242 06 000 00 00" required /></label>
+                        <label>Opérateur
+                            <select name="provider" id="pay-provider" required>
+                                <option value="">— Choisir —</option>
+                                {% for code, nom, pays, devise in providers %}<option value="{{ code }}" data-monnaie="{{ devise }}">{{ nom }}</option>{% endfor %}
+                            </select>
+                        </label>
+                    </div>
+                    <p class="sous" id="pay-equivalent">Montant prélevé dans la monnaie de votre opérateur (conversion de {{ forfait.prix_affiche }}).</p>
+                    <button type="submit" class="btn btn-plein btn-grand" style="width:100%" id="pay-bouton">Payer {{ forfait.prix_affiche }}</button>
+                    {{ equivalents|json_script:"pay-equivalents" }}
+                    <script>
+                        (function () {
+                            var eq = JSON.parse(document.getElementById("pay-equivalents").textContent), sel = document.getElementById("pay-provider");
+                            sel.addEventListener("change", function () {
+                                var o = sel.options[sel.selectedIndex], m = o && o.getAttribute("data-monnaie"), v = m && eq[m];
+                                var txt = v ? v.toLocaleString("fr-FR") + " " + m : "";
+                                document.getElementById("pay-equivalent").textContent = v
+                                    ? "Montant prélevé : " + txt + " (équivalent de {{ forfait.prix_affiche }})."
+                                    : "Montant prélevé dans la monnaie de votre opérateur (conversion de {{ forfait.prix_affiche }}).";
+                                document.getElementById("pay-bouton").textContent = v ? "Payer " + txt : "Payer {{ forfait.prix_affiche }}";
+                            });
+                        })();
+                    </script>
+                </form>
+                {% endif %}
+            </section>
+            {% endif %}
+
+            <section class="carte">
+                <h2>{% if kpay_ok %}Ou déclarer un paiement{% else %}Déclarer votre paiement{% endif %}</h2>
+                <p class="sous">Virement, dépôt ou autre moyen : indiquez la référence de la transaction. Notre équipe vérifie et active votre abonnement.</p>
+                <form method="post">
+                    {% csrf_token %}<input type="hidden" name="action" value="declarer" />
+                    <div class="champs">
+                        <label>Moyen de paiement
+                            <select name="mode">{% for m in modes %}<option>{{ m }}</option>{% endfor %}</select>
+                        </label>
+                        <label>Référence de la transaction<input type="text" name="reference" maxlength="150" required /></label>
+                    </div>
+                    <button type="submit" class="btn btn-ligne btn-grand" style="width:100%">Envoyer pour vérification</button>
+                </form>
+            </section>
+        {% endif %}
+        <p class="securise">🔒 Lien de paiement personnel — ne le partagez pas.</p>
+    </div>
+</main>
+{% endblock %}

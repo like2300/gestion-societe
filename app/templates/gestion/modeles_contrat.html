@@ -1,0 +1,163 @@
+{% extends "gestion/base_dashboard.html" %}
+
+{% block dash_title %}Modèles de contrat — {{ societe.nom }}{% endblock %}
+
+{% block content %}
+    <div class="ui-page-head">
+        <div>
+            <h1>Modèles de contrat</h1>
+            <p>Rédigez vos contrats de travail : les <b>variables</b> sont remplies automatiquement avec la fiche de chaque employé à l'impression.</p>
+        </div>
+        <a class="btn-primary" href="?nouveau=1">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Nouveau modèle
+        </a>
+    </div>
+
+    {% include "gestion/components/espace_dossiers.html" %}
+
+    <div class="mc-app">
+        <aside class="mc-liste panel">
+            <div class="mc-liste-titre">Vos modèles <small>{{ modeles|length }}</small></div>
+            {% for m in modeles %}
+                <a href="?modele={{ m.pk }}" class="mc-item{% if courant and courant.pk == m.pk %} on{% endif %}">
+                    <b>{{ m.nom }}</b>
+                    <small>{{ m.type_contrat.nom|default:"Tous les types" }}{% if not m.actif %} · désactivé{% endif %}</small>
+                </a>
+            {% empty %}
+                <p class="mc-vide">Aucun modèle : le <b>contrat standard</b> est utilisé. Créez le vôtre à partir de lui.</p>
+            {% endfor %}
+            <div class="mc-aide">
+                <b>Comment ça marche ?</b>
+                <ul>
+                    <li>Une ligne commençant par <code>#</code> devient un article numéroté.</li>
+                    <li><code>- texte</code> crée une puce, <code>**texte**</code> met en gras.</li>
+                    <li>Un modèle lié à un type (CDD…) est prioritaire ; sinon le modèle « Tous les types » s'applique.</li>
+                </ul>
+            </div>
+        </aside>
+
+        <form method="post" action="{% url 'gestion:modeles_contrat_enregistrer' %}" class="mc-editeur panel" id="mc-form">
+            {% csrf_token %}
+            <input type="hidden" name="pk" value="{{ courant.pk|default:'' }}" />
+            <div class="fgrid">
+                <div class="ffield">
+                    <label for="mc-nom">Nom du modèle</label>
+                    <input type="text" id="mc-nom" name="nom" maxlength="150" required value="{{ courant.nom|default:'Contrat de travail' }}" />
+                </div>
+                <div class="ffield">
+                    <label for="mc-type">S'applique à</label>
+                    <select id="mc-type" name="type_contrat">
+                        <option value="">Tous les types de contrat</option>
+                        {% for t in types %}<option value="{{ t.pk }}"{% if courant.type_contrat_id == t.pk %} selected{% endif %}>{{ t.nom }}</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+            <label class="mc-actif"><input type="checkbox" name="actif" {% if not courant or courant.actif %}checked{% endif %} /> Modèle actif (utilisé pour l'impression)</label>
+
+            <div class="mc-vars">
+                <span class="mc-vars-titre">Variables — cliquez pour insérer à l'emplacement du curseur</span>
+                <div class="mc-chips">
+                    {% for cle, libelle in variables %}<button type="button" class="mc-chip" data-var="{{ cle }}" title="{{ libelle }}">{{ libelle }}</button>{% endfor %}
+                </div>
+            </div>
+
+            <textarea id="mc-contenu" name="contenu" rows="26" spellcheck="true">{{ contenu }}</textarea>
+            <p class="mc-inconnues" id="mc-inconnues" hidden></p>
+
+            <div class="mc-actions">
+                {% if courant %}
+                <button type="submit" class="btn-danger-ghost" form="mc-suppr" onclick="return confirm('Supprimer ce modèle ?')">Supprimer</button>
+                {% endif %}
+                <button type="button" class="btn-ghost" id="mc-standard">Repartir du contrat standard</button>
+                <span class="mc-apercu">
+                    <select id="mc-employe" aria-label="Employé pour l'aperçu">
+                        <option value="">Employé fictif</option>
+                        {% for e in employes %}<option value="{{ e.pk }}">{{ e.prenom }} {{ e.nom }}</option>{% endfor %}
+                    </select>
+                    <button type="button" class="btn-ghost" id="mc-voir">Aperçu PDF</button>
+                </span>
+                <button type="submit" class="btn-primary">Enregistrer</button>
+            </div>
+        </form>
+    </div>
+
+    {% if courant %}
+    <form method="post" action="{% url 'gestion:modeles_contrat_supprimer' courant.pk %}" id="mc-suppr" hidden>{% csrf_token %}</form>
+    {% endif %}
+    <form method="post" action="{% url 'gestion:modeles_contrat_apercu' %}" id="mc-apercu-form" target="_blank" hidden>
+        {% csrf_token %}
+        <input type="hidden" name="contenu" /><input type="hidden" name="type_contrat" /><input type="hidden" name="employe" />
+    </form>
+    {{ variables|json_script:"mc-variables" }}
+    {{ contenu_standard|json_script:"mc-standard-texte" }}
+
+    <style>
+        #dash .mc-app { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 1rem; align-items: start; }
+        #dash .mc-liste { padding: 1rem; display: flex; flex-direction: column; gap: .35rem; position: sticky; top: 1rem; }
+        #dash .mc-liste-titre { font-weight: 700; font-size: .9rem; margin-bottom: .3rem; display: flex; justify-content: space-between; }
+        #dash .mc-liste-titre small { color: var(--accent); }
+        #dash .mc-item { display: flex; flex-direction: column; padding: .55rem .7rem; border-radius: 11px; text-decoration: none; color: var(--ui-text); border: 1px solid transparent; }
+        #dash .mc-item:hover { background: var(--ui-card-2); }
+        #dash .mc-item.on { border-color: color-mix(in srgb, var(--accent) 40%, transparent); background: color-mix(in srgb, var(--accent) 8%, var(--ui-card)); }
+        #dash .mc-item b { font-size: .86rem; } #dash .mc-item small, #dash .mc-vide { font-size: .74rem; color: var(--ui-muted); }
+        #dash .mc-aide { margin-top: .8rem; padding: .8rem; border-radius: 12px; background: var(--ui-card-2); font-size: .76rem; color: var(--ui-muted); }
+        #dash .mc-aide ul { margin: .4rem 0 0; padding-left: 1rem; display: flex; flex-direction: column; gap: .25rem; }
+        #dash .mc-aide code, #dash .mc-inconnues code { background: var(--ui-card); padding: 0 .3rem; border-radius: 4px; color: var(--accent); }
+        #dash .mc-editeur { padding: 1.1rem; display: flex; flex-direction: column; gap: .8rem; }
+        #dash .mc-actif { display: flex; align-items: center; gap: .5rem; font-size: .84rem; color: var(--ui-text); }
+        #dash .mc-vars-titre { font-size: .74rem; font-weight: 600; color: var(--ui-muted); }
+        #dash .mc-chips { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .4rem; }
+        #dash .mc-chip { border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--ui-border)); background: color-mix(in srgb, var(--accent) 7%, var(--ui-card)); color: var(--accent); border-radius: 999px; padding: .2rem .65rem; font-size: .74rem; font-weight: 600; cursor: pointer; }
+        #dash .mc-chip:hover { background: var(--accent); color: #fff; }
+        #dash #mc-contenu { width: 100%; min-height: 460px; resize: vertical; font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: .84rem; line-height: 1.6; padding: .9rem 1rem; border-radius: 14px; border: 1px solid var(--ui-border); background: var(--ui-card); color: var(--ui-text); }
+        #dash .mc-inconnues { margin: 0; font-size: .78rem; color: #b45309; }
+        #dash .mc-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; justify-content: flex-end; }
+        #dash .mc-apercu { display: inline-flex; gap: .4rem; align-items: center; }
+        #dash .mc-apercu select { height: 38px; border-radius: 10px; border: 1px solid var(--ui-border); background: var(--ui-card); color: var(--ui-text); padding: 0 .6rem; }
+        @media (max-width: 900px) { #dash .mc-app { grid-template-columns: minmax(0, 1fr); } #dash .mc-liste { position: static; } }
+    </style>
+{% endblock content %}
+
+{% block extra_js %}
+    <script>
+    (function () {
+        "use strict";
+        var zone = document.getElementById("mc-contenu");
+        var connues = JSON.parse(document.getElementById("mc-variables").textContent).map(function (v) { return v[0]; });
+        var standard = JSON.parse(document.getElementById("mc-standard-texte").textContent);
+        // Insertion d'une variable au curseur
+        document.querySelectorAll("[data-var]").forEach(function (b) {
+            b.addEventListener("click", function () {
+                var t = "{" + "{ " + b.getAttribute("data-var") + " }" + "}";  // évite « {{ » interprété par Django
+                var d = zone.selectionStart, f = zone.selectionEnd;
+                zone.setRangeText(t, d, f, "end");
+                zone.focus();
+                verifier();
+            });
+        });
+        // Signale les variables mal orthographiées (elles resteraient visibles dans le contrat)
+        var info = document.getElementById("mc-inconnues");
+        function verifier() {
+            var vues = {}, m, re = /\{\{\s*([a-zA-Z_]+)\s*\}\}/g;
+            while ((m = re.exec(zone.value))) if (connues.indexOf(m[1]) === -1) vues[m[1]] = 1;
+            var liste = Object.keys(vues);
+            info.hidden = !liste.length;
+            info.innerHTML = liste.length ? "Variables inconnues : " + liste.map(function (x) { return "<code>" + x + "</code>"; }).join(", ") : "";
+        }
+        zone.addEventListener("input", verifier);
+        verifier();
+        document.getElementById("mc-standard").addEventListener("click", function () {
+            if (!standard || !confirm("Remplacer le texte par le contrat standard ?")) return;
+            zone.value = standard; verifier();
+        });
+        document.getElementById("mc-voir").addEventListener("click", function () {
+            var f = document.getElementById("mc-apercu-form");
+            f.contenu.value = zone.value;
+            f.type_contrat.value = document.getElementById("mc-type").value;
+            f.employe.value = document.getElementById("mc-employe").value;
+            f.submit();
+        });
+    })();
+    </script>
+{% endblock extra_js %}

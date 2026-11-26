@@ -1,194 +1,309 @@
 {% extends "gestion/base_dashboard.html" %}
 {% load static %}
 
-{% block dash_title %}Globe — {{ societe.nom }}{% endblock %}
+{% block dash_title %}Carte du monde — {{ societe.nom }}{% endblock %}
 
 {% block content %}
-    <style>
-        .gl-page { padding: 1.4rem 1.6rem 3rem; max-width: 1240px; margin: 0 auto; }
-        .gl-topbar {
-            display: flex; align-items: flex-end; justify-content: space-between;
-            gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;
-        }
-        .gl-topbar h1 { margin: 0; font-size: 1.5rem; color: #0f172a; letter-spacing: -0.02em; }
-        .gl-sub { margin: 0.35rem 0 0; color: #64748b; font-size: 0.88rem; max-width: 62ch; }
-        .gl-stats { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-        .gl-stats span {
-            background: #f1f5f9; border: 1px solid #e2e8f0; color: #334155;
-            border-radius: 999px; padding: 0.4rem 0.85rem; font-size: 0.78rem; font-weight: 700;
-        }
-        .gl-carte {
-            position: relative; border-radius: 1rem; overflow: hidden;
-            background: radial-gradient(120% 130% at 50% 20%, #0a1c33 0%, #060e1d 55%, #040810 100%);
-            border: 1px solid rgba(148, 163, 184, 0.18);
-            box-shadow: 0 18px 50px -18px rgba(2, 132, 199, 0.55);
-            min-height: 520px; display: flex; flex-direction: column;
-        }
-        #globe3d { width: 100%; min-height: 520px; flex: 1; touch-action: none; cursor: grab; }
-        #globe3d:active { cursor: grabbing; }
-        .gl-loader {
-            position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-            color: #7dd3fc; font-size: 0.9rem; letter-spacing: 0.05em; gap: 0.6rem; z-index: 5;
-        }
-        .gl-loader.spin { content: ""; width: 22px; height: 22px; border-radius: 50%;
-            border: 2px solid rgba(125, 211, 252, 0.25); border-top-color: #7dd3fc;
-            animation: gl-rot 0.9s linear infinite; }
-        @keyframes gl-rot { to { transform: rotate(360deg); } }
-        .gl-barre {
-            display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
-            padding: 0.7rem 1rem; background: rgba(6, 14, 29, 0.82);
-            border-top: 1px solid rgba(148, 163, 184, 0.15);
-        }
-        .gl-chip {
-            display: inline-flex; align-items: center; gap: 0.45rem; cursor: pointer;
-            border-radius: 999px; padding: 0.42rem 0.85rem; font-size: 0.78rem; font-weight: 700;
-            color: #cbd5e1; background: rgba(148, 163, 184, 0.12); border: 1px solid rgba(148, 163, 184, 0.25);
-            user-select: none; transition: all 0.15s ease;
-        }
-        .gl-chip:hover { border-color: var(--accent); color: #fff; }
-        .gl-chip.on { background: rgba(255, 255, 255, 0.08); border-color: currentColor; color: #fff; }
-        .gl-puce { width: 0.55rem; height: 0.55rem; border-radius: 50%; display: inline-block; }
-        .gl-legende { display: flex; gap: 0.8rem; flex-wrap: wrap; margin-left: auto; align-items: center; }
-        .gl-legende span { display: inline-flex; align-items: center; gap: 0.4rem; color: #94a3b8; font-size: 0.76rem; }
-        .gl-legende .gl-puce { width: 0.5rem; height: 0.5rem; }
-        .gl-refresh {
-            border: 1px solid rgba(148, 163, 184, 0.25); background: transparent; color: #cbd5e1;
-            border-radius: 999px; padding: 0.42rem 0.8rem; font-size: 0.78rem; font-weight: 700; cursor: pointer;
-        }
-        .gl-refresh:hover { border-color: var(--accent); color: #fff; }
-        .gl-detail {
-            display: none; position: absolute; left: 1rem; top: 1rem; max-width: 290px; min-width: 220px;
-            background: rgba(6, 14, 29, 0.9); border: 1px solid rgba(148, 163, 184, 0.22);
-            border-radius: 0.8rem; padding: 0.8rem 0.95rem; color: #e2e8f0; z-index: 6;
-            backdrop-filter: blur(6px);
-        }
-        .gl-detail.on { display: block; }
-        .gl-chemin { display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; font-size: 0.75rem; color: #7dd3fc; margin-bottom: 0.5rem; }
-        .gl-chemin button {
-            background: none; border: none; color: #7dd3fc; cursor: pointer; font-size: 0.75rem;
-            font-weight: 700; padding: 0.1rem 0.2rem; border-radius: 0.3rem;
-        }
-        .gl-chemin button:hover { text-decoration: underline; }
-        .gl-chemin em { color: #cbd5e1; font-style: normal; }
-        .gl-detail h3 { margin: 0 0 0.6rem; font-size: 1rem; color: #fff; }
-        .gl-ligne { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.82rem; padding: 0.25rem 0; color: #cbd5e1; }
-        .gl-ligne b { color: #fff; font-variant-numeric: tabular-nums; }
-        .gl-ligne .gl-desact { color: #475569; }
-        .gl-sous { margin-top: 0.6rem; border-top: 1px dashed rgba(148, 163, 184, 0.25); padding-top: 0.5rem; max-height: 190px; overflow: auto; }
-        .gl-sous div { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.78rem; padding: 0.22rem 0; color: #94a3b8; }
-        .gl-note { margin: 1rem 0 0; color: #64748b; font-size: 0.78rem; }
-        .gl-maj { font-size: 0.72rem; color: #94a3b8; }
-        .gl-sources { display: flex; gap: 0.4rem; flex-wrap: wrap; }
-        .gl-src { background: rgba(148, 163, 184, 0.1); border: 1px solid rgba(148, 163, 184, 0.2); color: #cbd5e1;
-            border-radius: 999px; padding: 0.28rem 0.7rem; font-size: 0.72rem; font-weight: 700; }
-        .gl-modes {
-            display: inline-flex; gap: 0.25rem; padding: 0.22rem;
-            background: rgba(6, 14, 29, 0.82); border: 1px solid rgba(148, 163, 184, 0.18);
-            border-radius: 999px; margin-left: auto;
-        }
-        .gl-mode {
-            border: none; cursor: pointer; border-radius: 999px; padding: 0.42rem 0.95rem;
-            font-size: 0.78rem; font-weight: 800; color: #94a3b8; background: transparent;
-            transition: all 0.15s ease; white-space: nowrap;
-        }
-        .gl-mode:hover { color: #e2e8f0; }
-        .gl-mode.on {
-            background: rgba(2, 132, 199, 0.22); color: #7dd3fc;
-            box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.55);
-        }
-        .gl-dispo { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.9rem; }
-        /* Infobulle de survol (layer tooltips de globe.gl) */
-        .gl-carte .scene-tooltip {
-            pointer-events: none; position: absolute; z-index: 20; top: 0; left: 0;
-            background: rgba(6, 14, 29, 0.92); color: #e2e8f0;
-            border: 1px solid rgba(125, 211, 252, 0.35); border-radius: 0.7rem;
-            padding: 0.55rem 0.7rem; font-size: 0.78rem; line-height: 1.35;
-            backdrop-filter: blur(6px); box-shadow: 0 10px 30px -12px rgba(2, 132, 199, 0.5);
-            white-space: nowrap;
-        }
-        .gl-carte .scene-tooltip b { color: #fff; }
-        .gl-carte .scene-tooltip .tt-titre { font-size: 0.86rem; color: #fff; font-weight: 800;
-            margin-bottom: 0.25rem; letter-spacing: -0.01em; }
-        .gl-carte .scene-tooltip .tt-ligne { display: flex; align-items: center; gap: 0.4rem; color: #cbd5e1; }
-        .gl-carte .scene-tooltip .tt-valeur { margin-left: auto; padding-left: 1rem; color: #fff;
-            font-variant-numeric: tabular-nums; font-weight: 700; }
-        .gl-carte .scene-tooltip .tt-vide { color: #475569; font-style: italic; }
-        @media (max-width: 720px) { .gl-detail { left: 0.6rem; right: 0.6rem; max-width: none; } #globe3d { min-height: 400px; } }
-    </style>
-
-    <div class="gl-page">
-        <div class="gl-topbar">
-            <div>
-                <h1>Globe interactif</h1>
-                <p class="gl-sub">Choisissez une vue pour y voir clair : « Global » mélange tout,
-                    « Plateforme » affiche l'activité interne (clients, commandes, CA, prospects),
-                    « Réseaux sociaux » ne montre que l'activité de vos comptes connectés
-                    (Facebook, Instagram, LinkedIn, X, TikTok, YouTube).</p>
-            </div>
-            <div class="gl-stats">
-                <span>Sources connectées</span>
-            </div>
+    {# ===== En-tête ===== #}
+    <div class="ui-page-head">
+        <div>
+            <h1>Carte du monde</h1>
+            <p>Où se trouvent vos clients, prospects et ventes — agrégés par pays et par ville.</p>
         </div>
-
-        <div class="gl-dispo">
-            <div id="gl-sources" class="gl-sources"></div>
-            <div class="gl-modes" id="gl-modes">
-                <button type="button" class="gl-mode on" data-mode="tous">Global</button>
-                <button type="button" class="gl-mode" data-mode="plateforme">Plateforme</button>
-                <button type="button" class="gl-mode" data-mode="sociaux">Réseaux sociaux</button>
+        <div class="wm-actions">
+            {# Vues « Plateforme » et « Réseaux sociaux » désactivées : seule la vue globale reste #}
+            <div class="wm-seg" id="wm-modes" role="tablist" aria-label="Vue" hidden>
+                <button type="button" class="on" data-mode="tous">Global</button>
             </div>
+            <button type="button" class="wm-btn" id="wm-refresh" title="Actualiser les données">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/></svg>
+            </button>
         </div>
-
-        <div class="gl-carte" style="margin-top: 0.9rem;">
-            <div id="gl-loader" class="gl-loader">
-                <span class="gl-loader spin"></span> Chargement des données géographiques…
-            </div>
-            <div id="gl-detail" class="gl-detail"></div>
-            <div id="globe3d"></div>
-            <div class="gl-barre">
-                <div id="gl-filtres"></div>
-                <div class="gl-legende" id="gl-legende"></div>
-                <button type="button" id="gl-refresh" class="gl-refresh">Actualiser</button>
-            </div>
-        </div>
-
-        <div id="gl-totaux" style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:0.9rem;"></div>
-        <p class="gl-note">Les données sont agrégées par pays, région et ville : aucun nom de client ni montant
-            privé ne transite par le globe. Les coordonnées sont indicatives (répertoire géographique embarqué).</p>
     </div>
+
+    {% include "gestion/components/espace_dossiers.html" %}
+
+    {# ===== Indicateurs (remplis par le script) ===== #}
+    {% include "gestion/components/stat_row.html" with cartes=globe_cartes %}
+
+    {# ===== Carte (pays pleins) + classement ===== #}
+    <section class="ui-card wm-hero">
+        <div class="wm-side">
+            <h2 class="wm-titre" id="wm-titre">Vos clients dans le monde</h2>
+            <span class="wm-trait" aria-hidden="true"></span>
+            <p class="wm-desc" id="wm-desc">Chargement…</p>
+            <div class="wm-mesures" id="wm-mesures"></div>
+            <ul class="wm-top" id="wm-top"></ul>
+        </div>
+        <div class="wm-map" id="wm-map">
+            <svg id="wm-svg" viewBox="0 0 360 142" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Carte du monde">
+                <g id="wm-pays"></g>
+                <g id="wm-markers"></g>
+            </svg>
+            <div class="wm-tip" id="wm-tip" hidden></div>
+            <div class="wm-loader" id="wm-loader"><span></span>Chargement des données…</div>
+            <div class="wm-zoom">
+                <button type="button" id="wm-zoom-in" aria-label="Zoomer">+</button>
+                <button type="button" id="wm-zoom-out" aria-label="Dézoomer">−</button>
+                <button type="button" id="wm-zoom-reset" aria-label="Vue d'ensemble">⤢</button>
+            </div>
+        </div>
+    </section>
+
+    {# ===== Villes (tableau paginé) + détail ===== #}
+    <section class="ui-grid-main wm-bas">
+        <div class="ui-card wm-table-card">
+            <div class="ui-card-head">
+                <div>
+                    <h2 class="ui-card-title">Villes</h2>
+                    <p class="ui-card-sub">Toutes les villes où vous avez de l'activité</p>
+                </div>
+            </div>
+            <div id="wm-table-wrap"></div>
+        </div>
+        <div class="ui-card wm-detail" id="wm-detail">
+            <div class="ui-card-head">
+                <div>
+                    <h2 class="ui-card-title" id="wm-detail-titre">Détail</h2>
+                    <p class="ui-card-sub" id="wm-detail-sub">Cliquez sur un pays, un point ou une ligne du classement</p>
+                </div>
+            </div>
+            <div class="wm-detail-body" id="wm-detail-body"><p class="wm-vide">Aucune zone sélectionnée.</p></div>
+        </div>
+    </section>
+
+    <p class="wm-note">Données agrégées par pays et ville : aucun nom de client ni montant privé n'est affiché. Coordonnées indicatives.</p>
 {% endblock %}
 
 {% block extra_js %}
-    {% load static %}
-    <script src="{% static 'gestion/vendor/globe.gl/globe.gl.min.js' %}"></script>
-    <script type="module">
-        const { BusinessGlobe } = await import("{% static 'gestion/globe.js' %}");
-        const globe = new BusinessGlobe({
-            container: document.getElementById("globe3d"),
-            url: "{% url 'gestion:globe_donnees' %}",
-            accent: "{{ accent }}",
-            loader: document.getElementById("gl-loader"),
-            detail: document.getElementById("gl-detail"),
-            filtres: document.getElementById("gl-filtres"),
-            legende: document.getElementById("gl-legende"),
-            sources: document.getElementById("gl-sources"),
-            totaux: document.getElementById("gl-totaux"),
-            bouton: document.getElementById("gl-refresh"),
-            controlesMode: document.getElementById("gl-modes"),
-            mode: "tous",
-            assets: {
-                terre: "{% static 'gestion/vendor/img/earth-blue-marble.jpg' %}",
-                relief: "{% static 'gestion/vendor/img/earth-topology.png' %}",
-                eau: "{% static 'gestion/vendor/img/earth-water.png' %}",
-                ciel: "{% static 'gestion/vendor/img/night-sky.png' %}",
-                pays: "{% static 'gestion/vendor/geojson/ne_110m_admin_0_countries.geojson' %}",
-            },
+    <script src="{% static 'gestion/world-map.js' %}?v={{ UI_VERSION }}"></script>
+    <script>
+    (function () {
+        "use strict";
+        var URL = "{% url 'gestion:globe_donnees' %}";
+        var W = window.WORLD_MAP || { d: {}, noms: {}, h: 142, top: 84 };
+        var H = W.h, TOP = W.top;
+        var mode = "tous", mesure = "clients", donnees = null, rangs = {};
+        var svg = document.getElementById("wm-svg"), gPays = document.getElementById("wm-pays"), gMarks = document.getElementById("wm-markers");
+        var tip = document.getElementById("wm-tip"), carte = document.getElementById("wm-map");
+        var NS = "http://www.w3.org/2000/svg";
+        var NB_COULEURS = 5;
+
+        function px(lng) { return lng + 180; }
+        function py(lat) { return TOP - lat; }
+        function nf(v, ca) { var s = Math.round(Number(v) || 0).toLocaleString("fr-FR"); return ca ? s + " FCFA" : s; }
+        function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+        function drapeau(iso) {
+            if (!iso || iso.length !== 2) return "🌐";
+            return String.fromCodePoint.apply(null, iso.toUpperCase().split("").map(function (c) { return 127397 + c.charCodeAt(0); }));
+        }
+        function mesuresUtiles() {
+            var t = donnees && donnees.total || {};
+            return (donnees && donnees.mesures || []).filter(function (m) { return m.cle === "clients" || Number(t[m.cle]) > 0; });
+        }
+        function mesureInfo() { return mesuresUtiles().filter(function (m) { return m.cle === mesure; })[0] || { cle: mesure, label: mesure }; }
+        function valeur(n) { return Number(n && n.totaux && n.totaux[mesure]) || 0; }
+        function paysParIso(iso) { return (donnees.pays || []).filter(function (p) { return (p.iso2 || "").toLowerCase() === iso; })[0]; }
+        function nomPays(p) { return p.nom === "Inconnu" ? "Non localisé" : p.nom; }
+        function couleurRang(r) { return r === 1 ? "var(--accent)" : "var(--wm-r" + Math.min(r, NB_COULEURS) + ")"; }
+
+        /* ----- Fond : pays pleins ----- */
+        var elsPays = {};
+        Object.keys(W.d).forEach(function (iso) {
+            var p = document.createElementNS(NS, "path");
+            p.setAttribute("d", W.d[iso]);
+            p.setAttribute("class", "wm-c");
+            p.setAttribute("data-iso", iso);
+            gPays.appendChild(p);
+            elsPays[iso] = p;
         });
-        window.businessGlobe = globe;
-        globe.lancer().catch(function (err) {
-            var el = document.getElementById("gl-loader");
-            el.innerHTML = "Impossible de charger le globe : " + String(err && err.message || err);
-            el.style.color = "#fca5a5";
+
+        /* ----- Zoom & déplacement ----- */
+        var vb = { x: 0, y: 0, w: 360, h: H };
+        function vue() { svg.setAttribute("viewBox", vb.x + " " + vb.y + " " + vb.w + " " + vb.h); }
+        function zoomer(f, cx, cy) {
+            var nw = Math.min(360, Math.max(40, vb.w / f)), nh = nw * H / 360;
+            cx = cx == null ? vb.x + vb.w / 2 : cx; cy = cy == null ? vb.y + vb.h / 2 : cy;
+            vb.x = Math.min(360 - nw, Math.max(0, cx - nw / 2)); vb.y = Math.min(H - nh, Math.max(0, cy - nh / 2));
+            vb.w = nw; vb.h = nh; vue(); tip.hidden = true;
+            carte.classList.toggle("zoome", nw < 360);
+        }
+        document.getElementById("wm-zoom-in").onclick = function () { zoomer(1.6); };
+        document.getElementById("wm-zoom-out").onclick = function () { zoomer(1 / 1.6); };
+        document.getElementById("wm-zoom-reset").onclick = function () { vb = { x: 0, y: 0, w: 360, h: H }; vue(); carte.classList.remove("zoome"); };
+        var glisse = null, bouge = false;
+        svg.addEventListener("pointerdown", function (e) { glisse = { x: e.clientX, y: e.clientY, vx: vb.x, vy: vb.y }; bouge = false; });
+        window.addEventListener("pointermove", function (e) {
+            if (!glisse || vb.w >= 360) return;
+            if (Math.abs(e.clientX - glisse.x) + Math.abs(e.clientY - glisse.y) > 3) bouge = true;
+            var r = svg.getBoundingClientRect(), k = vb.w / r.width;
+            vb.x = Math.min(360 - vb.w, Math.max(0, glisse.vx - (e.clientX - glisse.x) * k));
+            vb.y = Math.min(H - vb.h, Math.max(0, glisse.vy - (e.clientY - glisse.y) * k));
+            vue(); tip.hidden = true;
         });
+        window.addEventListener("pointerup", function () { glisse = null; });
+        svg.addEventListener("wheel", function (e) {
+            e.preventDefault();
+            var r = svg.getBoundingClientRect();
+            zoomer(e.deltaY < 0 ? 1.25 : 0.8, vb.x + (e.clientX - r.left) / r.width * vb.w, vb.y + (e.clientY - r.top) / r.height * vb.h);
+        }, { passive: false });
+
+        /* ----- Infobulle ----- */
+        function lignesTotaux(n) {
+            return mesuresUtiles().filter(function (m) { return (n.totaux || {})[m.cle]; }).map(function (m) {
+                return '<div class="wm-kv"><span><i style="background:' + m.couleur + '"></i>' + esc(m.label) + "</span><b>" + nf(n.totaux[m.cle], m.format_ca) + "</b></div>";
+            }).join("") || '<p class="wm-vide">Aucune activité.</p>';
+        }
+        function montrerTip(titre, sous, iso, n, clientX, clientY) {
+            tip.innerHTML = '<div class="wm-tip-h"><span class="wm-flag">' + drapeau(iso) + "</span><div><b>" + esc(titre) + "</b><small>" + esc(sous) + "</small></div></div>" + (n ? lignesTotaux(n) : '<p class="wm-vide">Aucune activité.</p>');
+            var c = carte.getBoundingClientRect(), x = clientX - c.left, y = clientY - c.top;
+            tip.style.left = Math.min(c.width - 125, Math.max(125, x)) + "px";
+            tip.style.top = y + "px";
+            tip.classList.toggle("bas", y < 160);
+            tip.hidden = false;
+        }
+        gPays.addEventListener("mousemove", function (e) {
+            var el = e.target.closest(".wm-c"); if (!el || !donnees || glisse) return;
+            var iso = el.getAttribute("data-iso"), p = paysParIso(iso);
+            montrerTip(p ? nomPays(p) : (W.noms[iso] || iso.toUpperCase()), p && rangs[p.nom] ? "N° " + rangs[p.nom] + " · " + mesureInfo().label : "Pays", iso, p, e.clientX, e.clientY);
+        });
+        gPays.addEventListener("mouseleave", function () { tip.hidden = true; });
+        gPays.addEventListener("click", function (e) {
+            if (bouge) return;
+            var el = e.target.closest(".wm-c"); if (!el) return;
+            var p = paysParIso(el.getAttribute("data-iso"));
+            if (p) selectionnerPays(p);
+        });
+
+        /* ----- Rendu ----- */
+        function classement() {
+            return (donnees.pays || []).filter(function (p) { return valeur(p) > 0; }).sort(function (a, b) { return valeur(b) - valeur(a); });
+        }
+
+        function rendreStats() {
+            var t = donnees.total || {}, m = mesureInfo();
+            var pays = classement().filter(function (p) { return p.nom !== "Inconnu"; });
+            var villes = (donnees.villes || []).filter(function (p) { return p.nom && valeur(p) > 0; });
+            var inconnus = (donnees.pays || []).filter(function (p) { return p.nom === "Inconnu"; }).reduce(function (s, p) { return s + valeur(p); }, 0);
+            var cartes = [
+                { l: m.label, v: nf(t[mesure], m.format_ca), ico: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8", tone: "var(--accent)", n: inconnus ? nf(inconnus) + " sans localisation" : "toutes zones" },
+                { l: "Pays couverts", v: pays.length, ico: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20ZM2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20", tone: "#8b5cf6", n: pays.length ? esc(pays[0].nom) + " en tête" : "aucun pour l'instant" },
+                { l: "Villes", v: villes.length, ico: "M3 21h18M6 21V7l6-4 6 4v14M10 10h4M10 14h4", tone: "#06b6d4", n: "avec de l'activité" },
+                { l: "Chiffre d'affaires", v: nf(t.ca), ico: "M3 3v18h18M7 14l4-4 3 3 5-6", tone: "#10b981", n: nf(t.prospects) + " prospect(s) · " + nf(t.commandes) + " commande(s)" },
+            ];
+            document.getElementById("wm-stats").innerHTML = cartes.map(function (c) {
+                return '<div class="ui-stat is-compact" style="--tone:' + c.tone + '"><div class="ui-stat-top"><div><div class="ui-stat-label">' + esc(c.l) +
+                    '</div><div class="ui-stat-value">' + c.v + '</div></div><span class="ui-stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + c.ico +
+                    '"/></svg></span></div><div class="ui-stat-foot"><span class="ui-stat-note">' + c.n + "</span></div></div>";
+            }).join("");
+        }
+
+        function rendreMesures() {
+            var ms = mesuresUtiles();
+            if (!ms.some(function (m) { return m.cle === mesure; }) && ms.length) mesure = ms[0].cle;
+            document.getElementById("wm-mesures").innerHTML = ms.map(function (m) {
+                return '<button type="button" data-mesure="' + m.cle + '" class="' + (m.cle === mesure ? "on" : "") + '">' + esc(m.label) + "</button>";
+            }).join("");
+        }
+
+        function rendreCarte() {
+            rangs = {};
+            var cl = classement(), rangIso = {};
+            cl.filter(function (p) { return p.nom !== "Inconnu"; }).forEach(function (p, i) { rangs[p.nom] = i + 1; if (p.iso2) rangIso[p.iso2.toLowerCase()] = i + 1; });
+            Object.keys(elsPays).forEach(function (iso) {
+                var r = rangIso[iso], el = elsPays[iso];
+                el.classList.toggle("actif", !!r);
+                el.style.fill = r ? couleurRang(r) : "";
+            });
+            // Pointeurs : villes géolocalisées.
+            gMarks.innerHTML = "";
+            var villes = (donnees.villes || []).filter(function (v) { return v.lat != null && v.lng != null && valeur(v) > 0; }).sort(function (a, b) { return valeur(b) - valeur(a); });
+            var max = villes.length ? valeur(villes[0]) : 1;
+            villes.slice().reverse().forEach(function (v) {
+                var r = 0.9 + 1.6 * Math.sqrt(valeur(v) / max);
+                var g = document.createElementNS(NS, "g");
+                g.setAttribute("class", "wm-mk");
+                g.setAttribute("transform", "translate(" + px(v.lng).toFixed(2) + " " + py(v.lat).toFixed(2) + ")");
+                g.innerHTML = '<circle class="wm-pulse" r="' + r.toFixed(2) + '"/><circle class="wm-pt" r="' + r.toFixed(2) + '"/><circle class="wm-core" r="' + (r * 0.38).toFixed(2) + '"/>';
+                g.addEventListener("mousemove", function (e) { e.stopPropagation(); montrerTip(v.nom, (v.region ? v.region + ", " : "") + v.pays, paysIsoDe(v.pays), v, e.clientX, e.clientY); });
+                g.addEventListener("mouseleave", function () { tip.hidden = true; });
+                g.addEventListener("click", function (e) { e.stopPropagation(); selectionnerVille(v); });
+                gMarks.appendChild(g);
+            });
+        }
+        function paysIsoDe(nom) { var p = (donnees.pays || []).filter(function (x) { return x.nom === nom; })[0]; return p && p.iso2; }
+
+        function rendreClassement() {
+            var m = mesureInfo(), cl = classement(), total = cl.reduce(function (s, p) { return s + valeur(p); }, 0) || 1;
+            var pays = cl.filter(function (p) { return p.nom !== "Inconnu"; });
+            document.getElementById("wm-desc").textContent = cl.length
+                ? nf(total, m.format_ca) + " " + (m.format_ca ? "de chiffre d'affaires" : m.label.toLowerCase()) + " répartis sur " + pays.length + " pays. Survolez la carte pour le détail."
+                : "Aucune donnée pour cette mesure pour le moment.";
+            var rang = 0;
+            document.getElementById("wm-top").innerHTML = cl.slice(0, 6).map(function (p) {
+                var connu = p.nom !== "Inconnu"; if (connu) rang++;
+                var pct = Math.round(valeur(p) * 100 / total);
+                return '<li><button type="button" data-pays="' + esc(p.nom) + '"><span class="wm-top-l"><span>' + drapeau(p.iso2) + " " + esc(nomPays(p)) + "</span><b>" + pct + ' %</b></span><span class="wm-bar"><i style="width:' + pct + "%;background:" + (connu ? couleurRang(rang) : "var(--wm-off-2)") + '"></i></span><small>' + nf(valeur(p), m.format_ca) + "</small></button></li>";
+            }).join("") || '<li class="wm-vide">Aucune donnée.</li>';
+        }
+
+        function detail(titre, sous, html) {
+            document.getElementById("wm-detail-titre").textContent = titre;
+            document.getElementById("wm-detail-sub").textContent = sous;
+            document.getElementById("wm-detail-body").innerHTML = html;
+        }
+        function selectionnerPays(p) {
+            var villes = (donnees.villes || []).filter(function (v) { return v.pays === p.nom && valeur(v) > 0; }).sort(function (a, b) { return valeur(b) - valeur(a); });
+            detail(drapeau(p.iso2) + " " + nomPays(p), rangs[p.nom] ? "N° " + rangs[p.nom] + " · " + mesureInfo().label : "Pays", lignesTotaux(p) +
+                (villes.length ? '<div class="wm-sous">Villes</div>' + villes.slice(0, 6).map(function (v) { return '<div class="wm-kv"><span>' + esc(v.nom) + "</span><b>" + nf(valeur(v), mesureInfo().format_ca) + "</b></div>"; }).join("") : ""));
+            Object.keys(elsPays).forEach(function (iso) { elsPays[iso].classList.toggle("sel", (p.iso2 || "").toLowerCase() === iso); });
+        }
+        function selectionnerVille(v) {
+            detail(drapeau(paysIsoDe(v.pays)) + " " + v.nom, (v.region ? v.region + ", " : "") + v.pays, lignesTotaux(v));
+        }
+
+        function rendreTable() {
+            var wrap = document.getElementById("wm-table-wrap"), ms = mesuresUtiles();
+            var lignes = (donnees.villes || []).filter(function (v) { return ms.some(function (m) { return (v.totaux || {})[m.cle]; }); });
+            if (!lignes.length) { wrap.innerHTML = '<p class="wm-vide">Aucune ville renseignée pour le moment.</p>'; return; }
+            var h = '<table class="crud-table" data-page-size="10" data-tabs="off"><thead><tr><th>Ville</th><th>Pays</th>' +
+                ms.map(function (m) { return "<th data-no-filter>" + esc(m.label) + "</th>"; }).join("") + "</tr></thead><tbody>";
+            lignes.sort(function (a, b) { return valeur(b) - valeur(a); }).forEach(function (v) {
+                h += '<tr><td><span class="row-name">' + esc(v.nom) + '</span></td><td class="wm-nowrap">' + drapeau(paysIsoDe(v.pays)) + " " + esc(v.pays === "Inconnu" ? "Non précisé" : v.pays) + "</td>" +
+                    ms.map(function (m) { return "<td>" + nf((v.totaux || {})[m.cle], m.format_ca) + "</td>"; }).join("") + "</tr>";
+            });
+            wrap.innerHTML = h + "</tbody></table>";
+            if (window.UiTable) window.UiTable.init(wrap);
+        }
+
+        function tout() { rendreMesures(); rendreCarte(); rendreClassement(); }
+
+        function charger() {
+            var loader = document.getElementById("wm-loader");
+            loader.hidden = false;
+            fetch(URL + "?mode=" + encodeURIComponent(mode), { headers: { Accept: "application/json" } })
+                .then(function (r) { return r.json(); })
+                .then(function (d) { donnees = d; tout(); rendreTable(); loader.hidden = true; })
+                .catch(function () { loader.innerHTML = "Impossible de charger les données."; });
+        }
+
+        document.getElementById("wm-mesures").addEventListener("click", function (e) {
+            var b = e.target.closest("[data-mesure]"); if (!b) return;
+            mesure = b.getAttribute("data-mesure"); tout();
+        });
+        document.getElementById("wm-modes").addEventListener("click", function (e) {
+            var b = e.target.closest("[data-mode]"); if (!b) return;
+            mode = b.getAttribute("data-mode");
+            Array.prototype.forEach.call(this.children, function (x) { x.classList.toggle("on", x === b); });
+            charger();
+        });
+        document.getElementById("wm-top").addEventListener("click", function (e) {
+            var b = e.target.closest("[data-pays]"); if (!b) return;
+            var p = (donnees.pays || []).filter(function (x) { return x.nom === b.getAttribute("data-pays"); })[0];
+            if (p) selectionnerPays(p);
+        });
+        document.getElementById("wm-refresh").onclick = charger;
+        charger();
+    })();
     </script>
 {% endblock %}

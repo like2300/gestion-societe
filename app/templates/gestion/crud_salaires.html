@@ -28,6 +28,15 @@
         </div>
     </div>
 
+    {% include "gestion/components/espace_dossiers.html" %}
+    {% include "gestion/components/stat_row.html" with cartes=stats_cartes %}
+
+    {% if not lecture_seule %}
+        {% url 'gestion:salaires_a_payer' as apayer_url %}
+        {% include "gestion/components/apayer_panel.html" with url=apayer_url titre="Employés à payer" phrase="{n} employé(s) restent à payer pour {mois}." phrase_vide="Tous les salaires de {mois} sont réglés." vide="Aucun salaire en attente pour ce mois." bouton="Payer" hint="À générer" lbl_nb="Employés" lbl_total="Reste à payer" lbl_autre="Sans fiche" %}
+    {% endif %}
+
+
     <div class="panel sal-toolbar">
         <div class="sal-search">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -36,7 +45,10 @@
                 <path d="m21 21-4.35-4.35" />
             </svg>
             <input type="search" id="salaires-search" placeholder="Rechercher un employé, une fonction, une période…"
-                autocomplete="off" aria-label="Recherche instantanée" />
+                autocomplete="off" aria-label="Recherche instantanée" role="combobox" aria-autocomplete="list"
+                aria-expanded="false" aria-controls="sal-sugg" />
+            <kbd class="sal-kbd" aria-hidden="true">/</kbd>
+            <ul class="sal-sugg" id="sal-sugg" role="listbox" hidden></ul>
         </div>
         <div class="sal-filters" id="salaires-filtre" role="group" aria-label="Filtrer par statut">
             <button type="button" class="sfilter on" data-filtre="tous">Tous <span class="cnt">({{ count }})</span></button>
@@ -47,7 +59,7 @@
 
     <div class="panel">
         {% if items %}
-            <table class="crud-table">
+            <table class="crud-table" data-ui-search="off" data-tabs="off">
                 <thead>
                     <tr>
                         {% for col in columns %}
@@ -377,69 +389,205 @@
             }
 
             // ------------------------------------------------------------------
-            // Recherche instantanée + filtres Payés / Non payés
+            // Recherche instantanée (sans accents, multi-mots) + suggestions
             // ------------------------------------------------------------------
+            var table = document.querySelector("table.crud-table");
             var rows = Array.prototype.slice.call(document.querySelectorAll("table.crud-table tbody tr"));
             var searchInput = document.getElementById("salaires-search");
+            var sugg = document.getElementById("sal-sugg");
             var filterWrap = document.getElementById("salaires-filtre");
             var emptyMsg = document.getElementById("salaires-empty");
-            var PAGE_SIZE = 15;
-            var visibleCount = PAGE_SIZE;
+            var moreWrap = document.getElementById("salaires-more");
+            if (moreWrap) moreWrap.hidden = true;
 
-            function rowText(row) {
-                return (row.getAttribute("data-search") || row.textContent).toLowerCase();
+            function norm(t) {
+                return String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
             }
-            function rowPaye(row) {
-                return row.getAttribute("data-paye") === "1";
+            function esc(t) {
+                return String(t == null ? "" : t).replace(/[&<>"']/g, function (c) {
+                    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+                });
+            }
+            function surligne(texte, mots) {
+                var t = String(texte || ""), n = norm(t), marques = [];
+                mots.forEach(function (m) {
+                    if (!m) return;
+                    var i = n.indexOf(m);
+                    if (i !== -1) marques.push([i, i + m.length]);
+                });
+                if (!marques.length) return esc(t);
+                marques.sort(function (x, y) { return x[0] - y[0]; });
+                var out = "", pos = 0;
+                marques.forEach(function (m) {
+                    if (m[0] < pos) return;
+                    out += esc(t.slice(pos, m[0])) + "<mark>" + esc(t.slice(m[0], m[1])) + "</mark>";
+                    pos = m[1];
+                });
+                return out + esc(t.slice(pos));
+            }
+            rows.forEach(function (r) { r.__q = norm(r.getAttribute("data-search") || r.textContent); });
+
+            function mots() {
+                return norm(searchInput && searchInput.value).trim().split(/\s+/).filter(Boolean);
             }
             function currentFilter() {
                 var active = filterWrap ? filterWrap.querySelector(".sfilter.on") : null;
                 return active ? active.getAttribute("data-filtre") : "tous";
             }
             function applyFilters() {
-                var q = (searchInput && searchInput.value || "").trim().toLowerCase();
-                var filtre = currentFilter();
-                var shown = 0;
-                for (var i = 0; i < rows.length; i++) {
-                    var row = rows[i];
-                    var okText = !q || rowText(row).indexOf(q) !== -1;
-                    var okFiltre = filtre === "tous"
-                        || (filtre === "payes" && rowPaye(row))
-                        || (filtre === "non_payes" && !rowPaye(row));
-                    var ok = okText && okFiltre;
-                    row.hidden = !ok || shown >= visibleCount;
+                var m = mots(), filtre = currentFilter(), shown = 0;
+                rows.forEach(function (row) {
+                    var paye = row.getAttribute("data-paye") === "1";
+                    var okTexte = m.every(function (w) { return row.__q.indexOf(w) !== -1; });
+                    var okFiltre = filtre === "tous" || (filtre === "payes" && paye) || (filtre === "non_payes" && !paye);
+                    row.hidden = !(okTexte && okFiltre);
                     if (!row.hidden) shown++;
+                });
+                if (emptyMsg) emptyMsg.hidden = shown !== 0 || !rows.length;
+                if (table && table.__uiTable) { table.__uiTable.page = 1; table.__uiTable.rendre(); }
+            }
+
+            // ---- Index des suggestions (employés, périodes, statuts) ----
+            var EMP = {}, PER = {}, STA = {};
+            ITEMS.forEach(function (it) {
+                if (it.employe_pk != null) {
+                    var e = EMP[it.employe_pk] || (EMP[it.employe_pk] = {
+                        nom: it.employe_nom, fonction: it.fonction || "", n: 0, impayes: 0
+                    });
+                    e.n++; if (!it.paye) e.impayes++;
                 }
-                if (emptyMsg) emptyMsg.hidden = shown !== 0;
-                var more = document.getElementById("salaires-more");
-                if (more) more.hidden = shown < visibleCount;
+                if (it.periode) {
+                    var p = PER[it.periode] || (PER[it.periode] = { label: it.periode_label, n: 0, impayes: 0 });
+                    p.n++; if (!it.paye) p.impayes++;
+                }
+                if (it.statut_label) STA[it.statut_label] = (STA[it.statut_label] || 0) + 1;
+            });
+            var actif = -1, options = [];
+
+            function couleur(nom) {
+                var h = 0; for (var i = 0; i < nom.length; i++) h = (h * 31 + nom.charCodeAt(i)) % 360;
+                return "hsl(" + h + " 62% 48%)";
+            }
+            function initiales(nom) {
+                return String(nom || "?").split(/\s+/).filter(Boolean).slice(0, 2).map(function (x) { return x[0]; }).join("").toUpperCase();
+            }
+            function fermerSugg() {
+                if (!sugg) return;
+                sugg.hidden = true; actif = -1;
+                searchInput.setAttribute("aria-expanded", "false");
+            }
+            function rendreSugg() {
+                if (!sugg) return;
+                var m = mots();
+                options = [];
+                var html = "";
+                function groupe(titre, items) {
+                    if (!items.length) return;
+                    html += '<li class="sal-sugg-groupe" role="presentation">' + titre + "</li>";
+                    items.forEach(function (o) {
+                        var idx = options.length; options.push(o);
+                        html += '<li class="sal-sugg-opt" role="option" id="sal-opt-' + idx + '" data-idx="' + idx + '">' + o.html + "</li>";
+                    });
+                }
+                var emps = Object.keys(EMP).map(function (k) { return EMP[k]; }).filter(function (e) {
+                    var q = norm(e.nom + " " + e.fonction);
+                    return m.every(function (w) { return q.indexOf(w) !== -1; });
+                }).sort(function (a, b) { return b.impayes - a.impayes || a.nom.localeCompare(b.nom, "fr"); }).slice(0, m.length ? 6 : 5);
+                groupe(m.length ? "Employés" : "Employés avec salaires en attente", emps.map(function (e) {
+                    return {
+                        valeur: e.nom,
+                        html: '<span class="sal-av" style="background:' + couleur(e.nom) + '">' + esc(initiales(e.nom)) + "</span>" +
+                            '<span class="sal-sugg-txt"><b>' + surligne(e.nom, m) + "</b><small>" +
+                            (e.fonction ? surligne(e.fonction, m) + " · " : "") + e.n + " fiche(s)</small></span>" +
+                            (e.impayes ? '<span class="sal-sugg-tag att">' + e.impayes + " à payer</span>" : '<span class="sal-sugg-tag ok">À jour</span>')
+                    };
+                }));
+                if (m.length) {
+                    var pers = Object.keys(PER).filter(function (k) {
+                        var q = norm(k + " " + PER[k].label);
+                        return m.every(function (w) { return q.indexOf(w) !== -1; });
+                    }).sort().reverse().slice(0, 4);
+                    groupe("Périodes", pers.map(function (k) {
+                        var p = PER[k];
+                        return {
+                            valeur: k,
+                            html: '<span class="sal-sugg-ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span>' +
+                                '<span class="sal-sugg-txt"><b>' + surligne(p.label, m) + "</b><small>" + p.n + " salaire(s)</small></span>" +
+                                (p.impayes ? '<span class="sal-sugg-tag att">' + p.impayes + " à payer</span>" : "")
+                        };
+                    }));
+                    var stas = Object.keys(STA).filter(function (k) {
+                        return m.every(function (w) { return norm(k).indexOf(w) !== -1; });
+                    });
+                    groupe("Statuts", stas.map(function (k) {
+                        return {
+                            valeur: k,
+                            html: '<span class="sal-sugg-ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>' +
+                                '<span class="sal-sugg-txt"><b>' + surligne(k, m) + "</b><small>" + STA[k] + " salaire(s)</small></span>"
+                        };
+                    }));
+                }
+                if (!options.length) {
+                    html = m.length ? '<li class="sal-sugg-vide">Aucune suggestion pour « ' + esc(searchInput.value) + " »</li>" : "";
+                }
+                sugg.innerHTML = html;
+                sugg.hidden = !html;
+                searchInput.setAttribute("aria-expanded", html ? "true" : "false");
+                actif = -1;
+            }
+            function choisir(i) {
+                var o = options[i]; if (!o) return;
+                searchInput.value = o.valeur;
+                applyFilters();
+                fermerSugg();
+                searchInput.focus();
+            }
+            function surbrillance(i) {
+                var opts = sugg.querySelectorAll(".sal-sugg-opt");
+                if (!opts.length) return;
+                actif = (i + opts.length) % opts.length;
+                opts.forEach(function (o, k) { o.classList.toggle("on", k === actif); });
+                searchInput.setAttribute("aria-activedescendant", "sal-opt-" + actif);
+                opts[actif].scrollIntoView({ block: "nearest" });
             }
 
             if (searchInput) {
-                searchInput.addEventListener("input", function () {
-                    visibleCount = PAGE_SIZE;
-                    applyFilters();
+                searchInput.addEventListener("input", function () { applyFilters(); rendreSugg(); });
+                searchInput.addEventListener("focus", rendreSugg);
+                searchInput.addEventListener("keydown", function (e) {
+                    if (e.key === "ArrowDown") { e.preventDefault(); if (sugg.hidden) rendreSugg(); surbrillance(actif + 1); }
+                    else if (e.key === "ArrowUp") { e.preventDefault(); surbrillance(actif - 1); }
+                    else if (e.key === "Enter") { e.preventDefault(); if (actif >= 0) choisir(actif); else fermerSugg(); }
+                    else if (e.key === "Escape") {
+                        if (!sugg.hidden) fermerSugg(); else { searchInput.value = ""; applyFilters(); }
+                    }
+                });
+                sugg.addEventListener("mousedown", function (e) {
+                    var li = e.target.closest(".sal-sugg-opt");
+                    if (li) { e.preventDefault(); choisir(+li.getAttribute("data-idx")); }
+                });
+                document.addEventListener("click", function (e) {
+                    if (!e.target.closest(".sal-search")) fermerSugg();
+                });
+                // Raccourci « / » pour rechercher
+                document.addEventListener("keydown", function (e) {
+                    if (e.key === "/" && !/input|textarea|select/i.test((document.activeElement || {}).tagName || "")) {
+                        e.preventDefault(); searchInput.focus();
+                    }
                 });
             }
             if (filterWrap) {
                 filterWrap.addEventListener("click", function (ev) {
                     var btn = ev.target.closest(".sfilter");
                     if (!btn) return;
-                    var all = filterWrap.querySelectorAll(".sfilter");
-                    for (var i = 0; i < all.length; i++) all[i].classList.remove("on");
+                    filterWrap.querySelectorAll(".sfilter").forEach(function (b) { b.classList.remove("on"); });
                     btn.classList.add("on");
-                    visibleCount = PAGE_SIZE;
                     applyFilters();
                 });
             }
-            var moreBtn = document.getElementById("salaires-more");
-            if (moreBtn) {
-                moreBtn.addEventListener("click", function () {
-                    visibleCount += PAGE_SIZE;
-                    applyFilters();
-                });
-            }
-            applyFilters();
+            // ui-table.js s'initialise au chargement : on applique après lui.
+            setTimeout(applyFilters, 0);
+
         })();
     </script>
     <style>

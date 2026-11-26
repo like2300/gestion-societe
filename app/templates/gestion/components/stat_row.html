@@ -1,0 +1,13 @@
+{% comment %}
+Rangée de cartes statistiques (style tableau de bord : valeur, tendance, mini-courbe).
+Usage : {% include "gestion/components/stat_row.html" with cartes=stats_cartes %}
+`cartes` : liste de dicts produite par gestion/stats.py (label, value, icon, tone,
+series, trend, trend_dir, note, uid, value_class).
+{% endcomment %}
+{% if cartes %}
+<section class="ui-grid-4 ui-stat-row">
+    {% for c in cartes %}
+        {% include "gestion/components/stat_card.html" with label=c.label value=c.value icon=c.icon series=c.series trend=c.trend trend_dir=c.trend_dir note=c.note uid=c.uid tone=c.tone value_class=c.value_class href=None %}
+    {% endfor %}
+</section>
+{% endif %}

@@ -1,0 +1,5 @@
+Univer (https://github.com/dream-num/univer) — licence Apache-2.0 (voir LICENSE-univer.txt).
+Paquets : @univerjs/presets, @univerjs/preset-sheets-core, @univerjs/preset-docs-core,
+@univerjs/preset-sheets-drawing, @univerjs/preset-docs-drawing 1.1.0 (images)
+(+ react 18, react-dom 18, rxjs), empaquetés en un seul fichier (esbuild, format IIFE, minifié).
+API exposée : window.UniverOffice.tableur({...}) et window.UniverOffice.document({...}).

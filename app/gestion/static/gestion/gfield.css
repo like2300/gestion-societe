@@ -1,0 +1,97 @@
+/* =====================================================================
+   gfield.css — Champ de saisie « style Google » (style par défaut de l'app)
+   Contour arrondi + libellé flottant. Autonome : utilisable sur les pages
+   d'authentification (Tailwind) comme dans le tableau de bord.
+   Markup :
+     <div class="gfx">
+       <input class="gfx-input" placeholder=" " id="x" …>
+       <label for="x">Libellé <span class="req">*</span></label>
+       <p class="gfx-help">Aide</p>
+     </div>
+   Couleur : --gfx-accent (sinon --accent, sinon bleu par défaut).
+   ===================================================================== */
+.gfx {
+    --gfx-c: var(--gfx-accent, var(--accent, var(--color-brand-primary, #0284c7)));
+    --gfx-bord: var(--gfx-border, #c4c9d2);
+    --gfx-fond: var(--gfx-bg, #ffffff);
+    --gfx-texte: var(--gfx-text, #0f172a);
+    --gfx-muet: var(--gfx-muted, #5f6b7a);
+    position: relative;
+    width: 100%;
+}
+.gfx .gfx-input {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    height: 56px;
+    padding: 22px 14px 6px;
+    border: 1px solid var(--gfx-bord);
+    border-radius: 12px;
+    background: var(--gfx-fond);
+    color: var(--gfx-texte);
+    font: inherit;
+    font-size: 0.95rem;
+    outline: none;
+    box-shadow: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    -webkit-appearance: none;
+    appearance: none;
+}
+.gfx textarea.gfx-input { height: auto; min-height: 110px; padding-top: 26px; line-height: 1.55; resize: vertical; }
+.gfx select.gfx-input {
+    padding-right: 38px; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 14px center;
+}
+.gfx .gfx-input:hover { border-color: color-mix(in srgb, var(--gfx-texte) 45%, var(--gfx-bord)); }
+.gfx .gfx-input:focus {
+    border-color: var(--gfx-c);
+    box-shadow: 0 0 0 1px var(--gfx-c), 0 0 0 5px color-mix(in srgb, var(--gfx-c) 13%, transparent);
+}
+.gfx .gfx-input::placeholder { color: transparent; }
+.gfx > label {
+    position: absolute;
+    left: 14px;
+    top: 18px;
+    margin: 0;
+    max-width: calc(100% - 44px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--gfx-muet);
+    pointer-events: none;
+    transform-origin: left top;
+    transition: transform 0.16s ease, top 0.16s ease, color 0.16s ease;
+}
+.gfx > label .req { color: #e11d48; }
+.gfx .gfx-input:focus + label,
+.gfx .gfx-input:not(:placeholder-shown) + label,
+.gfx.gfx-fixe > label,
+.gfx select.gfx-input + label,
+.gfx textarea.gfx-input + label { top: 8px; transform: scale(0.76); }
+.gfx .gfx-input:focus + label { color: var(--gfx-c); }
+.gfx .gfx-input:-webkit-autofill + label { top: 8px; transform: scale(0.76); }
+.gfx .gfx-input:-webkit-autofill { -webkit-box-shadow: 0 0 0 40px var(--gfx-fond) inset; -webkit-text-fill-color: var(--gfx-texte); }
+
+/* Mot de passe : bouton afficher/masquer à droite */
+.gfx .gfx-oeil {
+    position: absolute; right: 8px; top: 28px; transform: translateY(-50%);
+    width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+    border: 0; border-radius: 10px; background: transparent; color: var(--gfx-muet); cursor: pointer;
+}
+.gfx .gfx-oeil:hover { background: color-mix(in srgb, var(--gfx-c) 10%, transparent); color: var(--gfx-c); }
+.gfx .gfx-oeil svg { width: 18px; height: 18px; fill: currentColor; }
+.gfx.gfx-mdp .gfx-input { padding-right: 50px; }
+
+/* Aide & erreurs */
+.gfx-help, .gfx-err { margin: 0.4rem 0 0 14px; font-size: 0.75rem; line-height: 1.4; color: var(--gfx-muet); }
+.gfx-err { color: #e11d48; font-weight: 500; }
+.gfx .gfx-input.input-invalid, .gfx.has-err .gfx-input { border-color: #e11d48 !important; }
+.gfx .gfx-input.input-invalid + label, .gfx.has-err > label { color: #e11d48; }
+.gfx .gfx-input.input-invalid:focus { box-shadow: 0 0 0 1px #e11d48, 0 0 0 5px rgba(225, 29, 72, 0.12); }
+
+/* Thème sombre du tableau de bord */
+html[data-theme="dark"] .gfx { --gfx-border: #334155; --gfx-bg: #0f172a; --gfx-text: #e2e8f0; --gfx-muted: #94a3b8; }
+.gfx .gfx-oeil svg[fill="none"] { fill: none; }

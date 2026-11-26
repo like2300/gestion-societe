@@ -43,28 +43,52 @@
             color: #94a3b8;
             font-weight: 500;
         }
-        .perm-list {
-            display: grid;
-            gap: 0.4rem;
-        }
-        .perm-item {
-            display: flex;
-            align-items: center;
-            gap: 0.65rem;
-            padding: 0.5rem 0.7rem;
-            border-radius: 0.55rem;
-            cursor: pointer;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            transition: border-color 0.15s ease;
-        }
-        .perm-item:hover {
-            border-color: var(--accent);
-        }
-        .perm-lbl {
-            font-weight: 500;
-            color: #0f172a;
-        }
+        /* ---- Tiroir « Accès de l'employé » ---- */
+        .pm-tete { display: flex; align-items: center; gap: .8rem; padding: .9rem 1rem; border-radius: 16px;
+            background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, var(--ui-card, #fff)), var(--ui-card, #fff));
+            border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--ui-border, #e2e8f0)); }
+        .pm-av { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; flex: none;
+            background: var(--accent); color: #fff; font-weight: 800; font-size: .95rem; letter-spacing: .02em; }
+        .pm-tete-txt { display: flex; flex-direction: column; min-width: 0; }
+        .pm-tete-txt b { font-size: 1rem; color: var(--ui-text, #0f172a); }
+        .pm-tete-txt small { font-size: .78rem; color: var(--ui-muted, #64748b); }
+        .pm-aide { display: flex; flex-wrap: wrap; gap: .4rem 1rem; margin: .8rem .2rem .2rem; font-size: .74rem; color: var(--ui-muted, #64748b); }
+        .pm-aide span { display: inline-flex; align-items: center; gap: .35rem; }
+        .pm-pt { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .pm-pt.lecture { background: #f59e0b; }
+        .pm-pt.ecriture { background: var(--accent); }
+        .pm-raccourcis { display: flex; flex-wrap: wrap; gap: .4rem; margin: .7rem 0 .2rem; }
+        .pm-raccourcis button { height: 30px; padding: 0 .7rem; border-radius: 999px; border: 1px solid var(--ui-border, #e2e8f0);
+            background: var(--ui-card, #fff); color: var(--ui-text, #0f172a); font-size: .74rem; font-weight: 600; cursor: pointer; }
+        .pm-raccourcis button:hover { border-color: var(--accent); color: var(--accent); }
+        .pm-cat { display: flex; flex-direction: column; gap: .35rem; }
+        .pm-cat-titre { margin: .9rem 0 .15rem; font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ui-faint, #94a3b8); }
+        .perm-list { display: flex; flex-direction: column; margin-top: .3rem; }
+        .perm-ligne { display: flex; align-items: center; justify-content: space-between; gap: .6rem;
+            padding: .5rem .55rem .5rem .75rem; border-radius: 13px; border: 1px solid var(--ui-border, #e2e8f0);
+            background: var(--ui-card, #fff); transition: border-color .15s, background .15s; }
+        .perm-ligne:has(.perm-switch:checked) { border-color: color-mix(in srgb, var(--accent) 35%, var(--ui-border, #e2e8f0));
+            background: color-mix(in srgb, var(--accent) 4%, var(--ui-card, #fff)); }
+        .perm-ligne:has(.perm-switch:checked):has(.perm-niveau input[value="lecture"]:checked) {
+            border-color: color-mix(in srgb, #f59e0b 45%, var(--ui-border, #e2e8f0));
+            background: color-mix(in srgb, #f59e0b 5%, var(--ui-card, #fff)); }
+        .perm-ligne .perm-item { flex: 1 1 auto; min-width: 0; padding: 0; border: 0; background: none; }
+        .perm-niveau { display: inline-flex; flex: none; gap: 2px; padding: 3px; border-radius: 10px; background: var(--ui-card-2, #f1f5f9); font-size: .72rem; }
+        .perm-niveau label { display: inline-flex; align-items: center; padding: .28rem .6rem; border-radius: 8px; cursor: pointer; color: var(--ui-muted, #64748b); font-weight: 600; }
+        .perm-niveau label:has(input[value="ecriture"]:checked) { background: var(--accent); color: #fff; }
+        .perm-niveau label:has(input[value="lecture"]:checked) { background: #f59e0b; color: #fff; }
+        .perm-niveau input { position: absolute; opacity: 0; pointer-events: none; }
+        .perm-niveau.off { opacity: 0; pointer-events: none; }
+        .perm-item { display: flex; align-items: center; gap: 0.65rem; cursor: pointer; }
+        .perm-lbl { font-weight: 600; font-size: .86rem; color: var(--ui-text, #0f172a); }
+        @media (max-width: 480px) { .perm-ligne { flex-wrap: wrap; } .perm-niveau { margin-left: 2.7rem; } }
+        /* Interrupteur : un style global des cases à cocher (16 px) écrasait sa taille */
+        #dash .perm-ligne input.perm-switch { width: 2.3rem !important; height: 1.3rem !important; min-width: 2.3rem; border: 0 !important;
+            border-radius: 999px !important; background: #cbd5e1 !important; box-shadow: none !important; }
+        #dash .perm-ligne input.perm-switch:checked { background: var(--accent) !important; }
+        #dash .perm-ligne input.perm-switch::before { display: none !important; }
+        #dash .perm-ligne input.perm-switch::after { width: .95rem; height: .95rem; top: .175rem; left: .2rem; }
+        #dash .perm-ligne input.perm-switch:checked::after { transform: translateX(.95rem); }
         .perm-switch {
             appearance: none;
             -webkit-appearance: none;
@@ -90,13 +114,9 @@
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
             transition: transform 0.2s ease;
         }
-        .perm-switch:checked {
-            background: var(--accent);
-        }
-        .perm-switch:checked::after {
-            transform: translateX(0.9rem);
-        }
-        @media (prefers-color-scheme: dark) {
+        .perm-switch:checked { background: var(--accent); }
+        .perm-switch:checked::after { transform: translateX(0.9rem); }
+        html[data-theme="dark"] {
             .perm-item {
                 background: #0f172a;
                 border-color: #334155;
@@ -444,7 +464,7 @@
         .chat-foot .chat-time {
             margin-top: 0;
         }
-        @media (prefers-color-scheme: dark) {
+        html[data-theme="dark"] {
             .chat-attach {
                 border-color: #334155;
                 color: #94a3b8;
@@ -454,7 +474,7 @@
                 color: #94a3b8;
             }
         }
-        @media (prefers-color-scheme: dark) {
+        html[data-theme="dark"] {
             .chat-msgs {
                 background: #0f172a;
             }
@@ -535,7 +555,7 @@
             color: var(--accent);
             background: var(--accent-soft);
         }
-        @media (prefers-color-scheme: dark) {
+        html[data-theme="dark"] {
             .chip {
                 background: #0f172a;
                 border-color: #334155;
@@ -709,7 +729,7 @@
         .meet-actions form {
             display: inline;
         }
-        @media (prefers-color-scheme: dark) {
+        html[data-theme="dark"] {
             .meet-toggle,
             .meet-card {
                 background: #1e293b;
@@ -838,7 +858,11 @@
         {% endif %}
     </div>
 
-    {% include "gestion/snippets/onglets_employes.html" with onglet_employes="liste" %}
+
+
+    {% include "gestion/components/espace_dossiers.html" %}
+
+    {% include "gestion/components/stat_row.html" with cartes=stats_cartes %}
 
     <div class="grouplist">
             <span class="grouplist-label">Groupes&nbsp;:</span>
@@ -860,7 +884,7 @@
                     {% if g.nb_messages %}<span class="chat-badge" data-g-badge>{{ g.nb_messages }}</span>{% endif %}
                 </button>
             {% endfor %}
-            {% if est_createur %}
+            {% if peut_creer_groupe %}
             <button type="button" class="chip new" data-groupe-new>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                     stroke-width="2.4" stroke-linecap="round">
@@ -880,7 +904,7 @@
                         <th>Contact</th>
                         <th>Fonction</th>
                         <th>Contrat</th>
-                        <th>Salaire</th>
+                        {% if voit_salaires %}<th>Salaire</th>{% endif %}
                         <th>Statut</th>
                         <th style="text-align:right">Actions</th>
                     </tr>
@@ -924,9 +948,9 @@
                                     <span class="row-muted"> {{ item.contrat_code }}</span>
                                 {% endif %}
                             </td>
-                            <td>
+                            {% if voit_salaires %}<td>
                                 {% if item.salaire %}<span class="row-name">{{ item.salaire }}</span>{% else %}<span class="row-muted">—</span>{% endif %}
-                            </td>
+                            </td>{% endif %}
                             <td><span class="badge-status {{ item.statut }}">{{ item.statut }}</span></td>
                             <td>
                                 <div class="acts">
@@ -951,16 +975,15 @@
                                         {% if item.n_messages %}<span class="chat-badge">{{ item.n_messages }}</span>{% endif %}
                                     </button>
                                     {% if est_createur %}
-                                    {% if item.contrat_statut == "SANS" %}
-                                        <button type="button" class="act edit" data-crud-contract="{{ forloop.counter0 }}"
-                                            aria-label="Créer un contrat" title="Créer un contrat">
+                                        <a class="act edit" href="{{ item.contrat_url }}" target="_blank" rel="noopener"
+                                            aria-label="Imprimer le contrat de travail" title="Imprimer le contrat de travail">
                                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                                 stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z" />
-                                                <path d="M14 2v6h6M12 18v-6M9 15h6" />
+                                                <path d="M6 9V2h12v7" />
+                                                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                                                <rect x="6" y="14" width="12" height="8" rx="1" />
                                             </svg>
-                                        </button>
-                                    {% endif %}
+                                        </a>
                                     <button type="button" class="act edit" data-crud-perm="{{ forloop.counter0 }}"
                                         aria-label="Permissions" title="Permissions">
                                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1033,7 +1056,8 @@
         {% endif %}
     </div>
 
-    <div class="panel meet-panel" style="margin-top:1rem">
+    {% if module_reunions %}
+    <div class="panel meet-panel" style="margin-top:1rem" id="reunions">
         <button type="button" class="meet-toggle" data-meet-toggle>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
                 stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);flex:none">
@@ -1132,6 +1156,7 @@
             {% endif %}
         </div>
     </div>
+    {% endif %}
 {% endblock content %}
 
 {% block drawer %}
@@ -1155,7 +1180,10 @@
                 {% include "gestion/snippets/drawer_field.html" with field=form.nom %}
                 {% include "gestion/snippets/drawer_field.html" with field=form.prenom %}
                 {% include "gestion/snippets/drawer_field.html" with field=form.date_naissance %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.lieu_naissance %}
                 {% include "gestion/snippets/drawer_field.html" with field=form.nationalite %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.numero_piece_identite %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.adresse span=True %}
                 {% include "gestion/snippets/drawer_field.html" with field=form.telephone_1 %}
                 {% include "gestion/snippets/drawer_field.html" with field=form.telephone_2 %}
                 {% include "gestion/snippets/drawer_field.html" with field=form.email span=True %}
@@ -1164,7 +1192,27 @@
                 {% include "gestion/snippets/drawer_field.html" with field=form.statut %}
                 {% include "gestion/snippets/drawer_field.html" with field=form.date_recrutement %}
                 {% include "gestion/snippets/drawer_field.html" with field=form.jour_paiement %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.document span=True %}
             </div>
+            <h3 class="emp-sec-titre">Contrat de travail <small>généré automatiquement — imprimable depuis le tableau</small></h3>
+            <div class="fgrid">
+                {% include "gestion/snippets/drawer_field.html" with field=form.contrat_type %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.contrat_salaire %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.contrat_date_debut %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.contrat_date_fin %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.contrat_heures_hebdo %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.contrat_periode_essai %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.contrat_lieu_travail span=True %}
+                {% include "gestion/snippets/drawer_field.html" with field=form.contrat_missions span=True %}
+            </div>
+            {% if mdp_defaut_employe %}
+            <div id="mdp-defaut-info" style="margin:14px 0 4px;padding:12px 14px;border:1px solid #c7d2fe;background:#eef2ff;border-radius:8px;font-size:13px;line-height:1.5;color:#3730a3;">
+                <strong>Compte de connexion automatique.</strong>
+                L'employé se connecte avec son e-mail et le mot de passe par défaut
+                <code style="background:#fff;padding:1px 6px;border-radius:4px;">{{ mdp_defaut_employe }}</code>.
+                À sa première connexion, une fenêtre l'invitera à définir son mot de passe personnel.
+            </div>
+            {% endif %}
             <div class="factions">
                 <button type="button" class="btn-ghost" data-drawer-close>Annuler</button>
                 <button type="submit" class="btn-primary" id="submit-btn">Enregistrer</button>
@@ -1207,14 +1255,42 @@
         <form method="post" action="{% url 'gestion:employes' %}" id="perm-form" hidden>
             {% csrf_token %}
             <input type="hidden" name="perm_employee_id" id="perm-employee-id" value="" />
-            <p class="del-text">Permissions de <span id="perm-name"></span></p>
-            <p class="del-warn">Activez les modules visibles dans la barre latérale de cet employé.</p>
-            <div class="perm-list" style="margin-top:0.9rem">
-                {% for m in perm_modules %}
-                    <label class="perm-item">
-                        <input type="checkbox" name="perm_{{ m.key }}" data-perm-cb="{{ m.key }}" class="perm-switch" />
-                        <span class="perm-lbl">{{ m.nom }}</span>
-                    </label>
+            <div class="pm-tete">
+                <span class="pm-av" id="perm-av">?</span>
+                <div class="pm-tete-txt">
+                    <b id="perm-name"></b>
+                    <small id="perm-resume">Aucun module</small>
+                </div>
+            </div>
+            <div class="pm-aide">
+                <span><i class="pm-pt lecture"></i><b>Lecture</b> : consulter seulement</span>
+                <span><i class="pm-pt ecriture"></i><b>Modification</b> : créer, modifier, supprimer</span>
+            </div>
+            <div class="pm-raccourcis" role="group" aria-label="Raccourcis">
+                <button type="button" data-pm-tout="lecture">Tout en lecture</button>
+                <button type="button" data-pm-tout="ecriture">Tout en modification</button>
+                <button type="button" data-pm-tout="aucun">Tout désactiver</button>
+            </div>
+            <div class="perm-list">
+                {% regroup perm_modules by cat as categories %}
+                {% for cat in categories %}
+                <section class="pm-cat">
+                    <h4 class="pm-cat-titre">{{ cat.grouper }}</h4>
+                    {% for m in cat.list %}
+                    <div class="perm-ligne">
+                        <label class="perm-item">
+                            <input type="checkbox" name="perm_{{ m.key }}" data-perm-cb="{{ m.key }}" class="perm-switch" />
+                            <span class="perm-lbl">{{ m.nom }}</span>
+                        </label>
+                        {% if m.key != "dashboard" and m.key != "groupes" %}
+                        <span class="perm-niveau" data-perm-niveau="{{ m.key }}" role="radiogroup" aria-label="Niveau d'accès : {{ m.nom }}">
+                            <label><input type="radio" name="niveau_{{ m.key }}" value="lecture" /> Lecture</label>
+                            <label><input type="radio" name="niveau_{{ m.key }}" value="ecriture" checked /> Modification</label>
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </section>
                 {% endfor %}
             </div>
             <div class="factions">
@@ -1223,23 +1299,18 @@
             </div>
         </form>
 
-        <form method="post" id="groupe-form" hidden>
+        <form method="post" id="groupe-form" class="wa-form" hidden>
             {% csrf_token %}
-            <p class="del-text">Nouveau groupe de discussion</p>
-            <p class="del-warn">Donnez un titre au groupe et sélectionnez les employés membres.</p>
-            <div class="ffield" style="margin-top:0.8rem">
-                <label for="groupe-titre">Titre du groupe <span class="req">*</span></label>
-                <input type="text" id="groupe-titre" maxlength="120"
-                    placeholder="Ex : Direction, Équipe projet…" />
+            <div class="wa-tete">
+                <span class="wa-groupe-av" id="groupe-av" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </span>
+                <div class="ffield wa-titre">
+                    <label for="groupe-titre">Nom du groupe <span class="req">*</span></label>
+                    <input type="text" id="groupe-titre" maxlength="120" />
+                </div>
             </div>
-            <div class="perm-list" id="groupe-membres" style="margin-top:0.9rem">
-                {% for item in items %}
-                    <label class="perm-item">
-                        <input type="checkbox" class="perm-switch" value="{{ item.pk }}" />
-                        <span class="perm-lbl">{{ item.prenom }} {{ item.nom }}</span>
-                    </label>
-                {% endfor %}
-            </div>
+            {% include "gestion/snippets/wa_picker.html" with liste_id="groupe-membres" items=items %}
             <div class="factions">
                 <button type="button" class="btn-ghost" data-drawer-close>Annuler</button>
                 <button type="button" class="btn-primary" id="groupe-submit">Créer le groupe</button>
@@ -1263,15 +1334,9 @@
                 <label for="cfg-titre">Titre du groupe</label>
                 <input type="text" id="cfg-titre" maxlength="120" />
             </div>
-            <div class="perm-list" id="cfg-membres" style="margin-top:0.9rem">
-                {% for item in items %}
-                    <label class="perm-item">
-                        <input type="checkbox" value="{{ item.pk }}" />
-                        <span class="perm-lbl">{{ item.prenom }} {{ item.nom }}</span>
-                    </label>
-                {% endfor %}
-            </div>
+            {% include "gestion/snippets/wa_picker.html" with liste_id="cfg-membres" items=items %}
             <div class="factions">
+                <button type="button" class="btn-danger-ghost" id="cfg-suppr">Supprimer le groupe</button>
                 <button type="button" class="btn-ghost" data-drawer-close>Annuler</button>
                 <button type="button" class="btn-primary" id="cfg-save">Enregistrer</button>
             </div>
@@ -1364,6 +1429,12 @@
             var permEmpId = document.getElementById("perm-employee-id");
             var title = document.getElementById("drawer-title");
             var sub = document.getElementById("drawer-sub");
+            var msFonction = window.SearchSelect
+                ? window.SearchSelect.enhance(document.getElementById("id_fonction"))
+                : null;
+            function refreshSelects() {
+                if (msFonction) msFonction.refresh();
+            }
             var CURRENT_USER = {{ user.pk|default:0 }};
             var DEL_TMPL = "{% url 'gestion:chat_message_delete' 0 %}";
             var CFG_TMPL = "{% url 'gestion:chat_groupe_config' 0 %}";
@@ -1408,8 +1479,8 @@
             function setItem(item) {
                 for (var key in item) {
                     if (["pk", "del_url", "del_name", "fonction_nom", "role_nom",
-                         "photo", "contrat_statut", "contrat_code", "type_nom", "n_documents",
-                         "logo", "permissions", "nb_permissions"].indexOf(key) !== -1) continue;
+                         "photo", "contrat_statut", "contrat_code", "contrat_url", "type_nom", "n_documents",
+                         "logo", "permissions", "permissions_lecture", "nb_permissions"].indexOf(key) !== -1) continue;
                     var el = document.getElementById("id_" + key);
                     if (el) el.value = item[key];
                 }
@@ -1430,8 +1501,11 @@
                 form.reset();
                 objId.value = "";
                 setItem({});
+                refreshSelects();
                 title.textContent = "Ajouter un employé";
                 sub.textContent = "Renseignez les informations ci-dessous.";
+                var mdpInfo = document.getElementById("mdp-defaut-info");
+                if (mdpInfo) mdpInfo.style.display = "";
                 showPanel("form");
                 window.openDrawer();
             });
@@ -1441,8 +1515,11 @@
                 form.reset();
                 objId.value = item.pk;
                 setItem(item);
+                refreshSelects();
                 title.textContent = "Modifier : " + item.prenom + " " + item.nom;
                 sub.textContent = "Ajustez les informations puis enregistrez.";
+                var mdpInfoEdit = document.getElementById("mdp-defaut-info");
+                if (mdpInfoEdit) mdpInfoEdit.style.display = "none";
                 showPanel("form");
                 window.openDrawer();
             });
@@ -1454,18 +1531,60 @@
 
             bind("[data-contract-back]", function () { showPanel("form"); });
 
+            // Le niveau (Lecture / Modification) n'a de sens que si le module est activé
+            function majResumePerm() {
+                var actifs = permForm.querySelectorAll("[data-perm-cb]:checked");
+                var lecture = 0;
+                actifs.forEach(function (cb) {
+                    var r = permForm.querySelector('[data-perm-niveau="' + cb.getAttribute("data-perm-cb") + '"] input[value="lecture"]');
+                    if (r && r.checked) lecture++;
+                });
+                document.getElementById("perm-resume").textContent = actifs.length
+                    ? actifs.length + " module" + (actifs.length > 1 ? "s" : "") + " actif" + (actifs.length > 1 ? "s" : "") + (lecture ? " · " + lecture + " en lecture seule" : "")
+                    : "Aucun module : l'employé ne voit que son profil.";
+            }
+            permForm.addEventListener("change", function (e) {
+                var cle = e.target.getAttribute && e.target.getAttribute("data-perm-cb");
+                var niv = cle && permForm.querySelector('[data-perm-niveau="' + cle + '"]');
+                if (niv) niv.classList.toggle("off", !e.target.checked);
+                majResumePerm();
+            });
+            permForm.querySelectorAll("[data-pm-tout]").forEach(function (b) {
+                b.addEventListener("click", function () {
+                    var mode = b.getAttribute("data-pm-tout");
+                    permForm.querySelectorAll("[data-perm-cb]").forEach(function (cb) {
+                        var cle = cb.getAttribute("data-perm-cb");
+                        cb.checked = mode !== "aucun" || cle === "dashboard";
+                        var niv = permForm.querySelector('[data-perm-niveau="' + cle + '"]');
+                        if (niv) {
+                            niv.classList.toggle("off", !cb.checked);
+                            if (mode !== "aucun") niv.querySelector('[value="' + mode + '"]').checked = true;
+                        }
+                    });
+                    majResumePerm();
+                });
+            });
+
             bind("[data-crud-perm]", function () {
                 var item = ITEMS[parseInt(this.getAttribute("data-crud-perm"), 10)];
                 permForm.reset();
                 permEmpId.value = item.pk;
                 document.getElementById("perm-name").textContent = item.prenom + " " + item.nom;
-                var granted = item.permissions || [];
+                var granted = item.permissions || [], lecture = item.permissions_lecture || [];
                 var boxes = document.querySelectorAll("[data-perm-cb]");
                 for (var i = 0; i < boxes.length; i++) {
-                    boxes[i].checked = granted.indexOf(boxes[i].getAttribute("data-perm-cb")) !== -1;
+                    var cle = boxes[i].getAttribute("data-perm-cb");
+                    boxes[i].checked = granted.indexOf(cle) !== -1;
+                    var niv = permForm.querySelector('[data-perm-niveau="' + cle + '"]');
+                    if (niv) {
+                        niv.querySelector('[value="' + (lecture.indexOf(cle) !== -1 ? "lecture" : "ecriture") + '"]').checked = true;
+                        niv.classList.toggle("off", !boxes[i].checked);
+                    }
                 }
-                title.textContent = "Permissions : " + item.prenom + " " + item.nom;
-                sub.textContent = "Choisissez les modules visibles dans la barre latérale.";
+                document.getElementById("perm-av").textContent = ((item.prenom || "")[0] || "") + ((item.nom || "")[0] || "");
+                majResumePerm();
+                title.textContent = "Accès de " + item.prenom + " " + item.nom;
+                sub.textContent = "Modules visibles et niveau d'accès (lecture ou modification).";
                 showPanel("perm");
                 window.openDrawer();
             });
@@ -1485,10 +1604,11 @@
                 lastMsgPk = 0;
                 chatCount = 0;
                 chatMsgs.innerHTML = '<p class="chat-empty">Chargement…</p>';
+                chatJour = ""; chatDernierAuteur = null;
                 chatAvatar.innerHTML = avatarHtml;
                 chatName.textContent = name;
                 chatSub.textContent = subText;
-                chatGear.hidden = !isGroup || chatGear.getAttribute("data-can-config") !== "1";
+                chatGear.hidden = true; // affiché quand les droits du groupe sont connus (peut_admin)
                 title.textContent = drawerTitle;
                 sub.textContent = drawerSub;
                 showPanel("chat");
@@ -1499,16 +1619,44 @@
                 chatInput.focus();
             }
 
+            /* Style WhatsApp : séparateurs de jour, bulles groupées, heure + coches */
+            var chatJour = "", chatDernierAuteur = null;
+            var MOIS_FR = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+            function libelleJour(d) {
+                var auj = new Date(); auj.setHours(0, 0, 0, 0);
+                var j = new Date(d); j.setHours(0, 0, 0, 0);
+                var ecart = Math.round((auj - j) / 86400000);
+                if (ecart === 0) return "Aujourd'hui";
+                if (ecart === 1) return "Hier";
+                if (ecart < 7) return j.toLocaleDateString("fr-FR", { weekday: "long" }).replace(/^./, function (c) { return c.toUpperCase(); });
+                return j.getDate() + " " + MOIS_FR[j.getMonth()] + (j.getFullYear() !== auj.getFullYear() ? " " + j.getFullYear() : "");
+            }
+            function couleurNom(nom) {
+                var h = 0; for (var i = 0; i < nom.length; i++) h = (h * 31 + nom.charCodeAt(i)) % 360;
+                return "hsl(" + h + " 62% 42%)";
+            }
+
             function renderMessage(msg) {
                 var div = document.createElement("div");
                 var mine = msg.auteur === CURRENT_USER;
-                div.className = "chat-bubble " + (mine ? "chat-me" : "chat-them");
-                if (chatIsGroup && !mine && msg.auteur_nom) {
+                var date = msg.created_at ? new Date(msg.created_at) : null;
+                var jour = date ? date.toDateString() : "";
+                if (jour && jour !== chatJour) {
+                    var sep = document.createElement("div");
+                    sep.className = "chat-jour";
+                    sep.innerHTML = "<span></span>";
+                    sep.firstChild.textContent = libelleJour(date);
+                    chatMsgs.appendChild(sep);
+                    chatJour = jour;
+                    chatDernierAuteur = null;
+                }
+                var suite = chatDernierAuteur === msg.auteur;
+                chatDernierAuteur = msg.auteur;
+                div.className = "chat-bubble " + (mine ? "chat-me" : "chat-them") + (suite ? " chat-suite" : "");
+                if (chatIsGroup && !mine && msg.auteur_nom && !suite) {
                     var nm = document.createElement("strong");
-                    nm.style.display = "block";
-                    nm.style.fontSize = "0.68rem";
-                    nm.style.marginBottom = "0.15rem";
-                    nm.style.opacity = "0.85";
+                    nm.className = "chat-auteur";
+                    nm.style.color = couleurNom(msg.auteur_nom);
                     nm.textContent = msg.auteur_nom;
                     div.appendChild(nm);
                 }
@@ -1548,13 +1696,26 @@
                         div.appendChild(fileLink);
                     }
                 }
-                if (msg.contenu) div.appendChild(document.createTextNode(msg.contenu));
+                if (msg.contenu) {
+                    var txt = document.createElement("span");
+                    txt.className = "chat-txt";
+                    txt.textContent = msg.contenu;
+                    div.appendChild(txt);
+                }
                 var foot = document.createElement("span");
                 foot.className = "chat-foot";
                 var t = document.createElement("span");
                 t.className = "chat-time";
-                t.textContent = msg.created_at ? new Date(msg.created_at).toLocaleString() : "";
+                t.textContent = date ? date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "";
+                t.title = date ? date.toLocaleString("fr-FR") : "";
                 foot.appendChild(t);
+                if (mine) {
+                    var coches = document.createElement("span");
+                    coches.className = "chat-coches" + (msg.lu ? " lu" : "");
+                    coches.title = msg.lu ? "Lu" : "Envoyé";
+                    coches.innerHTML = '<svg viewBox="0 0 18 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m1 6.5 3.2 3.2L10 3.5"/><path d="m7.5 9.2.5.5L14 3.5"/></svg>';
+                    foot.appendChild(coches);
+                }
                 if (msg.auteur === CURRENT_USER) {
                     var del = document.createElement("button");
                     del.type = "button";
@@ -1595,6 +1756,7 @@
                         if (!data || !data.messages) return;
                         if (chatIsGroup && data.groupe) {
                             chatGroup = data.groupe;
+                            chatGear.hidden = !data.groupe.peut_admin;
                             if (data.groupe.logo_url) {
                                 chatAvatar.innerHTML = '<img src="' + data.groupe.logo_url + '" alt="' + data.groupe.titre + '" />';
                             }
@@ -1849,11 +2011,33 @@
                 for (var i = 0; i < cbs.length; i++) {
                     cbs[i].checked = ids.indexOf(parseInt(cbs[i].value, 10)) !== -1;
                 }
+                if (window.WaPicker) window.WaPicker.refresh(cfgMembres.closest("form"));
                 cfgLogoFile.value = "";
                 title.textContent = "Paramètres : " + chatGroup.titre;
                 sub.textContent = "Titre, logo et membres du groupe.";
                 showPanel("groupe-config");
                 window.openDrawer();
+            });
+
+            var SUPPR_TMPL = "{% url 'gestion:chat_groupe_supprimer' 0 %}";
+            document.getElementById("cfg-suppr").addEventListener("click", function () {
+                if (!chatGroup) return;
+                if (!confirm("Supprimer le groupe « " + chatGroup.titre + " » ? Tous ses messages et fichiers seront effacés.")) return;
+                var csrf = document.querySelector('[name="csrfmiddlewaretoken"]');
+                fetch(SUPPR_TMPL.replace("/0/supprimer/", "/" + chatGroup.pk + "/supprimer/"), {
+                    method: "POST",
+                    headers: { "X-CSRFToken": csrf ? csrf.value : "" }
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (data && data.ok) {
+                            window.showToast && window.showToast("success", "Groupe supprimé.");
+                            window.location.reload();
+                        } else {
+                            window.showToast && window.showToast("error", (data && data.error) || "Suppression impossible.");
+                        }
+                    })
+                    .catch(function () { window.showToast && window.showToast("error", "Suppression impossible."); });
             });
 
             cfgLogoFile.addEventListener("change", function () {
@@ -1903,14 +2087,34 @@
                     });
             });
 
+            // Lien direct depuis la page Groupes : /employes/?groupe=<pk> ouvre la discussion
+            (function () {
+                var g = new URLSearchParams(location.search).get("groupe");
+                var chip = g && document.querySelector('[data-groupe-chat="' + g.replace(/\D/g, "") + '"]');
+                if (chip) setTimeout(function () { chip.click(); }, 150);
+            })();
+
             var groupeNewBtn = document.querySelector("[data-groupe-new]");
             if (groupeNewBtn) groupeNewBtn.addEventListener("click", function () {
                 groupeForm.reset();
+                if (window.WaPicker) window.WaPicker.refresh(groupeForm);
                 title.textContent = "Nouveau groupe";
                 sub.textContent = "Donnez un titre et choisissez les membres.";
                 showPanel("groupe");
                 window.openDrawer();
                 groupeTitre.focus();
+            });
+
+            // Avatar du groupe : initiales du nom saisi ; bouton avec le nombre de membres
+            groupeTitre.addEventListener("input", function () {
+                var av = document.getElementById("groupe-av"), t = groupeTitre.value.trim();
+                if (!av) return;
+                if (t) { av.textContent = t.split(/\s+/).slice(0, 2).map(function (m) { return m.charAt(0).toUpperCase(); }).join(""); av.classList.add("plein"); }
+                else { av.classList.remove("plein"); av.innerHTML = av.getAttribute("data-ico") || av.innerHTML; }
+            });
+            (function () { var av = document.getElementById("groupe-av"); if (av) av.setAttribute("data-ico", av.innerHTML); })();
+            groupeForm.addEventListener("wa:change", function (e) {
+                groupeSubmit.textContent = e.detail.total ? "Créer le groupe (" + e.detail.total + ")" : "Créer le groupe";
             });
 
             groupeSubmit.addEventListener("click", function () {
@@ -1992,6 +2196,7 @@
                     title.textContent = "Modifier l'employé";
                     sub.textContent = "Corrigez les erreurs puis enregistrez.";
                 }
+                refreshSelects();
                 showPanel("form");
                 window.openDrawer();
             }

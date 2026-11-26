@@ -97,28 +97,7 @@
 
     {% include "gestion/snippets/onglets_employes.html" %}
 
-    <div class="act-kpis">
-        <div class="act-kpi">
-            <div class="kpi-num"><span class="kpi-dot" style="background:#10b981"></span>{{ nb_connectes }}</div>
-            <div class="kpi-lbl">employé(s) en ligne maintenant</div>
-        </div>
-        <div class="act-kpi">
-            <div class="kpi-num">{{ total_today }}</div>
-            <div class="kpi-lbl">temps passé aujourd'hui (toute l'équipe)</div>
-        </div>
-        <div class="act-kpi">
-            <div class="kpi-num">{{ total_7j }}</div>
-            <div class="kpi-lbl">sur les 7 derniers jours</div>
-        </div>
-        <div class="act-kpi">
-            <div class="kpi-num">{{ total_30j }}</div>
-            <div class="kpi-lbl">sur les 30 derniers jours</div>
-        </div>
-        <div class="act-kpi">
-            <div class="kpi-num">{{ nb_connexions_auj }}</div>
-            <div class="kpi-lbl">connexion(s) aujourd'hui</div>
-        </div>
-    </div>
+    {% include "gestion/components/stat_row.html" with cartes=activite_cartes %}
 
     <div class="panel">
         {% if items %}

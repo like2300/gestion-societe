@@ -1,0 +1,27 @@
+{% load ui %}{% comment %}
+Carte statistique avec mini-courbe.
+Usage :
+  {% include "gestion/components/stat_card.html" with label="Employés" value=counts.employes icon="users" href=url series=series.employes trend="+2 ce mois" trend_dir="up" note="3 actifs" uid="emp" tone="#4f46e5" %}
+Paramètres : label, value, icon, href (facultatif), series (liste de nombres),
+trend / trend_dir (up|down|flat), note, uid (unique), tone (couleur, défaut = accent),
+value_class (pos | neg : valeur en vert / rouge). Grille : <div class="ui-grid-stats">…</div>.
+{% endcomment %}
+<{% if href %}a href="{{ href }}"{% else %}div{% endif %} class="ui-stat{% if not series %} is-compact{% endif %}"{% if tone %} style="--tone: {{ tone }}"{% endif %}>
+    <div class="ui-stat-top">
+        <div>
+            <div class="ui-stat-label">{{ label }}</div>
+            <div class="ui-stat-value{% if value_class %} {{ value_class }}{% endif %}">{{ value }}</div>
+        </div>
+        {% if icon %}<span class="ui-stat-ico">{% include "gestion/components/icon.html" with name=icon %}</span>{% endif %}
+    </div>
+    <div class="ui-stat-foot">
+        {% if trend %}
+            <span class="ui-trend {{ trend_dir|default:'flat' }}">
+                {% if trend_dir == "up" %}{% include "gestion/components/icon.html" with name="arrow-up" %}{% elif trend_dir == "down" %}{% include "gestion/components/icon.html" with name="arrow-down" %}{% endif %}
+                {{ trend }}
+            </span>
+        {% endif %}
+        {% if note %}<span class="ui-stat-note">{{ note }}</span>{% endif %}
+    </div>
+    {% if series %}{% sparkline series uid=uid color=tone|default:"var(--accent)" %}{% endif %}
+</{% if href %}a{% else %}div{% endif %}>

@@ -21,11 +21,12 @@ def _date(d, fmt="%d/%m/%Y"):
     return d.strftime(fmt) if d else "—"
 
 
-def _link(path):
-    if not path:
-        return "—"
+def _link_document(type_, pk):
+    """Lien de téléchargement protégé (permissions vérifiées) d'un document confidentiel."""
+    from .fichiers_prives import url
+
     return mark_safe(
-        f'<a href="{settings.MEDIA_URL}{path}" target="_blank" rel="noopener" '
+        f'<a href="{url(type_, pk)}" target="_blank" rel="noopener" '
         f'style="color:var(--accent);font-weight:600;text-decoration:none">'
         f"Télécharger</a>"
     )
@@ -38,6 +39,10 @@ def _kpay_info(ops):
         return "", "", ""
     return op.statut, op.pk, op.type_operation
 
+
+
+_MOIS_FR = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
+            "août", "septembre", "octobre", "novembre", "décembre"]
 
 CRUD_CONFIG = {
     "depenses": {
@@ -133,8 +138,16 @@ CRUD_CONFIG = {
                 "search": (
                     f"{s.employe.prenom} {s.employe.nom} "
                     f"{s.employe.fonction.nom if s.employe.fonction_id else ''} "
-                    f"{s.periode_mois:%m/%Y} {s.statut}"
+                    f"{s.periode_mois:%m/%Y} {_MOIS_FR[s.periode_mois.month - 1]} {s.periode_mois.year} "
+                    f"{s.statut} {s.get_statut_display()}"
                 ).lower(),
+                "employe_pk": s.employe_id,
+                "employe_nom": f"{s.employe.prenom} {s.employe.nom}",
+                "fonction": s.employe.fonction.nom if s.employe.fonction_id else "",
+                "periode": f"{s.periode_mois:%m/%Y}",
+                "periode_label": f"{_MOIS_FR[s.periode_mois.month - 1].capitalize()} {s.periode_mois.year}",
+                "statut_label": s.get_statut_display(),
+                "montant_du_txt": _money(s.montant_du),
                 "cells": [
                     f"{s.employe.prenom} {s.employe.nom}",
                     s.contrat.type_contrat.code if s.contrat else "—",
@@ -157,7 +170,7 @@ CRUD_CONFIG = {
             }
             for s in models.PaiementSalaire.objects.filter(
                 employe__societe=soc
-            ).select_related("employe", "contrat", "contrat__type_contrat").prefetch_related(
+            ).select_related("employe", "employe__fonction", "contrat", "contrat__type_contrat").prefetch_related(
                 "kpay_operations"
             )
         ],
@@ -260,7 +273,7 @@ CRUD_CONFIG = {
         "form": forms.PaiementForm,
         "title": "Paiements",
         "singular": "un paiement",
-        "wide": set(),
+        "wide": {"projet", "echeance"},
         "columns": [
             {"label": "Projet"},
             {"label": "Montant"},
@@ -368,7 +381,7 @@ CRUD_CONFIG = {
                 "cells": [
                     d.type_document,
                     d.numero_document or "—",
-                    _link(d.fichier),
+                    _link_document("societe", d.pk) if d.fichier else "—",
                     _date(d.date_emission),
                     _date(d.date_expiration),
                 ],

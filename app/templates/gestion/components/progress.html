@@ -1,0 +1,12 @@
+{% comment %}
+Barre de progression. Usage :
+  {% include "gestion/components/progress.html" with label="Employés actifs" value=counts.employes_actifs total=counts.employes tone="#16a34a" %}
+{% endcomment %}
+{% widthratio value total 100 as pct %}
+<div class="ui-progress"{% if tone %} style="--tone: {{ tone }}"{% endif %}>
+    <div class="ui-progress-row"><b>{{ label }}</b><span>{{ pct }} %</span></div>
+    <div class="ui-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ pct }}">
+        <div class="ui-progress-fill" style="width: {{ pct }}%"></div>
+    </div>
+    <div class="ui-progress-foot"><span>{{ value }}</span><span>sur {{ total }}</span></div>
+</div>

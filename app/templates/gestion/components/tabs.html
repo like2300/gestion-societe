@@ -1,0 +1,32 @@
+{% comment %}
+Onglets soulignés (filtre / navigation) — composant unique du dashboard.
+
+Usage (liste préparée dans la vue) :
+    onglets = [
+        {"label": "Tous", "url": "?statut=", "count": 28, "active": True},
+        {"label": "Actifs", "url": "?statut=ACTIF", "count": 20},
+    ]
+    {% include "gestion/components/tabs.html" with items=onglets %}
+
+Sans `url`, chaque onglet est un <button data-value="…"> : écoutez l'évènement
+« ui-tabs:change » (detail.value) sur le conteneur pour filtrer côté client.
+Clés d'un onglet : label, url | value, count (facultatif), active (bool).
+Un onglet lien est aussi actif automatiquement si son url est celle de la page courante.
+{% endcomment %}
+<div class="ui-tabs" role="tablist"{% if aria_label %} aria-label="{{ aria_label }}"{% endif %} data-ui-tabs>
+    {% for t in items %}
+        {% if t.url %}
+            {% if t.active or t.url == request.get_full_path or t.url == request.path %}
+            <a class="ui-tab is-active" href="{{ t.url }}" role="tab" aria-selected="true" aria-current="page">
+            {% else %}
+            <a class="ui-tab" href="{{ t.url }}" role="tab" aria-selected="false">
+            {% endif %}
+                {{ t.label }}{% if t.count is not None and t.count != "" %} <span class="ui-tab-count">{{ t.count }}</span>{% endif %}
+            </a>
+        {% else %}
+            <button type="button" class="ui-tab{% if t.active %} is-active{% endif %}" data-value="{{ t.value|default:'' }}" role="tab" aria-selected="{% if t.active %}true{% else %}false{% endif %}">
+                {{ t.label }}{% if t.count is not None and t.count != "" %} <span class="ui-tab-count">{{ t.count }}</span>{% endif %}
+            </button>
+        {% endif %}
+    {% endfor %}
+</div>

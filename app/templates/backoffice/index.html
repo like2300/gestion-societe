@@ -1,0 +1,137 @@
+{% extends "backoffice/base.html" %}
+{% load ui %}
+{% block titre %}Vue d'ensemble{% endblock %}
+{% block contenu %}
+
+{# ===== Ligne du haut : ventes de la période + carte citron « demandes » ===== #}
+<section class="grille-haut">
+    <article class="carte">
+        <div class="carte-tete" style="flex-wrap:wrap">
+            <div class="seg" role="group" aria-label="Devise">
+                <a href="?periode={{ periode }}&date={{ jour|date:'Y-m-d' }}&devise=USD" class="{% if devise == 'USD' %}on{% endif %}">USD</a>
+                <a href="?periode={{ periode }}&date={{ jour|date:'Y-m-d' }}&devise=XAF" class="{% if devise == 'XAF' %}on{% endif %}">XAF</a>
+                <a href="?periode={{ periode }}&date={{ jour|date:'Y-m-d' }}&devise=XOF" class="{% if devise == 'XOF' %}on{% endif %}">XOF</a>
+            </div>
+            <div style="text-align:right">
+                <span class="sous">Total encaissé depuis le lancement</span><br>
+                <b style="font-size:1.2rem;color:var(--encre)">{{ v.total_global|en_devise:devise }}</b>
+            </div>
+        </div>
+        <span class="sous">Abonnements vendus · {{ v.libelle }}</span>
+        <div class="grand-chiffre">{{ v.total|en_devise:devise }}</div>
+        <span class="sous">
+            {% if v.evolution is not None %}<span class="{% if v.evolution >= 0 %}vert{% else %}rouge-t{% endif %}">{% if v.evolution >= 0 %}+{% endif %}{{ v.evolution }} %</span> vs période précédente ·{% endif %}
+            {{ v.nombre }} vente{{ v.nombre|pluralize }} · panier moyen {{ v.moyenne|en_devise:devise }}
+        </span>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-top:20px">
+            <form method="get" style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin:0">
+                <input type="hidden" name="devise" value="{{ devise }}" />
+                <div class="seg" role="group" aria-label="Période">
+                    <a href="?periode=jour&date={{ jour|date:'Y-m-d' }}&devise={{ devise }}" class="{% if periode == 'jour' %}on{% endif %}">Jour</a>
+                    <a href="?periode=mois&date={{ jour|date:'Y-m-d' }}&devise={{ devise }}" class="{% if periode == 'mois' %}on{% endif %}">Mois</a>
+                    <a href="?periode=annee&date={{ jour|date:'Y-m-d' }}&devise={{ devise }}" class="{% if periode == 'annee' %}on{% endif %}">Année</a>
+                </div>
+                <input type="hidden" name="periode" value="{{ periode }}" />
+                <input type="date" name="date" value="{{ jour|date:'Y-m-d' }}" onchange="this.form.submit()" style="height:40px;border-radius:999px;border:1px solid var(--trait);padding:0 .9rem;font:inherit" aria-label="Choisir la date" />
+            </form>
+            <div style="display:flex;gap:.5rem">
+                <a class="btn sombre" href="?periode={{ periode }}&date={{ nav_precedent|date:'Y-m-d' }}&devise={{ devise }}">‹ Précédent</a>
+                <a class="btn" href="?periode={{ periode }}&date={{ nav_suivant|date:'Y-m-d' }}&devise={{ devise }}">Suivant ›</a>
+            </div>
+        </div>
+    </article>
+
+    <article class="carte citron">
+        <div class="carte-tete" style="position:relative;z-index:1">
+            <span class="badge-sombre">DEMANDES <i>✦</i></span>
+            <a class="rond" href="{% url 'backoffice:demandes' %}" title="Voir toutes les demandes" style="background:rgba(255,255,255,.5)">⋯</a>
+        </div>
+        <div style="position:relative;z-index:1">
+            <span style="color:var(--foret);font-size:.9rem">Changements d'offre et activations en attente</span>
+            <div style="display:flex;align-items:center;gap:.7rem;margin:8px 0 18px">
+                <span class="grand-chiffre" style="margin:0">{{ st.kpi.en_attente }}</span>
+                <span style="background:#fff;border-radius:999px;padding:.25rem .7rem;font-size:.78rem;font-weight:700;color:var(--foret)">{{ st.kpi.a_valider }} paiement{{ st.kpi.a_valider|pluralize }} à valider</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div class="mini"><small>Abonnés actifs</small><b>{{ st.kpi.actifs }}</b></div>
+                <div class="mini"><small>Expirent sous 7 jours</small><b>{{ st.kpi.expirent_bientot }}</b></div>
+            </div>
+        </div>
+    </article>
+</section>
+
+{# ===== Ligne du bas : graphique des ventes · ventes par offre · demandes ===== #}
+<section class="grille-bas">
+    <article class="carte">
+        <div class="carte-tete">
+            <h2><span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></span>Ventes</h2>
+            <span class="pilule">{{ v.libelle }}</span>
+        </div>
+        {% if periode == "jour" %}
+            <div style="text-align:center;padding:2rem 0">
+                <div class="grand-chiffre" style="font-size:2.4rem">{{ v.total|en_devise:devise }}</div>
+                <span class="sous">encaissés le {{ v.libelle }}</span>
+            </div>
+        {% else %}
+            <svg viewBox="0 0 640 196" width="100%" role="img" aria-label="Ventes de la période">
+                {% for b in vg %}
+                    <rect x="{{ b.x }}" y="{{ b.y }}" width="{{ b.w }}" height="{{ b.h }}" rx="7" fill="{% if b.plein %}#b9ec7c{% else %}#ececea{% endif %}"><title>{{ b.label }} : {{ b.v|en_devise:devise }}</title></rect>
+                    {% if b.montre %}<text x="{{ b.lx }}" y="190" text-anchor="middle" font-size="13" fill="#a6aba6">{{ b.label }}</text>{% endif %}
+                {% endfor %}
+            </svg>
+        {% endif %}
+    </article>
+
+    <article class="carte">
+        <div class="carte-tete">
+            <h2><span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5c0-1 1-1.6 2.5-1.6s2.5.6 2.5 1.7c0 2.6-5 1.4-5 4 0 1.1 1 1.8 2.5 1.8s2.5-.6 2.5-1.6"/></svg></span>Ventes par offre</h2>
+            <a class="pilule" href="{% url 'backoffice:forfaits' %}">Gérer les tarifs</a>
+        </div>
+        <div class="grand-chiffre" style="font-size:2.4rem">{{ v.total|en_devise:devise }}</div>
+        <span class="sous">{{ v.libelle }}</span>
+        <div style="display:flex;flex-direction:column;gap:14px;margin-top:18px">
+            {% for nom, montant in v.par_forfait %}
+                <div>
+                    <div style="display:flex;justify-content:space-between;font-size:.88rem;margin-bottom:6px"><span>{{ nom }}</span><span class="sous">{{ montant|en_devise:devise }}</span></div>
+                    <div style="height:10px;border-radius:999px;background:#ececea;overflow:hidden"><div style="height:100%;width:{% widthratio montant v.total 100 %}%;background:var(--citron);border-radius:999px"></div></div>
+                </div>
+            {% empty %}
+                <p class="vide">Aucune vente sur cette période.</p>
+            {% endfor %}
+            <div>
+                <div style="font-size:.88rem;margin-bottom:6px">Abonnés actifs par offre</div>
+                {% for a in g.anneau %}<span class="pilule" style="margin:0 .3rem .3rem 0"><i style="width:8px;height:8px;border-radius:50%;background:{{ a.couleur }};display:inline-block"></i>{{ a.nom }} · {{ a.v }}</span>{% empty %}<span class="sous">Aucun abonné actif.</span>{% endfor %}
+            </div>
+        </div>
+    </article>
+
+    <article class="carte">
+        <div class="carte-tete">
+            <h2><span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span>Demandes</h2>
+            <a class="rond" href="{% url 'backoffice:demandes' %}" style="border:1px solid var(--trait)" title="Toutes les demandes">⋯</a>
+        </div>
+        <div class="liste">
+            {% for d in demandes %}
+                <div class="ligne{% if forloop.first %} urgent{% endif %}">
+                    <span class="logo">{{ d.societe.nom|first|upper }}</span>
+                    <span class="txt">
+                        <b>{{ d.societe.nom }}</b>
+                        <small>{% if d.ancien_forfait %}{{ d.ancien_forfait.nom }} → {{ d.forfait.nom }}{% else %}Nouvelle offre {{ d.forfait.nom }}{% endif %}{% if d.forfait.prix %} · {{ d.forfait.prix_affiche }}{% endif %} · {{ d.created_at|date:"d/m H:i" }}</small>
+                    </span>
+                    <form class="inline" method="post" action="{% url 'backoffice:abonnement_action' d.pk 'encaisser' %}">{% csrf_token %}<button class="rond-ok" title="Activer (paiement encaissé)">✓</button></form>
+                    <form class="inline" method="post" action="{% url 'backoffice:abonnement_action' d.pk 'refuser' %}" onsubmit="return confirm('Refuser cette demande ?')">{% csrf_token %}<button class="rond-non" title="Refuser">✕</button></form>
+                </div>
+            {% empty %}
+                <p class="vide">Aucune demande en attente 🎉</p>
+            {% endfor %}
+            {% for p in a_valider|slice:":3" %}
+                <div class="ligne">
+                    <span class="logo" style="background:#fff1e8;color:#c2410c">$</span>
+                    <span class="txt"><b>Paiement {{ p.abonnement.societe.nom }}</b><small>{{ p.mode_paiement.nom }} · réf. {{ p.reference|default:"—" }}</small></span>
+                    <b class="vert">+{{ p.montant|en_devise:devise }}</b>
+                </div>
+            {% endfor %}
+        </div>
+    </article>
+</section>
+{% endblock %}

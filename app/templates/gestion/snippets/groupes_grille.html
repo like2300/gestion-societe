@@ -1,0 +1,33 @@
+{% comment %}Grille de cartes « groupe » (page Groupes). Contexte : liste, titre.{% endcomment %}
+{% if liste %}
+<h2 class="gr-section-titre">{{ titre }} <small>{{ liste|length }}</small></h2>
+<div class="gr-grille">
+    {% for g in liste %}
+    <article class="gr-carte" data-recherche="{{ g.titre|lower }} {{ g.description|lower }}{% for m in g.membres %} {{ m.nom|lower }}{% endfor %}">
+        <div class="gr-tete">
+            <span class="gr-logo" data-av="{{ g.titre }}">{% if g.logo_url %}<img src="{{ g.logo_url }}" alt="" />{% endif %}</span>
+            <span>
+                <b>{{ g.titre }}</b>
+                <small>{{ g.membres|length }} membre{{ g.membres|length|pluralize }} · {{ g.nb_messages }} message{{ g.nb_messages|pluralize }}</small>
+            </span>
+            <span class="gr-role{% if g.peut_admin %} admin{% endif %}">{{ g.role }}</span>
+        </div>
+        {% if g.description %}<p class="gr-desc">{{ g.description }}</p>{% endif %}
+        <div class="gr-membres">
+            {% for m in g.membres %}
+            <span class="gr-membre{% if m.admin %} admin{% endif %}" title="{{ m.fonction|default:'Employé' }}{% if m.admin %} · administrateur{% endif %}"><i data-av="{{ m.nom }}"></i>{{ m.nom }}{% if m.admin %} <em>★</em>{% endif %}</span>
+            {% endfor %}
+        </div>
+        <span class="gr-meta">Créé par {{ g.createur|default:"—" }} le {{ g.cree_le|date:"d/m/Y" }}</span>
+        <div class="gr-actions">
+            {% if g.discussion %}<a class="principal" href="{{ g.discussion }}">Discuter</a>{% endif %}
+            {% if g.peut_admin %}
+                <button type="button" data-gr-action="modifier" data-pk="{{ g.pk }}">Modifier</button>
+                <button type="button" class="danger" data-gr-action="supprimer" data-pk="{{ g.pk }}">Supprimer</button>
+            {% endif %}
+            {% if g.peut_quitter %}<button type="button" class="danger" data-gr-action="quitter" data-pk="{{ g.pk }}">Quitter</button>{% endif %}
+        </div>
+    </article>
+    {% endfor %}
+</div>
+{% endif %}

@@ -1,0 +1,15 @@
+{% comment %}
+Carte « dossier » (module). Usage :
+  {% include "gestion/components/folder_card.html" with href=url name="Employés" icon="users" count=counts.employes sub="5 actifs" featured=True %}
+Paramètres : href, name, icon (voir icon.html), count (facultatif), sub, featured (carte pleine, couleur principale).
+{% endcomment %}
+<a class="folder{% if featured %} is-featured{% endif %}" href="{{ href }}">
+    <span class="folder-tab" aria-hidden="true"></span>
+    <span class="folder-top">
+        <span class="folder-ico">{% include "gestion/components/icon.html" with name=icon %}</span>
+        {% if count is not None %}<span class="folder-count">{{ count }}</span>{% endif %}
+    </span>
+    <span class="folder-kicker">Module</span>
+    <span class="folder-name">{{ name }}</span>
+    {% if sub %}<span class="folder-sub">{{ sub }}</span>{% endif %}
+</a>

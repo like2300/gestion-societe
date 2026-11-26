@@ -44,8 +44,11 @@ class Gmail(OAuth2Connecteur):
 @register
 class GoogleMeet(OAuth2Connecteur):
     key = "google_meet"
-    nom = "Google Meet"
-    description = "Vidéoconférences Meet : créez des réunions et partagez le lien avec votre équipe."
+    nom = "Google Workspace"
+    description = (
+        "Agenda + Meet : réunions avec lien Meet, invitations e-mail, échéances et "
+        "tâches dans Google Agenda, calendrier affiché dans la page Réunions."
+    )
     categorie = "communication"
     icone = "📹"
     couleur = "#01875f"
@@ -150,6 +153,55 @@ class GoogleMeet(OAuth2Connecteur):
             (data.get("id") or ""),
             "Réunion créée." if lien else "Lien Meet introuvable dans la réponse.",
         )
+
+    @classmethod
+    def synchroniser(cls, connecteur):
+        """Pousse échéances et tâches à venir dans Google Agenda."""
+        from .. import google_workspace
+
+        return google_workspace.synchroniser_tout(connecteur)
+
+    @classmethod
+    def deplacer_reunion(cls, connecteur, evenement_id, debut_iso, fin_iso):
+        """Déplace l'événement Google (nouvelles dates). Retourne (ok, message)."""
+        jeton = ((connecteur.jetons() or {}) if connecteur else {}).get("access_token", "")
+        if not jeton or not evenement_id:
+            return False, "Connecteur Google Meet indisponible."
+        try:
+            resp = requests.patch(
+                "https://www.googleapis.com/calendar/v3/calendars/primary/events/"
+                f"{evenement_id}?sendUpdates=none",
+                headers={"Authorization": f"Bearer {jeton}"},
+                json={
+                    "start": {"dateTime": debut_iso, "timeZone": settings.TIME_ZONE},
+                    "end": {"dateTime": fin_iso, "timeZone": settings.TIME_ZONE},
+                },
+                timeout=30,
+            )
+        except requests.RequestException as exc:
+            return False, f"Réseau indisponible : {exc}"
+        if resp.status_code not in (200, 201):
+            return False, f"Google a répondu {resp.status_code}."
+        return True, "Réunion déplacée."
+
+    @classmethod
+    def supprimer_reunion(cls, connecteur, evenement_id):
+        """Supprime l'événement Google. Retourne (ok, message)."""
+        jeton = ((connecteur.jetons() or {}) if connecteur else {}).get("access_token", "")
+        if not jeton or not evenement_id:
+            return False, "Connecteur Google Meet indisponible."
+        try:
+            resp = requests.delete(
+                "https://www.googleapis.com/calendar/v3/calendars/primary/events/"
+                f"{evenement_id}?sendUpdates=none",
+                headers={"Authorization": f"Bearer {jeton}"},
+                timeout=30,
+            )
+        except requests.RequestException as exc:
+            return False, f"Réseau indisponible : {exc}"
+        if resp.status_code not in (200, 204, 410):
+            return False, f"Google a répondu {resp.status_code}."
+        return True, "Événement Google supprimé."
 
 
 @register

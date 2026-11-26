@@ -1,0 +1,466 @@
+{% extends "gestion/base_dashboard.html" %}
+{% load static %}
+
+{% block dash_title %}Factures — {{ societe.nom }}{% endblock %}
+
+{% block content %}
+    <div class="page-head">
+        <div>
+            <h1>Factures</h1>
+            <p class="sub">{{ items|length }} facture(s) · {{ nb_par_statut.EMISE|add:nb_par_statut.RETARD }} à encaisser{% if nb_par_statut.RETARD %} · <strong style="color:#dc2626">{{ nb_par_statut.RETARD }} en retard</strong>{% endif %}</p>
+        </div>
+        {% if not lecture_seule %}
+        <div style="margin-left:auto;display:flex;gap:.6rem">
+            <button type="button" class="btn-primary" data-facture-nouvelle>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                Nouvelle facture
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    {% include "gestion/components/espace_dossiers.html" %}
+    {% include "gestion/components/stat_row.html" with cartes=stats_cartes %}
+
+    <div class="panel fac-panel">
+        {% if items %}
+            <table class="crud-table fac-table">
+                <thead>
+                    <tr>
+                        <th>Numéro</th>
+                        <th>Client</th>
+                        <th>Objet</th>
+                        <th>Émise le</th>
+                        <th>Échéance</th>
+                        <th style="text-align:right">Montant TTC</th>
+                        <th>Statut</th>
+                        <th style="text-align:right" data-no-sort data-no-filter>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in items %}
+                        <tr data-facture-ligne="{{ f.pk }}">
+                            <td><span class="fac-num">{{ f.numero }}</span></td>
+                            <td>
+                                <span class="fac-client">
+                                    <span class="sal-av fac-av" data-nom="{{ f.client }}">{{ f.client|slice:":1"|upper }}</span>
+                                    <span><b>{{ f.client }}</b>{% if f.projet %}<small>{{ f.projet }}</small>{% endif %}</span>
+                                </span>
+                            </td>
+                            <td><span class="fac-objet">{{ f.objet|default:"—" }}</span></td>
+                            <td>{{ f.emission_aff }}</td>
+                            <td>{{ f.echeance_aff }}</td>
+                            <td style="text-align:right"><b class="fac-mt">{{ f.total_aff }}</b> <small class="row-muted">FCFA</small></td>
+                            <td><span class="fac-st s-{{ f.statut }}">{{ f.statut_label }}</span></td>
+                            <td>
+                                <div class="fac-acts">
+                                    <a class="fac-btn" href="{{ f.pdf }}" target="_blank" rel="noopener" title="Voir le PDF">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                                        PDF
+                                    </a>
+                                    {% if not lecture_seule %}
+                                        {% if f.statut == "BROUILLON" %}
+                                            <form method="post" action="{{ f.action }}">{% csrf_token %}<input type="hidden" name="action" value="emettre" />
+                                                <button class="fac-btn primaire" type="submit" title="Émettre la facture (numéro définitif, à envoyer au client)">Émettre</button></form>
+                                        {% elif f.statut == "EMISE" or f.statut == "RETARD" %}
+                                            <form method="post" action="{{ f.action }}">{% csrf_token %}<input type="hidden" name="action" value="payer" />
+                                                <input type="hidden" name="date_paiement" value="{{ aujourdhui_iso }}" />
+                                                <button class="fac-btn vert" type="submit" title="Marquer comme payée : la recette est enregistrée dans Paiements">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                                                    Payée</button></form>
+                                        {% endif %}
+                                        <div class="fac-menu">
+                                            <button type="button" class="fac-btn icone" data-fac-menu aria-haspopup="true" aria-label="Plus d'actions" title="Plus d'actions">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+                                            </button>
+                                            <div class="fac-menu-liste" hidden>
+                                                {% if f.modifiable %}<button type="button" data-facture-edit="{{ forloop.counter0 }}">Modifier</button>{% endif %}
+                                                <a href="{{ f.pdf }}?dl=1">Télécharger le PDF</a>
+                                                <form method="post" action="{{ f.action }}">{% csrf_token %}<input type="hidden" name="action" value="dupliquer" /><button type="submit">Dupliquer</button></form>
+                                                {% if f.statut == "PAYEE" or f.statut == "ANNULEE" %}
+                                                    <form method="post" action="{{ f.action }}">{% csrf_token %}<input type="hidden" name="action" value="rouvrir" /><button type="submit">Rouvrir (à payer)</button></form>
+                                                {% endif %}
+                                                {% if f.statut != "ANNULEE" %}
+                                                    <form method="post" action="{{ f.action }}" data-confirmer="Annuler la facture {{ f.numero }} ?">{% csrf_token %}<input type="hidden" name="action" value="annuler" /><button type="submit" class="danger">Annuler la facture</button></form>
+                                                {% endif %}
+                                                {% if f.statut == "BROUILLON" %}
+                                                    <form method="post" action="{{ f.action }}" data-confirmer="Supprimer le brouillon {{ f.numero }} ?">{% csrf_token %}<input type="hidden" name="action" value="supprimer" /><button type="submit" class="danger">Supprimer le brouillon</button></form>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty-state fac-vide">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>
+                <p>Aucune facture pour le moment.{% if not lecture_seule %}<br />Créez-en une avec « Nouvelle facture », ou depuis une échéance (bouton « Facturer »).{% endif %}</p>
+            </div>
+        {% endif %}
+    </div>
+{% endblock content %}
+
+{% block drawer %}
+    {% if not lecture_seule %}
+    <div class="drawer-head">
+        <div>
+            <h2 id="fac-titre">Nouvelle facture</h2>
+            <p class="drawer-sub" id="fac-sous">N° <b id="fac-numero">{{ numero_suivant }}</b> · attribué à l'enregistrement</p>
+        </div>
+        <button class="drawer-close" data-drawer-close aria-label="Fermer">×</button>
+    </div>
+    <div class="drawer-body">
+        <form method="post" action="{% url 'gestion:factures' %}" id="fac-form" novalidate data-gf-zone>
+            {% csrf_token %}
+            <input type="hidden" name="id" id="fac-id" value="{{ post.id|default:'' }}" />
+            <input type="hidden" name="lignes_json" id="fac-lignes-json" />
+            <input type="hidden" name="emettre" id="fac-emettre" value="" />
+            {% if erreurs %}<div class="form-errors">{% for e in erreurs %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+
+            <div class="cfg-sec">
+                <div class="cfg-titre"><span>1</span> Client</div>
+                <div class="fgrid">
+                    <div class="ffield fspan-2">
+                        <label for="fac-client">Client <span class="req">*</span></label>
+                        <select id="fac-client" name="client" data-searchable required>
+                            <option value="">— Choisir un client —</option>
+                            {% for c in clients_js %}<option value="{{ c.pk }}">{{ c.nom }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="ffield">
+                        <label for="fac-projet">Projet</label>
+                        <select id="fac-projet" name="projet">
+                            <option value="">— Aucun projet —</option>
+                        </select>
+                    </div>
+                    <div class="ffield">
+                        <label for="fac-echeance">Échéance liée</label>
+                        <select id="fac-echeance" name="echeance">
+                            <option value="">— Aucune —</option>
+                        </select>
+                    </div>
+                    <div class="ffield fspan-2">
+                        <label for="fac-objet">Objet</label>
+                        <input type="text" id="fac-objet" name="objet" maxlength="255" placeholder=" " />
+                    </div>
+                </div>
+            </div>
+
+            <div class="cfg-sec">
+                <div class="cfg-titre"><span>2</span> Dates</div>
+                <div class="fgrid">
+                    <div class="ffield">
+                        <label for="fac-date">Date d'émission</label>
+                        <input type="date" id="fac-date" name="date_emission" value="{{ aujourdhui_iso }}" />
+                    </div>
+                    <div class="ffield">
+                        <label for="fac-date-ech">Échéance de paiement</label>
+                        <input type="date" id="fac-date-ech" name="date_echeance" value="{{ echeance_defaut }}" />
+                    </div>
+                </div>
+                <div class="fac-delais" role="group" aria-label="Délai de paiement">
+                    <button type="button" data-delai="0">À réception</button>
+                    <button type="button" data-delai="15">15 jours</button>
+                    <button type="button" data-delai="30" class="on">30 jours</button>
+                    <button type="button" data-delai="45">45 jours</button>
+                    <button type="button" data-delai="60">60 jours</button>
+                </div>
+            </div>
+
+            <div class="cfg-sec">
+                <div class="cfg-titre"><span>3</span> Lignes</div>
+                <div class="fac-lignes-tete" aria-hidden="true">
+                    <span>Désignation</span><span>Qté</span><span>Prix unitaire</span><span>Montant</span><span></span>
+                </div>
+                <div id="fac-lignes" class="fac-lignes" data-gf="off"></div>
+                <button type="button" class="fac-ajout" id="fac-ajout-ligne">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                    Ajouter une ligne
+                </button>
+            </div>
+
+            <div class="cfg-sec">
+                <div class="cfg-titre"><span>4</span> Totaux</div>
+                <div class="fac-totaux">
+                    <div class="fac-params" data-gf="off">
+                        <label>TVA
+                            <select id="fac-tva" name="taux_tva">
+                                <option value="0">0 % (exonéré)</option>
+                                <option value="5">5 %</option>
+                                <option value="18">18 %</option>
+                                <option value="19.25">19,25 %</option>
+                                <option value="20">20 %</option>
+                            </select>
+                        </label>
+                        <label>Remise (FCFA)
+                            <input type="number" id="fac-remise" name="remise" min="0" step="1" value="0" />
+                        </label>
+                    </div>
+                    <dl class="fac-recap">
+                        <div><dt>Sous-total</dt><dd id="fac-r-sous">0 FCFA</dd></div>
+                        <div id="fac-r-remise-l" hidden><dt>Remise</dt><dd id="fac-r-remise">0 FCFA</dd></div>
+                        <div><dt>Total HT</dt><dd id="fac-r-ht">0 FCFA</dd></div>
+                        <div><dt>TVA</dt><dd id="fac-r-tva">0 FCFA</dd></div>
+                        <div class="ttc"><dt>Total TTC</dt><dd id="fac-r-ttc">0 FCFA</dd></div>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="cfg-sec">
+                <div class="cfg-titre"><span>5</span> Mentions</div>
+                <div class="fgrid">
+                    <div class="ffield fspan-2">
+                        <label for="fac-conditions">Conditions de paiement</label>
+                        <textarea id="fac-conditions" name="conditions" rows="2" placeholder=" ">Paiement par virement ou Mobile Money à réception de facture.</textarea>
+                    </div>
+                    <div class="ffield fspan-2">
+                        <label for="fac-notes">Notes</label>
+                        <textarea id="fac-notes" name="notes" rows="2" placeholder=" "></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="factions fac-factions">
+                <button type="button" class="btn-ghost" data-drawer-close>Annuler</button>
+                <button type="submit" class="btn-ghost" data-fac-submit="brouillon">Enregistrer en brouillon</button>
+                <button type="submit" class="btn-primary" data-fac-submit="emettre">Enregistrer et émettre</button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+{% endblock drawer %}
+
+{% block extra_js %}
+    {{ items_js|json_script:"fac-items" }}
+    {{ clients_js|json_script:"fac-clients" }}
+    {{ projets_js|json_script:"fac-projets" }}
+    {{ echeances_js|json_script:"fac-echeances" }}
+    <script>
+    (function () {
+        var ITEMS = JSON.parse(document.getElementById("fac-items").textContent);
+        var PROJETS = JSON.parse(document.getElementById("fac-projets").textContent);
+        var ECHEANCES = JSON.parse(document.getElementById("fac-echeances").textContent);
+        var A = window.UiAvatar;
+
+        // Avatars colorés
+        document.querySelectorAll(".fac-av").forEach(function (el) {
+            var nom = el.getAttribute("data-nom") || "";
+            var h = 0; for (var i = 0; i < nom.length; i++) h = (h * 31 + nom.charCodeAt(i)) % 360;
+            el.style.background = "hsl(" + h + " 62% 48%)";
+        });
+
+        // Menus « … »
+        document.addEventListener("click", function (e) {
+            var btn = e.target.closest("[data-fac-menu]");
+            document.querySelectorAll(".fac-menu-liste").forEach(function (m) {
+                if (!btn || m !== btn.nextElementSibling) m.hidden = true;
+            });
+            if (btn) { var l = btn.nextElementSibling; l.hidden = !l.hidden; }
+        });
+        document.querySelectorAll("form[data-confirmer]").forEach(function (f) {
+            f.addEventListener("submit", function (e) { if (!confirm(f.getAttribute("data-confirmer"))) e.preventDefault(); });
+        });
+
+        var params = new URLSearchParams(location.search);
+        var MSG = {
+            cree: "Facture créée.", maj: "Facture mise à jour.", emise: "Facture émise.",
+            payee: "Facture payée : la recette est enregistrée dans Paiements.", rouverte: "Facture rouverte.",
+            annulee: "Facture annulée.", dupliquee: "Facture dupliquée en brouillon.", supprimee: "Brouillon supprimé."
+        };
+        if (params.get("ok") && MSG[params.get("ok")] && window.showToast) window.showToast("success", MSG[params.get("ok")]);
+        if (params.get("verrou") && window.showToast) window.showToast("error", "Une facture payée ou annulée ne peut plus être modifiée.");
+        var fCible = params.get("f");
+        if (fCible) {
+            var tr = document.querySelector('[data-facture-ligne="' + fCible + '"]');
+            if (tr) { tr.classList.add("fac-flash"); setTimeout(function () { tr.classList.remove("fac-flash"); }, 2400); }
+        }
+
+        var form = document.getElementById("fac-form");
+        if (!form) return;
+        var selClient = document.getElementById("fac-client");
+        var selProjet = document.getElementById("fac-projet");
+        var selEch = document.getElementById("fac-echeance");
+        var lignesEl = document.getElementById("fac-lignes");
+        var tva = document.getElementById("fac-tva");
+        var remise = document.getElementById("fac-remise");
+        var dateEm = document.getElementById("fac-date");
+        var dateEch = document.getElementById("fac-date-ech");
+        var msClient = window.SearchSelect && window.SearchSelect.enhance(selClient);
+
+        function fcfa(v) { return Math.round(Number(v) || 0).toLocaleString("fr-FR") + " FCFA"; }
+        function num(v) { return parseFloat(String(v || "").replace(/\s/g, "").replace(",", ".")) || 0; }
+        function esc(t) { return String(t == null ? "" : t).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+        function remplirProjets(clientId, choisi) {
+            selProjet.innerHTML = '<option value="">— Aucun projet —</option>' + PROJETS.filter(function (p) {
+                return !clientId || String(p.client_id) === String(clientId);
+            }).map(function (p) { return '<option value="' + p.pk + '">' + esc(p.nom) + "</option>"; }).join("");
+            selProjet.value = choisi || "";
+            remplirEcheances(selProjet.value, clientId);
+        }
+        function remplirEcheances(projetId, clientId, choisi) {
+            selEch.innerHTML = '<option value="">— Aucune —</option>' + ECHEANCES.filter(function (e) {
+                return projetId ? String(e.projet_id) === String(projetId) : (!clientId || String(e.client_id) === String(clientId));
+            }).map(function (e) { return '<option value="' + e.pk + '">' + esc(e.label) + " · " + fcfa(e.montant) + "</option>"; }).join("");
+            selEch.value = choisi || "";
+        }
+        selClient.addEventListener("change", function () { remplirProjets(selClient.value); });
+        selProjet.addEventListener("change", function () { remplirEcheances(selProjet.value, selClient.value); });
+        selEch.addEventListener("change", function () {
+            var e = ECHEANCES.find(function (x) { return String(x.pk) === selEch.value; });
+            if (!e) return;
+            if (!selProjet.value) { selProjet.value = String(e.projet_id); }
+            var lignes = lire();
+            if (!lignes.length || (lignes.length === 1 && !lignes[0].designation && !num(lignes[0].prix_unitaire))) {
+                lignesEl.innerHTML = "";
+                ajouter({ designation: e.projet + " — échéance #" + e.numero, quantite: 1, prix_unitaire: e.montant });
+            }
+            var objet = document.getElementById("fac-objet");
+            if (!objet.value) objet.value = e.projet + " — échéance #" + e.numero;
+            recalc();
+        });
+
+        // ---- Lignes dynamiques ----
+        function ajouter(l) {
+            l = l || {};
+            var row = document.createElement("div");
+            row.className = "fac-ligne";
+            row.innerHTML =
+                '<input type="text" class="fl-desig" placeholder="Prestation, produit…" maxlength="255" value="' + esc(l.designation || "") + '" aria-label="Désignation">' +
+                '<input type="number" class="fl-qte" min="0" step="any" value="' + esc(l.quantite != null ? Number(l.quantite) : 1) + '" aria-label="Quantité">' +
+                '<input type="number" class="fl-pu" min="0" step="any" value="' + esc(l.prix_unitaire != null ? Number(l.prix_unitaire) : "") + '" placeholder="0" aria-label="Prix unitaire">' +
+                '<span class="fl-mt">0 FCFA</span>' +
+                '<button type="button" class="fl-suppr" aria-label="Retirer la ligne" title="Retirer">×</button>';
+            lignesEl.appendChild(row);
+            recalc();
+            return row;
+        }
+        function lire() {
+            return Array.prototype.map.call(lignesEl.querySelectorAll(".fac-ligne"), function (r) {
+                return {
+                    designation: r.querySelector(".fl-desig").value.trim(),
+                    quantite: r.querySelector(".fl-qte").value || "1",
+                    prix_unitaire: r.querySelector(".fl-pu").value || "0"
+                };
+            });
+        }
+        function recalc() {
+            var sous = 0;
+            lignesEl.querySelectorAll(".fac-ligne").forEach(function (r) {
+                var m = num(r.querySelector(".fl-qte").value) * num(r.querySelector(".fl-pu").value);
+                r.querySelector(".fl-mt").textContent = fcfa(m);
+                sous += m;
+            });
+            var rem = Math.min(num(remise.value), sous);
+            var ht = Math.max(sous - rem, 0);
+            var tv = Math.round(ht * num(tva.value)) / 100;
+            document.getElementById("fac-r-sous").textContent = fcfa(sous);
+            document.getElementById("fac-r-remise").textContent = "− " + fcfa(rem);
+            document.getElementById("fac-r-remise-l").hidden = !rem;
+            document.getElementById("fac-r-ht").textContent = fcfa(ht);
+            document.getElementById("fac-r-tva").textContent = fcfa(tv) + " (" + String(tva.value).replace(".", ",") + " %)";
+            document.getElementById("fac-r-ttc").textContent = fcfa(ht + tv);
+        }
+        lignesEl.addEventListener("input", recalc);
+        lignesEl.addEventListener("click", function (e) {
+            var b = e.target.closest(".fl-suppr");
+            if (!b) return;
+            b.closest(".fac-ligne").remove();
+            if (!lignesEl.children.length) ajouter();
+            recalc();
+        });
+        lignesEl.addEventListener("keydown", function (e) {
+            if (e.key === "Enter" && e.target.matches(".fl-pu, .fl-qte, .fl-desig")) {
+                e.preventDefault();
+                var r = e.target.closest(".fac-ligne");
+                if (!r.nextElementSibling) ajouter().querySelector(".fl-desig").focus();
+                else r.nextElementSibling.querySelector(".fl-desig").focus();
+            }
+        });
+        document.getElementById("fac-ajout-ligne").addEventListener("click", function () {
+            ajouter().querySelector(".fl-desig").focus();
+        });
+        tva.addEventListener("change", recalc);
+        remise.addEventListener("input", recalc);
+
+        // Délais de paiement
+        function plusJours(iso, n) {
+            var d = new Date(iso + "T00:00:00"); d.setDate(d.getDate() + n);
+            return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+        }
+        document.querySelectorAll("[data-delai]").forEach(function (b) {
+            b.addEventListener("click", function () {
+                document.querySelectorAll("[data-delai]").forEach(function (x) { x.classList.toggle("on", x === b); });
+                dateEch.value = plusJours(dateEm.value || "{{ aujourdhui_iso }}", +b.getAttribute("data-delai"));
+            });
+        });
+
+        // Soumission : sérialise les lignes
+        var boutonSoumis = "brouillon";
+        form.querySelectorAll("[data-fac-submit]").forEach(function (b) {
+            b.addEventListener("click", function () { boutonSoumis = b.getAttribute("data-fac-submit"); });
+        });
+        form.addEventListener("submit", function (e) {
+            var lignes = lire().filter(function (l) { return l.designation || num(l.prix_unitaire); });
+            var err = !selClient.value ? "Choisissez un client." : (!lignes.length ? "Ajoutez au moins une ligne." : "");
+            if (err) { e.preventDefault(); window.showToast ? window.showToast("error", err) : alert(err); return; }
+            document.getElementById("fac-lignes-json").value = JSON.stringify(lignes);
+            document.getElementById("fac-emettre").value = boutonSoumis === "emettre" ? "1" : "";
+        });
+
+        // Ouverture : nouvelle / modification
+        function ouvrir(f) {
+            form.reset();
+            document.getElementById("fac-id").value = f ? f.pk : "";
+            document.getElementById("fac-titre").textContent = f ? "Modifier la facture" : "Nouvelle facture";
+            document.getElementById("fac-numero").textContent = f ? f.numero : "{{ numero_suivant }}";
+            document.getElementById("fac-sous").lastChild.textContent = f ? " · " + f.statut_label : " · attribué à l'enregistrement";
+            selClient.value = f ? String(f.client_id) : "";
+            if (msClient) msClient.refresh();
+            remplirProjets(selClient.value, f ? String(f.projet_id) : "");
+            if (f && f.echeance_id) remplirEcheances(selProjet.value, selClient.value, String(f.echeance_id));
+            document.getElementById("fac-objet").value = f ? f.objet : "";
+            dateEm.value = f ? f.date_emission : "{{ aujourdhui_iso }}";
+            dateEch.value = f ? f.date_echeance : "{{ echeance_defaut }}";
+            tva.value = f ? String(Number(f.taux_tva)) : "0";
+            if (f && tva.value !== String(Number(f.taux_tva))) {
+                tva.add(new Option(String(Number(f.taux_tva)).replace(".", ",") + " %", String(Number(f.taux_tva))));
+                tva.value = String(Number(f.taux_tva));
+            }
+            remise.value = f ? Number(f.remise) : 0;
+            if (f) {
+                document.getElementById("fac-conditions").value = f.conditions;
+                document.getElementById("fac-notes").value = f.notes;
+            }
+            lignesEl.innerHTML = "";
+            (f && f.lignes.length ? f.lignes : [{}]).forEach(ajouter);
+            form.querySelectorAll(".ffield").forEach(function (c) { c.querySelectorAll("input, textarea, select").forEach(function (x) { x.dispatchEvent(new Event("input", { bubbles: true })); }); });
+            recalc();
+            window.openDrawer && window.openDrawer();
+        }
+        document.querySelectorAll("[data-facture-nouvelle]").forEach(function (b) { b.addEventListener("click", function () { ouvrir(null); }); });
+        document.addEventListener("click", function (e) {
+            var b = e.target.closest("[data-facture-edit]");
+            if (b) ouvrir(ITEMS[+b.getAttribute("data-facture-edit")]);
+        });
+
+        var edit = params.get("edit");
+        if (edit) {
+            var f = ITEMS.find(function (x) { return String(x.pk) === edit; });
+            if (f) setTimeout(function () { ouvrir(f); }, 60);
+        } else if (params.get("nouveau")) {
+            setTimeout(function () { ouvrir(null); }, 60);
+        }
+        {% if erreurs %}
+        setTimeout(function () {
+            window.openDrawer && window.openDrawer();
+            if (!lignesEl.children.length) ajouter();
+        }, 60);
+        {% endif %}
+    })();
+    </script>
+{% endblock extra_js %}

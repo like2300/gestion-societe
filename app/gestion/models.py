@@ -12,6 +12,8 @@ from django.contrib.auth.models import (
     PermissionsMixin,
 )
 from django.core.validators import MaxValueValidator
+import uuid
+
 from django.db import models
 from django.utils import timezone
 
@@ -94,9 +96,11 @@ PROSPECTION_STATUT_CHOICES = [
 ]
 
 STATUT_ABONNEMENT_CHOICES = [
+    ("EN_ATTENTE", "En attente"),
     ("ACTIF", "Actif"),
     ("EXPIRE", "Expiré"),
     ("SUSPENDU", "Suspendu"),
+    ("ANNULE", "Demande refusée"),
 ]
 
 STATUT_DEPENSE_CHOICES = STATUT_PAIEMENT_CHOICES
@@ -190,6 +194,9 @@ class UserAdmin(AbstractBaseUser, PermissionsMixin):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     notif_son_actif = models.BooleanField("son des notifications", default=True)
+    doit_changer_mdp = models.BooleanField(
+        "doit changer son mot de passe", default=False
+    )
 
     objects = UserAdminManager()
 
@@ -479,7 +486,12 @@ class Employe(models.Model):
     nom = models.CharField(max_length=100)
     prenom = models.CharField(max_length=100)
     date_naissance = models.DateField(null=True, blank=True)
+    lieu_naissance = models.CharField(max_length=150, blank=True, default="")
     nationalite = models.CharField(max_length=100, blank=True, null=True)
+    numero_piece_identite = models.CharField(
+        max_length=60, blank=True, default="", verbose_name="n° de pièce d'identité"
+    )
+    adresse = models.CharField(max_length=255, blank=True, default="")
     photo_profil = models.CharField(max_length=500, blank=True, null=True)
     telephone_1 = models.CharField(max_length=30)
     telephone_2 = models.CharField(max_length=30, blank=True, null=True)
@@ -513,6 +525,13 @@ class Employe(models.Model):
         null=True,
         help_text="Modules accessibles (barre latérale).",
     )
+    # Parmi les modules accessibles : ceux ouverts en LECTURE SEULE (consultation sans
+    # création, modification ni suppression). Absent de la liste = accès en modification.
+    permissions_lecture = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Modules accessibles en lecture seule.",
+    )
     compte = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -534,6 +553,25 @@ class Employe(models.Model):
 
     def __str__(self):
         return f"{self.prenom} {self.nom} ({self.societe})"
+
+
+class EmployeDocument(models.Model):
+    """13. Documents d'un employé (pièce d'identité, contrat, diplôme…)."""
+
+    employe = models.ForeignKey(
+        Employe, on_delete=models.CASCADE, related_name="documents"
+    )
+    type_document = models.CharField(max_length=100)
+    fichier = models.CharField(max_length=500)
+    date_document = models.DateField(null=True, blank=True)
+
+    class Meta:
+        db_table = "employe_document"
+        verbose_name = "document d'employé"
+        verbose_name_plural = "documents d'employé"
+
+    def __str__(self):
+        return f"{self.employe} — {self.type_document}"
 
 
 class EmployeLangue(models.Model):
@@ -665,6 +703,12 @@ class ContratEmploye(models.Model):
     statut = models.CharField(
         max_length=30, choices=STATUT_CONTRAT_CHOICES, default="ACTIF"
     )
+    # Clauses du contrat imprimé (généré automatiquement à la création de l'employé)
+    poste = models.CharField(max_length=150, blank=True, default="")
+    lieu_travail = models.CharField(max_length=255, blank=True, default="")
+    heures_hebdo = models.PositiveSmallIntegerField(null=True, blank=True, verbose_name="heures par semaine")
+    periode_essai_jours = models.PositiveSmallIntegerField(null=True, blank=True, verbose_name="période d'essai (jours)")
+    missions = models.TextField(blank=True, default="")
 
     class Meta:
         db_table = "contrat_employe"
@@ -1173,6 +1217,16 @@ class PaiementClient(models.Model):
 # ---------------------------------------------------------------------------
 
 
+def format_prix(montant, devise):
+    """Montant lisible : « 49 $ », « 49,50 $ », « 25 000 XOF », « Gratuit » pour 0."""
+    if not montant:
+        return "Gratuit"
+    entier = float(montant) == int(montant)
+    texte = f"{float(montant):,.0f}" if entier else f"{float(montant):,.2f}"
+    texte = texte.replace(",", " ").replace(".", ",")
+    return f"{texte} $" if devise == "USD" else f"{texte} {devise}"
+
+
 class Forfait(models.Model):
     """29. Forfaits."""
 
@@ -1182,6 +1236,11 @@ class Forfait(models.Model):
     devise = models.CharField(max_length=10, default="XOF")
     duree_jours = models.PositiveIntegerField()
     actif = models.BooleanField(default=True)
+
+    @property
+    def prix_affiche(self):
+        """« 49 $ », « 25 000 XOF », « Gratuit »."""
+        return format_prix(self.prix, self.devise)
 
     class Meta:
         db_table = "forfait"
@@ -1229,6 +1288,14 @@ class AbonnementSociete(models.Model):
         max_length=30, choices=STATUT_ABONNEMENT_CHOICES, default="ACTIF"
     )
     renouvellement_auto = models.BooleanField(default=False)
+    # Lien de paiement envoyé par e-mail (page publique protégée par ce jeton)
+    jeton = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    # Demande de changement d'offre : forfait que la société avait avant cette demande
+    ancien_forfait = models.ForeignKey(
+        Forfait, on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
+        verbose_name="forfait précédent (changement d'offre)",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
 
     class Meta:
         db_table = "abonnement_societe"
@@ -1255,6 +1322,9 @@ class PaiementAbonnement(models.Model):
     statut = models.CharField(
         max_length=30, choices=STATUT_PAIEMENT_CHOICES, default="EN_ATTENTE"
     )
+    telephone = models.CharField(max_length=30, blank=True, default="")
+    kpay_id = models.CharField(max_length=100, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
 
     class Meta:
         db_table = "paiement_abonnement"
@@ -1593,6 +1663,9 @@ class IaMessage(models.Model):
     )
     role = models.CharField(max_length=20, choices=ROLE_IA_MESSAGE_CHOICES)
     contenu = models.TextField()
+    # Blocs riches de l'assistant (graphiques, indicateurs, documents) et
+    # étapes suivies par l'agent : {"blocs": [...], "etapes": [...]}.
+    donnees = models.JSONField("données enrichies", default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -1621,6 +1694,7 @@ class EquipeGroupe(models.Model):
         Societe, on_delete=models.CASCADE, related_name="equipe_groupes"
     )
     titre = models.CharField(max_length=120, verbose_name="titre du groupe")
+    description = models.CharField(max_length=255, blank=True, default="")
     logo = models.CharField(
         max_length=255,
         blank=True,
@@ -1655,6 +1729,8 @@ class EquipeGroupeMembre(models.Model):
     employe = models.ForeignKey(
         Employe, on_delete=models.CASCADE, related_name="equipe_groupes"
     )
+    # Administrateur du groupe : peut le modifier, gérer ses membres et le supprimer
+    est_admin = models.BooleanField(default=False)
 
     class Meta:
         db_table = "equipe_groupe_membre"
@@ -2135,13 +2211,18 @@ class Tache(models.Model):
             self.date_terminee = timezone.now()
         if nouveau_statut == "A_FAIRE" and self.date_terminee:
             self.date_terminee = None
-        self.save(update_fields=["statut", "date_debut", "date_terminee"])
+        progres_avant = self.progres
+        # Tâche rouverte : l'avancement ne peut pas rester à 100 % (incohérent avec le statut)
+        if ancien == "TERMINEE" and nouveau_statut in ("A_FAIRE", "EN_COURS"):
+            self.progres = 0 if nouveau_statut == "A_FAIRE" else min(self.progres, 90)
+            self.date_terminee = None
+        self.save(update_fields=["statut", "date_debut", "date_terminee", "progres"])
         TacheEvolution.objects.create(
             tache=self,
             auteur=auteur,
             statut_avant=ancien,
             statut_apres=nouveau_statut,
-            progres_avant=self.progres,
+            progres_avant=progres_avant,
             progres_apres=self.progres,
         )
         return True
@@ -2473,3 +2554,253 @@ class PointGeo(models.Model):
 
     def __str__(self):
         return f"{self.mesure} · {self.pays} · {self.ville} ({self.societe})"
+
+
+class EvenementGoogle(models.Model):
+    """Lien entre un objet (échéance, tâche) et son événement Google Agenda."""
+
+    societe = models.ForeignKey(
+        Societe, on_delete=models.CASCADE, related_name="evenements_google"
+    )
+    objet_type = models.CharField(max_length=20)
+    objet_id = models.PositiveIntegerField()
+    evenement_id = models.CharField(max_length=200)
+    maj_le = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "evenement_google"
+        verbose_name = "événement Google Agenda"
+        verbose_name_plural = "événements Google Agenda"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["societe", "objet_type", "objet_id"], name="unique_evenement_google"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.objet_type} #{self.objet_id} → {self.evenement_id}"
+
+
+# ---------------------------------------------------------------------------
+# Facturation clients (espace Finances)
+# ---------------------------------------------------------------------------
+
+STATUT_FACTURE_CHOICES = [
+    ("BROUILLON", "Brouillon"),
+    ("EMISE", "Émise"),
+    ("PAYEE", "Payée"),
+    ("ANNULEE", "Annulée"),
+]
+
+
+class Facture(models.Model):
+    """Facture client : en-tête + lignes (``LigneFacture``), totaux recalculés.
+
+    Numérotation par société et par année : FAC-2026-0001. Une facture payée
+    liée à un projet est enregistrée dans Paiements (recette) ; liée à une
+    échéance, elle solde aussi l'échéance.
+    """
+
+    societe = models.ForeignKey(Societe, on_delete=models.CASCADE, related_name="factures")
+    numero = models.CharField("numéro", max_length=30)
+    client = models.ForeignKey(
+        Client, on_delete=models.SET_NULL, null=True, blank=True, related_name="factures"
+    )
+    client_nom = models.CharField("client (copie)", max_length=200, blank=True, default="")
+    projet = models.ForeignKey(
+        ProjetClient, on_delete=models.SET_NULL, null=True, blank=True, related_name="factures"
+    )
+    echeance = models.ForeignKey(
+        EcheancePaiement, on_delete=models.SET_NULL, null=True, blank=True, related_name="factures"
+    )
+    objet = models.CharField(max_length=255, blank=True, default="")
+    date_emission = models.DateField("date d'émission", default=timezone.localdate)
+    date_echeance = models.DateField("date d'échéance", null=True, blank=True)
+    statut = models.CharField(max_length=20, choices=STATUT_FACTURE_CHOICES, default="BROUILLON")
+    taux_tva = models.DecimalField("TVA (%)", max_digits=5, decimal_places=2, default=0)
+    remise = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    total_ht = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    total_tva = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    total_ttc = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    notes = models.TextField(blank=True, default="")
+    conditions = models.TextField("conditions de paiement", blank=True, default="")
+    date_paiement = models.DateField(null=True, blank=True)
+    paiement = models.ForeignKey(
+        "PaiementClient", on_delete=models.SET_NULL, null=True, blank=True, related_name="factures"
+    )
+    cree_par = models.ForeignKey(
+        UserAdmin, on_delete=models.SET_NULL, null=True, blank=True, related_name="factures_creees"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-date_emission", "-id"]
+        unique_together = [("societe", "numero")]
+        verbose_name = "facture"
+
+    def __str__(self):
+        return f"{self.numero} — {self.client_nom or self.client}"
+
+    def recalculer(self, enregistrer=True):
+        from decimal import Decimal, ROUND_HALF_UP
+
+        ht = sum((l.montant for l in self.lignes.all()), Decimal("0"))
+        ht = max(ht - (self.remise or Decimal("0")), Decimal("0"))
+        tva = (ht * (self.taux_tva or Decimal("0")) / Decimal("100")).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+        self.total_ht, self.total_tva, self.total_ttc = ht, tva, ht + tva
+        if enregistrer:
+            self.save(update_fields=["total_ht", "total_tva", "total_ttc", "updated_at"])
+
+    @property
+    def en_retard(self):
+        return (
+            self.statut == "EMISE" and self.date_echeance is not None
+            and self.date_echeance < timezone.localdate()
+        )
+
+
+class LigneFacture(models.Model):
+    facture = models.ForeignKey(Facture, on_delete=models.CASCADE, related_name="lignes")
+    designation = models.CharField("désignation", max_length=255)
+    quantite = models.DecimalField("quantité", max_digits=12, decimal_places=2, default=1)
+    prix_unitaire = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    ordre = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["ordre", "id"]
+
+    @property
+    def montant(self):
+        return (self.quantite or 0) * (self.prix_unitaire or 0)
+
+
+# ---------------------------------------------------------------------------
+# Applications bureautiques intégrées : Tableur, Documents, Présentations
+# ---------------------------------------------------------------------------
+
+TYPE_FICHIER_BUREAU_CHOICES = [
+    ("SHEET", "Tableur"),
+    ("DOC", "Document"),
+    ("SLIDES", "Présentation"),
+]
+
+
+class FichierBureau(models.Model):
+    """Fichier créé dans les applications intégrées (contenu JSON propre à chaque type).
+
+    - SHEET  : {"cells": {"A1": {"v": "=SUM(B1:B3)", "b": 1, "al": "c", "fmt": "money"}}, "nrows", "ncols", "cols"}
+    - DOC    : {"html": "<h1>…</h1><p>…</p>"}  (HTML nettoyé côté serveur)
+    - SLIDES : {"theme": "accent", "slides": [{"layout": "titre", "titre": "…", "texte": "…"}]}
+    """
+
+    societe = models.ForeignKey(Societe, on_delete=models.CASCADE, related_name="fichiers_bureau")
+    type_fichier = models.CharField(max_length=10, choices=TYPE_FICHIER_BUREAU_CHOICES)
+    titre = models.CharField(max_length=200, default="Sans titre")
+    contenu = models.JSONField(default=dict, blank=True)
+    apercu = models.CharField(max_length=300, blank=True, default="")
+    favori = models.BooleanField(default=False)
+    prive = models.BooleanField(
+        "privé", default=False,
+        help_text="Privé : visible seulement par son créateur, les partenaires et l'administration.",
+    )
+    partenaires = models.ManyToManyField(
+        "Employe", blank=True, related_name="fichiers_partages",
+        help_text="Employés invités à modifier ce fichier.",
+    )
+    version = models.PositiveIntegerField(default=1)
+    cree_par = models.ForeignKey(
+        UserAdmin, on_delete=models.SET_NULL, null=True, blank=True, related_name="fichiers_bureau"
+    )
+    modifie_par = models.ForeignKey(
+        UserAdmin, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+        verbose_name = "fichier bureautique"
+        verbose_name_plural = "fichiers bureautiques"
+
+    def __str__(self):
+        return f"{self.get_type_fichier_display()} — {self.titre}"
+
+
+# ---------------------------------------------------------------------------
+# Planning : agenda des rendez-vous (chaque employé a le sien)
+# ---------------------------------------------------------------------------
+
+TYPE_EVENEMENT_CHOICES = [
+    ("RDV", "Rendez-vous"),
+    ("REUNION", "Réunion"),
+    ("APPEL", "Appel"),
+    ("VISITE", "Visite client"),
+    ("FORMATION", "Formation"),
+    ("CONGE", "Absence / congé"),
+    ("AUTRE", "Autre"),
+]
+
+
+class EvenementAgenda(models.Model):
+    """Événement du planning : visible par son organisateur et ses participants (et l'administration)."""
+
+    societe = models.ForeignKey(Societe, on_delete=models.CASCADE, related_name="evenements_agenda")
+    titre = models.CharField(max_length=200)
+    description = models.TextField(blank=True, default="")
+    lieu = models.CharField(max_length=255, blank=True, default="")
+    type_evenement = models.CharField(max_length=20, choices=TYPE_EVENEMENT_CHOICES, default="RDV")
+    couleur = models.CharField(max_length=9, blank=True, default="")
+    debut = models.DateTimeField()
+    fin = models.DateTimeField()
+    journee_entiere = models.BooleanField(default=False)
+    organisateur = models.ForeignKey(
+        UserAdmin, on_delete=models.SET_NULL, null=True, blank=True, related_name="evenements_organises"
+    )
+    participants = models.ManyToManyField("Employe", blank=True, related_name="evenements_agenda")
+    client = models.ForeignKey(
+        Client, on_delete=models.SET_NULL, null=True, blank=True, related_name="evenements_agenda"
+    )
+    rappel_minutes = models.PositiveIntegerField(null=True, blank=True)
+    image = models.ImageField(upload_to="planning/", blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["debut"]
+        verbose_name = "événement du planning"
+        verbose_name_plural = "événements du planning"
+
+    def __str__(self):
+        return f"{self.titre} ({self.debut:%d/%m/%Y %H:%M})"
+
+
+class ModeleContrat(models.Model):
+    """Modèle de contrat de travail propre à la société, avec variables dynamiques.
+
+    Le texte contient des variables ``{{ nom_variable }}`` remplacées à l'impression
+    (voir ``contrat_pdf.VARIABLES``). Une ligne commençant par « # » devient un titre
+    d'article. Un modèle peut viser un type de contrat (CDI, CDD…) ; sinon il sert
+    de modèle par défaut.
+    """
+
+    societe = models.ForeignKey(Societe, on_delete=models.CASCADE, related_name="modeles_contrat")
+    nom = models.CharField(max_length=150)
+    type_contrat = models.ForeignKey(
+        TypeContrat, on_delete=models.SET_NULL, null=True, blank=True, related_name="modeles",
+        help_text="Vide : modèle utilisé pour tous les types sans modèle dédié.",
+    )
+    contenu = models.TextField()
+    actif = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["nom"]
+        verbose_name = "modèle de contrat"
+        verbose_name_plural = "modèles de contrat"
+
+    def __str__(self):
+        return self.nom

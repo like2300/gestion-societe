@@ -1,0 +1,35 @@
+{% extends "backoffice/base.html" %}
+{% block titre %}Abonnements{% endblock %}
+{% block contenu %}
+<div class="page-titre"><h2>Abonnements</h2><p>Activez, prolongez ou suspendez les abonnements des sociétés.</p></div>
+<div class="filtres">
+    <a href="?" class="{% if not statut %}on{% endif %}">Tous</a>
+    {% for code, nom in statuts %}<a href="?statut={{ code }}" class="{% if statut == code %}on{% endif %}">{{ nom }}</a>{% endfor %}
+    <form method="get"><input type="hidden" name="statut" value="{{ statut }}" /><input type="search" name="q" value="{{ q }}" placeholder="Société ou e-mail…" /></form>
+</div>
+<div class="carte tableau">
+    <table>
+        <thead><tr><th>Société</th><th>Forfait</th><th>Période</th><th>Statut</th><th style="text-align:right">Actions</th></tr></thead>
+        <tbody>
+        {% for a in abonnements %}
+            <tr>
+                <td><b>{{ a.societe.nom }}</b><small>{{ a.societe.createur.email }}</small></td>
+                <td><b>{{ a.forfait.nom }}</b><small>{{ a.forfait.prix_affiche }}</small></td>
+                <td>{{ a.date_debut|date:"d/m/Y" }} → {{ a.date_fin|date:"d/m/Y" }}<small>créé le {{ a.created_at|date:"d/m/Y" }}</small></td>
+                <td><span class="etat {{ a.statut }}">{{ a.get_statut_display }}</span></td>
+                <td><div class="actions">
+                    {% if a.statut == "ACTIF" %}
+                        <form method="post" action="{% url 'backoffice:abonnement_action' a.pk 'prolonger' %}">{% csrf_token %}<button class="b">Prolonger</button></form>
+                        <form method="post" action="{% url 'backoffice:abonnement_action' a.pk 'suspendre' %}" onsubmit="return confirm('Suspendre cet abonnement ?')">{% csrf_token %}<button class="b non">Suspendre</button></form>
+                    {% else %}
+                        <form method="post" action="{% url 'backoffice:abonnement_action' a.pk 'activer' %}">{% csrf_token %}<button class="b ok">Activer</button></form>
+                        {% if a.forfait.prix %}<form method="post" action="{% url 'backoffice:abonnement_action' a.pk 'relancer' %}">{% csrf_token %}<button class="b">Renvoyer le lien</button></form>{% endif %}
+                    {% endif %}
+                    <a class="b" style="display:inline-flex;align-items:center" href="{% url 'abonnement_payer' a.jeton %}" target="_blank" rel="noopener">Page de paiement</a>
+                </div></td>
+            </tr>
+        {% empty %}<tr><td colspan="5" class="vide">Aucun abonnement.</td></tr>{% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

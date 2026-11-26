@@ -1,0 +1,338 @@
+{% extends "gestion/base_dashboard.html" %}
+{% load static %}
+
+{% block dash_title %}Carte du monde — {{ societe.nom }}{% endblock %}
+
+{% block content %}
+    {# ===== En-tête ===== #}
+    <div class="ui-page-head">
+        <div>
+            <h1>Carte du monde</h1>
+            <p>Où se trouvent vos clients, prospects et ventes — agrégés par pays et par ville.</p>
+        </div>
+        <div class="wm-actions">
+            <div class="wm-seg" id="wm-modes" role="tablist" aria-label="Vue">
+                <button type="button" class="on" data-mode="tous">Global</button>
+                <button type="button" data-mode="plateforme">Plateforme</button>
+                <button type="button" data-mode="sociaux">Réseaux sociaux</button>
+            </div>
+            <button type="button" class="wm-btn" id="wm-refresh" title="Actualiser les données">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/></svg>
+            </button>
+        </div>
+    </div>
+
+    {% include "gestion/components/espace_dossiers.html" %}
+
+    {# ===== Indicateurs (remplis par le script) ===== #}
+    <section class="ui-grid-4 ui-stat-row" id="wm-stats" aria-live="polite"></section>
+
+    {# ===== Carte + classement ===== #}
+    <section class="ui-grid-main wm-main">
+        <div class="ui-card wm-map-card">
+            <div class="ui-card-head wm-head">
+                <div>
+                    <h2 class="ui-card-title">Répartition géographique</h2>
+                    <p class="ui-card-sub" id="wm-sub">Survolez un point pour voir le détail</p>
+                </div>
+                <div class="wm-mesures" id="wm-mesures"></div>
+            </div>
+            <div class="wm-map" id="wm-map">
+                <svg id="wm-svg" viewBox="0 0 360 134" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Carte du monde en pointillés">
+                    <g id="wm-dots"></g>
+                    <g id="wm-markers"></g>
+                </svg>
+                <div class="wm-tip" id="wm-tip" hidden></div>
+                <div class="wm-loader" id="wm-loader"><span></span>Chargement des données…</div>
+                <div class="wm-zoom">
+                    <button type="button" id="wm-zoom-in" aria-label="Zoomer">+</button>
+                    <button type="button" id="wm-zoom-out" aria-label="Dézoomer">−</button>
+                    <button type="button" id="wm-zoom-reset" aria-label="Vue d'ensemble">⤢</button>
+                </div>
+            </div>
+            <div class="ui-chart-legend wm-legende">
+                <span><i class="wm-l-on"></i>Pays avec activité</span>
+                <span><i class="wm-l-off"></i>Sans activité</span>
+                <span><i class="wm-l-pt"></i>Point = ville (taille selon la mesure)</span>
+            </div>
+        </div>
+
+        <div class="ui-stack">
+            <div class="ui-card">
+                <div class="ui-card-head">
+                    <div>
+                        <h2 class="ui-card-title">Top pays</h2>
+                        <p class="ui-card-sub" id="wm-top-sub">Selon la mesure choisie</p>
+                    </div>
+                </div>
+                <ul class="wm-top" id="wm-top"></ul>
+            </div>
+            <div class="ui-card wm-detail" id="wm-detail">
+                <div class="ui-card-head">
+                    <div>
+                        <h2 class="ui-card-title" id="wm-detail-titre">Détail</h2>
+                        <p class="ui-card-sub" id="wm-detail-sub">Cliquez sur un point ou un pays</p>
+                    </div>
+                </div>
+                <div class="wm-detail-body" id="wm-detail-body"><p class="wm-vide">Aucune zone sélectionnée.</p></div>
+            </div>
+        </div>
+    </section>
+
+    {# ===== Tableau des villes (paginé) ===== #}
+    <section class="ui-card wm-table-card">
+        <div class="ui-card-head">
+            <div>
+                <h2 class="ui-card-title">Villes</h2>
+                <p class="ui-card-sub">Toutes les villes où vous avez de l'activité</p>
+            </div>
+        </div>
+        <div id="wm-table-wrap"></div>
+    </section>
+
+    <p class="wm-note">Données agrégées par pays et ville : aucun nom de client ni montant privé n'est affiché. Coordonnées indicatives.</p>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'gestion/world-dots.js' %}?v={{ UI_VERSION }}"></script>
+    <script>
+    (function () {
+        "use strict";
+        var URL = "{% url 'gestion:globe_donnees' %}";
+        var LAT_MAX = 78, LAT_MIN = -56;
+        var mode = "tous", mesure = "clients", donnees = null, selection = null;
+        var svg = document.getElementById("wm-svg");
+        var gDots = document.getElementById("wm-dots"), gMarks = document.getElementById("wm-markers");
+        var tip = document.getElementById("wm-tip"), carte = document.getElementById("wm-map");
+        var NS = "http://www.w3.org/2000/svg";
+
+        function px(lng) { return lng + 180; }
+        function py(lat) { return LAT_MAX - lat; }
+        function nf(v, ca) {
+            v = Number(v) || 0;
+            var s = Math.round(v).toLocaleString("fr-FR");
+            return ca ? s + " FCFA" : s;
+        }
+        function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+        function mesuresUtiles() {
+            // Mesures sans aucune donnée masquées (on garde toujours « Clients »).
+            var t = donnees && donnees.total || {};
+            return (donnees && donnees.mesures || []).filter(function (m) { return m.cle === "clients" || Number(t[m.cle]) > 0; });
+        }
+        function mesureInfo() {
+            return (donnees && donnees.mesures || []).filter(function (m) { return m.cle === mesure; })[0] || { cle: mesure, label: mesure, couleur: "var(--accent)" };
+        }
+        function drapeau(iso) {
+            if (!iso || iso.length !== 2) return "🌐";
+            return String.fromCodePoint.apply(null, iso.toUpperCase().split("").map(function (c) { return 127397 + c.charCodeAt(0); }));
+        }
+
+        /* ----- Fond : pointillés ----- */
+        var D = window.WORLD_DOTS || { pts: [], isos: [] };
+        var dotEls = [];
+        (function dessinerFond() {
+            var frag = document.createDocumentFragment();
+            D.pts.forEach(function (p) {
+                var c = document.createElementNS(NS, "circle");
+                c.setAttribute("cx", px(p[0]).toFixed(1));
+                c.setAttribute("cy", py(p[1]).toFixed(1));
+                c.setAttribute("r", "0.62");
+                c.setAttribute("class", "wm-dot");
+                frag.appendChild(c);
+                dotEls.push([c, D.isos[p[2]]]);
+            });
+            gDots.appendChild(frag);
+        })();
+
+        /* ----- Zoom & déplacement ----- */
+        var vb = { x: 0, y: 0, w: 360, h: 134 };
+        function appliquerVue() { svg.setAttribute("viewBox", vb.x + " " + vb.y + " " + vb.w + " " + vb.h); }
+        function zoomer(f, cx, cy) {
+            var nw = Math.min(360, Math.max(40, vb.w / f)), nh = nw * 134 / 360;
+            cx = cx == null ? vb.x + vb.w / 2 : cx; cy = cy == null ? vb.y + vb.h / 2 : cy;
+            vb.x = Math.min(360 - nw, Math.max(0, cx - nw / 2)); vb.y = Math.min(134 - nh, Math.max(0, cy - nh / 2));
+            vb.w = nw; vb.h = nh; appliquerVue(); tip.hidden = true;
+        }
+        document.getElementById("wm-zoom-in").onclick = function () { zoomer(1.6); };
+        document.getElementById("wm-zoom-out").onclick = function () { zoomer(1 / 1.6); };
+        document.getElementById("wm-zoom-reset").onclick = function () { vb = { x: 0, y: 0, w: 360, h: 134 }; appliquerVue(); };
+        var glisse = null;
+        svg.addEventListener("pointerdown", function (e) { if (e.target.closest(".wm-mk")) return; glisse = { x: e.clientX, y: e.clientY, vx: vb.x, vy: vb.y }; svg.setPointerCapture(e.pointerId); });
+        svg.addEventListener("pointermove", function (e) {
+            if (!glisse) return;
+            var r = svg.getBoundingClientRect(), k = vb.w / r.width;
+            vb.x = Math.min(360 - vb.w, Math.max(0, glisse.vx - (e.clientX - glisse.x) * k));
+            vb.y = Math.min(134 - vb.h, Math.max(0, glisse.vy - (e.clientY - glisse.y) * k));
+            appliquerVue();
+        });
+        svg.addEventListener("pointerup", function () { glisse = null; });
+        svg.addEventListener("wheel", function (e) {
+            e.preventDefault();
+            var r = svg.getBoundingClientRect();
+            var cx = vb.x + (e.clientX - r.left) / r.width * vb.w, cy = vb.y + (e.clientY - r.top) / r.height * vb.h;
+            zoomer(e.deltaY < 0 ? 1.25 : 0.8, cx, cy);
+        }, { passive: false });
+
+        /* ----- Rendu des données ----- */
+        function valeur(n) { return Number(n.totaux && n.totaux[mesure]) || 0; }
+        function noeuds() {
+            // Points : villes géolocalisées, sinon centres des pays.
+            var v = (donnees.villes || []).filter(function (n) { return n.lat != null && n.lng != null && valeur(n) > 0; })
+                .map(function (n) { return Object.assign({ type: "ville" }, n); });
+            var paysAvecVille = {};
+            v.forEach(function (n) { paysAvecVille[n.pays] = true; });
+            (donnees.pays || []).forEach(function (n) {
+                if (n.lat != null && n.lng != null && valeur(n) > 0 && !paysAvecVille[n.nom]) v.push(Object.assign({ type: "pays", pays: n.nom }, n));
+            });
+            return v.sort(function (a, b) { return valeur(b) - valeur(a); });
+        }
+
+        function rendreStats() {
+            var t = donnees.total || {}, pays = (donnees.pays || []).filter(function (p) { return p.nom !== "Inconnu" && valeur(p) > 0; });
+            var villes = (donnees.villes || []).filter(function (p) { return p.nom && valeur(p) > 0; });
+            var inconnus = (donnees.pays || []).filter(function (p) { return p.nom === "Inconnu"; }).reduce(function (s, p) { return s + valeur(p); }, 0);
+            var m = mesureInfo();
+            var cartes = [
+                { l: m.label, v: nf(t[mesure], m.format_ca), ico: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8", tone: m.couleur, n: inconnus ? nf(inconnus) + " sans localisation" : "toutes zones" },
+                { l: "Pays couverts", v: pays.length, ico: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20ZM2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20", tone: "#8b5cf6", n: pays.length ? "dont " + esc(pays.sort(function (a, b) { return valeur(b) - valeur(a); })[0].nom) + " en tête" : "aucun pour l'instant" },
+                { l: "Villes", v: villes.length, ico: "M3 21h18M6 21V7l6-4 6 4v14M10 10h4M10 14h4", tone: "#06b6d4", n: "avec de l'activité" },
+                { l: "Chiffre d'affaires", v: nf(t.ca), ico: "M3 3v18h18M7 14l4-4 3 3 5-6", tone: "#10b981", n: nf(t.prospects) + " prospect(s) · " + nf(t.commandes) + " commande(s)" },
+            ];
+            document.getElementById("wm-stats").innerHTML = cartes.map(function (c) {
+                return '<div class="ui-stat is-compact" style="--tone:' + c.tone + '"><div class="ui-stat-top"><div><div class="ui-stat-label">' + esc(c.l) +
+                    '</div><div class="ui-stat-value">' + c.v + '</div></div><span class="ui-stat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + c.ico +
+                    '"/></svg></span></div><div class="ui-stat-foot"><span class="ui-stat-note">' + c.n + "</span></div></div>";
+            }).join("");
+        }
+
+        function rendreMesures() {
+            var box = document.getElementById("wm-mesures");
+            var ms = mesuresUtiles();
+            if (!ms.some(function (m) { return m.cle === mesure; }) && ms.length) mesure = ms[0].cle;
+            box.innerHTML = ms.map(function (m) {
+                return '<button type="button" data-mesure="' + m.cle + '" class="' + (m.cle === mesure ? "on" : "") + '" style="--c:' + m.couleur + '"><i></i>' + esc(m.label) + "</button>";
+            }).join("");
+        }
+
+        function rendreFond() {
+            var actifs = {};
+            (donnees.pays || []).forEach(function (p) { if (p.iso2 && valeur(p) > 0) actifs[p.iso2.toLowerCase()] = true; });
+            dotEls.forEach(function (d) { d[0].classList.toggle("on", !!actifs[d[1]]); });
+        }
+
+        function rendreMarqueurs() {
+            gMarks.innerHTML = "";
+            var ns = noeuds(), max = ns.length ? valeur(ns[0]) : 1, couleur = mesureInfo().couleur;
+            ns.slice().reverse().forEach(function (n) {
+                var r = 1.4 + 3.2 * Math.sqrt(valeur(n) / (max || 1));
+                var g = document.createElementNS(NS, "g");
+                g.setAttribute("class", "wm-mk");
+                g.setAttribute("transform", "translate(" + px(n.lng).toFixed(2) + " " + py(n.lat).toFixed(2) + ")");
+                g.style.setProperty("--c", couleur);
+                g.setAttribute("tabindex", "0");
+                g.innerHTML = '<circle class="wm-pulse" r="' + r.toFixed(2) + '"/><circle class="wm-halo" r="' + (r * 1.6).toFixed(2) + '"/><circle class="wm-pt" r="' + r.toFixed(2) + '"/><circle class="wm-core" r="' + Math.max(0.6, r * 0.35).toFixed(2) + '"/>';
+                g.addEventListener("mouseenter", function () { montrerTip(n, g); });
+                g.addEventListener("focus", function () { montrerTip(n, g); });
+                g.addEventListener("mouseleave", function () { tip.hidden = true; });
+                g.addEventListener("click", function () { selectionner(n); });
+                gMarks.appendChild(g);
+            });
+            document.getElementById("wm-sub").textContent = ns.length
+                ? ns.length + " point(s) · " + mesureInfo().label.toLowerCase() + " · survolez pour le détail"
+                : "Aucune donnée géolocalisée pour cette mesure";
+        }
+
+        function lignesTotaux(n) {
+            return mesuresUtiles().filter(function (m) { return (n.totaux || {})[m.cle]; }).map(function (m) {
+                return '<div class="wm-kv"><span><i style="background:' + m.couleur + '"></i>' + esc(m.label) + "</span><b>" + nf(n.totaux[m.cle], m.format_ca) + "</b></div>";
+            }).join("") || '<p class="wm-vide">Aucune donnée.</p>';
+        }
+        function montrerTip(n, g) {
+            var titre = n.type === "ville" ? n.nom : n.pays || n.nom;
+            var sous = n.type === "ville" ? (n.region ? n.region + ", " : "") + n.pays : "Pays";
+            tip.innerHTML = '<div class="wm-tip-h"><span class="wm-flag">' + drapeau(paysIso(n)) + "</span><div><b>" + esc(titre) + "</b><small>" + esc(sous) + "</small></div></div>" + lignesTotaux(n);
+            tip.hidden = false;
+            var r = g.getBoundingClientRect(), c = carte.getBoundingClientRect();
+            var x = r.left + r.width / 2 - c.left, y = r.top - c.top;
+            tip.style.left = Math.min(c.width - 130, Math.max(130, x)) + "px";
+            tip.style.top = y + "px";
+            tip.classList.toggle("bas", y < 150);
+        }
+        function paysIso(n) {
+            var p = (donnees.pays || []).filter(function (x) { return x.nom === (n.type === "ville" ? n.pays : n.nom); })[0];
+            return p && p.iso2;
+        }
+        function selectionner(n) {
+            selection = n;
+            var titre = n.type === "ville" ? n.nom : (n.pays || n.nom);
+            document.getElementById("wm-detail-titre").textContent = drapeau(paysIso(n)) + " " + titre;
+            document.getElementById("wm-detail-sub").textContent = n.type === "ville" ? (n.region ? n.region + ", " : "") + n.pays : "Pays";
+            var villes = n.type === "pays" || n.type === "pays-liste"
+                ? (donnees.villes || []).filter(function (v) { return v.pays === (n.pays || n.nom) && valeur(v) > 0; }).sort(function (a, b) { return valeur(b) - valeur(a); }).slice(0, 5)
+                : [];
+            document.getElementById("wm-detail-body").innerHTML = lignesTotaux(n) +
+                (villes.length ? '<div class="wm-sous">Principales villes</div>' + villes.map(function (v) { return '<div class="wm-kv"><span>' + esc(v.nom) + "</span><b>" + nf(valeur(v), mesureInfo().format_ca) + "</b></div>"; }).join("") : "");
+            if (n.lat != null) zoomer(vb.w >= 360 ? 2 : 1, px(n.lng), py(n.lat));
+        }
+
+        function rendreTop() {
+            var m = mesureInfo();
+            var pays = (donnees.pays || []).filter(function (p) { return valeur(p) > 0; }).sort(function (a, b) { return valeur(b) - valeur(a); });
+            var max = pays.length ? valeur(pays[0]) : 1, total = pays.reduce(function (s, p) { return s + valeur(p); }, 0) || 1;
+            document.getElementById("wm-top-sub").textContent = m.label + " par pays";
+            var ul = document.getElementById("wm-top");
+            ul.innerHTML = pays.slice(0, 6).map(function (p, i) {
+                return '<li><button type="button" data-pays="' + esc(p.nom) + '"><span class="wm-flag">' + drapeau(p.iso2) + '</span><span class="wm-top-n">' + esc(p.nom === "Inconnu" ? "Non localisé" : p.nom) +
+                    '<span class="wm-bar"><i style="width:' + (valeur(p) * 100 / max).toFixed(1) + "%;background:" + m.couleur + '"></i></span></span><b>' + nf(valeur(p), m.format_ca) + "<small>" + Math.round(valeur(p) * 100 / total) + " %</small></b></button></li>";
+            }).join("") || '<li class="wm-vide">Aucune donnée pour cette mesure.</li>';
+        }
+
+        function rendreTable() {
+            var wrap = document.getElementById("wm-table-wrap");
+            var ms = mesuresUtiles();
+            var lignes = (donnees.villes || []).filter(function (v) { return ms.some(function (m) { return (v.totaux || {})[m.cle]; }); });
+            if (!lignes.length) { wrap.innerHTML = '<p class="wm-vide">Aucune ville renseignée pour le moment.</p>'; return; }
+            var h = '<table class="crud-table" data-page-size="10" data-tabs="off"><thead><tr><th>Ville</th><th>Pays</th>' +
+                ms.map(function (m) { return "<th data-no-filter>" + esc(m.label) + "</th>"; }).join("") + "</tr></thead><tbody>";
+            lignes.sort(function (a, b) { return valeur(b) - valeur(a); }).forEach(function (v) {
+                h += "<tr><td><span class=\"row-name\">" + esc(v.nom) + "</span></td><td class=\"wm-nowrap\">" + drapeau(paysIso(Object.assign({ type: "ville" }, v))) + " " + esc(v.pays === "Inconnu" ? "Non précisé" : v.pays) + "</td>" +
+                    ms.map(function (m) { return "<td>" + nf((v.totaux || {})[m.cle], m.format_ca) + "</td>"; }).join("") + "</tr>";
+            });
+            wrap.innerHTML = h + "</tbody></table>";
+            if (window.UiTable) window.UiTable.init(wrap);
+        }
+
+        function tout() {
+            rendreMesures(); rendreStats(); rendreFond(); rendreMarqueurs(); rendreTop();
+            if (selection) selectionner(selection);
+        }
+
+        function charger() {
+            var loader = document.getElementById("wm-loader");
+            loader.hidden = false;
+            fetch(URL + "?mode=" + encodeURIComponent(mode), { headers: { Accept: "application/json" } })
+                .then(function (r) { return r.json(); })
+                .then(function (d) { donnees = d; selection = null; tout(); rendreTable(); loader.hidden = true; })
+                .catch(function () { loader.innerHTML = "Impossible de charger les données."; });
+        }
+
+        document.getElementById("wm-mesures").addEventListener("click", function (e) {
+            var b = e.target.closest("[data-mesure]"); if (!b) return;
+            mesure = b.getAttribute("data-mesure"); tout();
+        });
+        document.getElementById("wm-modes").addEventListener("click", function (e) {
+            var b = e.target.closest("[data-mode]"); if (!b) return;
+            mode = b.getAttribute("data-mode");
+            Array.prototype.forEach.call(this.children, function (x) { x.classList.toggle("on", x === b); });
+            charger();
+        });
+        document.getElementById("wm-top").addEventListener("click", function (e) {
+            var b = e.target.closest("[data-pays]"); if (!b) return;
+            var p = (donnees.pays || []).filter(function (x) { return x.nom === b.getAttribute("data-pays"); })[0];
+            if (p) selectionner(Object.assign({ type: "pays", pays: p.nom }, p));
+        });
+        document.getElementById("wm-refresh").onclick = charger;
+        charger();
+    })();
+    </script>
+{% endblock %}

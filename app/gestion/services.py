@@ -2,6 +2,7 @@
 
 from datetime import date, timedelta
 
+from django.conf import settings
 from django.db.models import Count, Q, Sum
 from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
@@ -80,8 +81,8 @@ def etats_connexion_en_ligne(societe):
 # ---------------------------------------------------------------------------
 
 # Pages accessibles à tout compte relié à une société, indépendamment des
-# permissions employé (tableau de bord et profil personnel).
-PAGES_TOUJOURS_ACCESSIBLES = {"dashboard", "profil", "compte"}
+# permissions employé (tableau de bord, assistant IA et profil personnel).
+PAGES_TOUJOURS_ACCESSIBLES = {"dashboard", "ai", "profil", "compte", "planning", "groupes"}
 
 
 def societe_pour_utilisateur(user):
@@ -157,12 +158,44 @@ def employe_pour_utilisateur(user, societe):
     return None
 
 
+def peut_creer_groupe(user, societe):
+    """Propriétaire, ou employé ayant reçu la permission « Créer des groupes »."""
+    if est_createur(user, societe):
+        return True
+    employe = employe_pour_utilisateur(user, societe)
+    return employe is not None and "groupes" in (employe.permissions or [])
+
+
+def peut_administrer_groupe(user, societe, groupe):
+    """Propriétaire, créateur du groupe ou membre désigné administrateur du groupe."""
+    if groupe is None:
+        return False
+    if est_createur(user, societe) or groupe.cree_par_id == getattr(user, "pk", None):
+        return True
+    employe = employe_pour_utilisateur(user, societe)
+    return employe is not None and groupe.membres.filter(employe_id=employe.pk, est_admin=True).exists()
+
+
+def groupes_visibles(user, societe):
+    """Groupes visibles : tous pour le propriétaire, sinon ceux dont on est membre ou créateur."""
+    qs = societe.equipe_groupes.all()
+    if est_createur(user, societe):
+        return qs
+    filtre = Q(cree_par_id=getattr(user, "pk", None))
+    employe = employe_pour_utilisateur(user, societe)
+    if employe is not None:
+        filtre |= Q(membres__employe_id=employe.pk)
+    return qs.filter(filtre).distinct()
+
+
 def est_membre_groupe(user, societe, groupe):
-    """Vrai si `user` peut voir un groupe : créateur ou employé membre."""
+    """Vrai si `user` peut voir un groupe : propriétaire, créateur du groupe ou employé membre."""
     if est_createur(user, societe):
         return True
     if groupe is None:
         return False
+    if groupe.cree_par_id == getattr(user, "pk", None):
+        return True
     employe = employe_pour_utilisateur(user, societe)
     if employe is None:
         return False
@@ -216,8 +249,9 @@ def assurer_compte_employe(employe):
     """Garantit qu'une fiche employé dispose d'un compte de connexion relié.
 
     - si un compte existe déjà avec cet email : on le relie ;
-    - sinon on crée un compte « Employé » sans mot de passe utilisable ;
-      l'employé le définit via « Mot de passe oublié ».
+    - sinon on crée un compte « Employé » avec le mot de passe par défaut
+      (``settings.EMPLOYE_MOT_DE_PASSE_DEFAUT``) ; à sa première connexion,
+      l'employé est invité à définir son propre mot de passe.
 
     Retourne le compte relié, ou None si la création/le lien est impossible.
     """
@@ -242,7 +276,12 @@ def assurer_compte_employe(employe):
             telephone_2=employe.telephone_2 or "",
             role_admin="EMPLOYE",
         )
-        user.set_unusable_password()
+        mdp = getattr(settings, "EMPLOYE_MOT_DE_PASSE_DEFAUT", "") or ""
+        if mdp:
+            user.set_password(mdp)
+            user.doit_changer_mdp = True
+        else:
+            user.set_unusable_password()
         user.save()
     else:
         if user.is_superuser or societe.createur_id == user.pk:
@@ -369,21 +408,36 @@ def partager_reunion(societe, reunion, utilisateur):
     return envoyes
 
 
+def module_actif(cle):
+    """False si le module est désactivé pour toute l'application (settings)."""
+    return cle not in getattr(settings, "MODULES_DESACTIVES", ())
+
+
 def modules_autorises(user, societe):
     """Clés des modules de la barre latérale autorisés pour ce compte."""
     if user is None:
         return []
     if getattr(user, "is_superuser", False) or getattr(societe, "createur_id", None) == getattr(user, "pk", None):
-        return list(ALL_MODULE_KEYS)
+        return [cle for cle in ALL_MODULE_KEYS if module_actif(cle)]
     employe = getattr(user, "employe_profil", None)
     if employe is not None and employe.societe_id == getattr(societe, "pk", None):
         permissions = employe.permissions or list(DEFAULT_EMPLOYE_PERMS)
-        return [cle for cle in permissions if cle in ALL_MODULE_KEYS]
+        return [cle for cle in permissions if cle in ALL_MODULE_KEYS and module_actif(cle)]
     return ["dashboard"]
+
+
+def en_lecture_seule(user, societe, module):
+    """Vrai si ce compte (employé) n'a qu'un accès en lecture au module."""
+    if not est_employe(user, societe):
+        return False
+    employe = getattr(user, "employe_profil", None)
+    return employe is not None and module in (employe.permissions_lecture or [])
 
 
 def peut_acceder(user, societe, active):
     """Autorise (ou non) l'accès à la page `active` pour ce compte."""
+    if not module_actif(active):
+        return False
     if not est_employe(user, societe):
         return True
     if active in PAGES_TOUJOURS_ACCESSIBLES:
@@ -406,6 +460,8 @@ JOURNAL_MODULES = {
     "contrats": "Contrats",
     "echeances": "Échéances",
     "paiements": "Paiements",
+    "factures": "Factures",
+    "bureau": "Applications",
     "roles": "Rôles",
     "fonctions": "Fonctions",
     "reunions": "Réunions",
@@ -414,6 +470,7 @@ JOURNAL_MODULES = {
     "societe": "Ma société",
     "equipe": "Messagerie",
     "compte": "Compte",
+    "abonnement": "Abonnement",
 }
 
 JOURNAL_MODULE_URLS = {
@@ -424,9 +481,11 @@ JOURNAL_MODULE_URLS = {
     "societe": "gestion:societe_profil",
     "compte": "gestion:profil",
     "finances": "gestion:finances",
+    "factures": "gestion:factures",
     "equipe": "gestion:employes",
     "connecteurs": "gestion:connecteurs",
-    "reunions": "gestion:employes",
+    "reunions": "gestion:reunions",
+    "abonnement": "gestion:mon_abonnement",
 }
 
 
@@ -474,7 +533,7 @@ def journal_module_label(module):
 
 def journal_module_url(module):
     """URL de la page correspondant à un module du journal."""
-    name = JOURNAL_MODULE_URLS.get(module)
+    name = JOURNAL_MODULE_URLS.get(module) if module_actif(module) else None
     if name:
         try:
             return reverse(name)
@@ -502,7 +561,7 @@ def journal_module_url(module):
 # catégorie n'apparaît que si le compte voit au moins une de ses activités.
 NOTIF_CATEGORIES = (
     {"key": "rappels", "label": "Rappels", "sigle": "R", "couleur": "amber",
-     "modules": ("echeances", "paiements")},
+     "modules": ("echeances", "paiements", "abonnement")},
     {"key": "clients", "label": "Clients", "sigle": "C", "couleur": "indigo",
      "modules": ("clients", "prospection", "projets")},
     {"key": "taches", "label": "Tâches", "sigle": "T", "couleur": "emerald",
@@ -1295,7 +1354,7 @@ def registre_echeances(societe):
                 "montant": c.salaire_contractuel,
                 "date_prevue": c.date_fin,
                 "statut": c.statut,
-                "lien": reverse("gestion:crud", args=["contrats"]),
+                "lien": reverse("gestion:employes"),
             }
         )
 
@@ -1888,3 +1947,75 @@ def finaliser_retrait_kpay(societe, operation, utilisateur=None):
             utilisateur,
         )
     return salaire
+
+
+# ---------------------------------------------------------------------------
+# Facturation
+# ---------------------------------------------------------------------------
+
+
+def prochain_numero_facture(societe, jour=None):
+    """Numéro suivant pour l'année : FAC-2026-0001, FAC-2026-0002…"""
+    from .models import Facture
+
+    jour = jour or timezone.localdate()
+    prefixe = f"FAC-{jour.year}-"
+    nums = Facture.objects.filter(societe=societe, numero__startswith=prefixe).values_list("numero", flat=True)
+    dernier = 0
+    for n in nums:
+        try:
+            dernier = max(dernier, int(n.rsplit("-", 1)[1]))
+        except (IndexError, ValueError):
+            continue
+    return f"{prefixe}{dernier + 1:04d}"
+
+
+def payer_facture(societe, facture, date_paiement=None):
+    """Passe la facture en PAYEE et enregistre la recette dans Paiements.
+
+    - Facture liée à une échéance : l'échéance est soldée (paiement lié créé / confirmé).
+    - Facture liée à un projet seulement : un paiement client confirmé est créé.
+    - Sans projet : seul le statut change (aucune recette possible sans projet).
+    """
+    date_paiement = date_paiement or timezone.localdate()
+    facture.statut = "PAYEE"
+    facture.date_paiement = date_paiement
+    paiement = None
+    if facture.echeance_id:
+        ech = facture.echeance
+        ech.statut = "PAYEE"
+        ech.save(update_fields=["statut"])
+        paiement = sync_paiement_from_echeance(societe, ech, date_paiement=date_paiement)
+    elif facture.projet_id:
+        paiement = facture.paiement
+        if paiement is None:
+            paiement = PaiementClient.objects.create(
+                projet=facture.projet,
+                montant=facture.total_ttc,
+                date_paiement=date_paiement,
+                mode_paiement=_mode_paiement_defaut(societe),
+                reference=facture.numero,
+                statut="CONFIRME",
+            )
+        else:
+            paiement.montant = facture.total_ttc
+            paiement.date_paiement = date_paiement
+            paiement.statut = "CONFIRME"
+            paiement.save(update_fields=["montant", "date_paiement", "statut"])
+        recalculer_finances(societe, date_paiement)
+    facture.paiement = paiement if paiement is not None and hasattr(paiement, "pk") else facture.paiement
+    facture.save(update_fields=["statut", "date_paiement", "paiement", "updated_at"])
+    return paiement
+
+
+def annuler_paiement_facture(societe, facture):
+    """Repasse le paiement lié en attente quand une facture payée est rouverte/annulée."""
+    p = facture.paiement
+    if p is not None and p.statut == "CONFIRME" and not facture.echeance_id:
+        p.statut = "EN_ATTENTE"
+        p.save(update_fields=["statut"])
+        recalculer_finances(societe, p.date_paiement)
+    if facture.echeance_id and facture.echeance.statut == "PAYEE":
+        facture.echeance.statut = "A_VENIR"
+        facture.echeance.save(update_fields=["statut"])
+        sync_paiement_from_echeance(societe, facture.echeance)

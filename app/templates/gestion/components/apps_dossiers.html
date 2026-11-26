@@ -1,0 +1,23 @@
+{% comment %}
+Cartes « dossier » de l'espace Applications : Planning, Tableur, Documents, Présentations.
+Même style que les dossiers des autres espaces (Finances, Équipe…), chaque application garde sa couleur.
+Usage : {% include "gestion/components/apps_dossiers.html" %}  (données : bureau.dossiers_apps → dossiers_apps)
+{% endcomment %}
+{% if dossiers_apps|length > 1 %}
+<nav class="fin-dossiers espace-dossiers apps-dossiers" aria-label="Applications" style="--n: {{ dossiers_apps|length }}">
+    <div class="folders">
+        {% for o in dossiers_apps %}
+        <a class="folder app-folder{% if o.actif %} is-featured{% endif %}" href="{{ o.url }}" style="--accent: {{ o.couleur }}"{% if o.actif %} aria-current="page"{% endif %}>
+            <span class="folder-tab" aria-hidden="true"></span>
+            <span class="folder-top">
+                <span class="folder-ico">{% include "gestion/snippets/bureau_icone.html" with cle=o.cle %}</span>
+                <span class="folder-count">{{ o.count }}</span>
+            </span>
+            <span class="folder-kicker">Application</span>
+            <span class="folder-name">{{ o.nom }}</span>
+            <span class="folder-sub">{{ o.sous_titre }}</span>
+        </a>
+        {% endfor %}
+    </div>
+</nav>
+{% endif %}

@@ -25,6 +25,10 @@
         </div>
     </div>
 
+    {% include "gestion/components/espace_dossiers.html" %}
+    {% include "gestion/components/stat_row.html" with cartes=stats_cartes %}
+
+
     {% block prelude %}{% endblock %}
 
     <div class="panel">

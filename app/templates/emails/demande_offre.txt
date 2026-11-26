@@ -1,0 +1,11 @@
+Demande bien reçue{% if prenom %}, {{ prenom }}{% endif %}.
+
+Société : {{ societe.nom }}
+Changement d'offre : {{ ancien.nom }} → {{ forfait.nom }} ({{ forfait.prix_affiche }}{% if forfait.prix %} / {{ forfait.duree_jours }} jours{% endif %})
+{% if gratuit %}
+Notre équipe l'active rapidement ; vous recevrez un e-mail de confirmation.
+{% else %}
+Payez le nouveau forfait pour l'activer immédiatement :
+{{ lien }}
+{% endif %}
+— Archi

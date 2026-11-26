@@ -1,0 +1,24 @@
+{% comment %}
+Cartes « dossier » d'un espace (composant réutilisable).
+Affiché en haut des pages d'un même espace : Finances (vue d'ensemble, paiements,
+échéances, dépenses, salaires, contrats) ou Équipe & clients (employés, tâches,
+clients, projets) ou Organisation (rôles, fonctions, documents,
+globe, ma société, mon profil). Le module courant est mis en avant.
+Usage : {% include "gestion/components/espace_dossiers.html" %}            (espace de la page)
+        {% include "gestion/components/espace_dossiers.html" with dossiers=finances_onglets %}
+Données : views._espace_finances (filtrées selon les permissions du compte).
+{% endcomment %}
+{% with items=dossiers|default:espace_dossiers %}
+{% if items|length > 1 %}
+<nav class="fin-dossiers espace-dossiers" aria-label="Modules de l'espace" style="--n: {{ items|length }}">
+    <div class="folders">
+        {% for o in items %}
+            {% include "gestion/components/folder_card.html" with href=o.url name=o.nom icon=o.icone count=o.count sub=o.sous_titre featured=o.actif %}
+        {% endfor %}
+    </div>
+</nav>
+{% endif %}
+{% if finances_actif %}{% for o in items %}{% if o.actif %}
+    {% include "gestion/components/rapport_export.html" with module=o.key %}
+{% endif %}{% endfor %}{% endif %}
+{% endwith %}

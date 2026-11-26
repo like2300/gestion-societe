@@ -1,0 +1,269 @@
+{% extends "gestion/base_dashboard.html" %}
+{% load static %}
+
+{% block dash_title %}Planning — {{ societe.nom }}{% endblock %}
+
+{% block content %}
+    <link rel="stylesheet" href="{% static 'gestion/bureau.css' %}?v={{ UI_VERSION }}" />
+    <link rel="stylesheet" href="{% static 'gestion/planning.css' %}?v={{ UI_VERSION }}" />
+
+    {% include "gestion/components/apps_dossiers.html" %}
+    <div class="pl-app">
+        <section class="pl-main">
+            <div class="pl-barre">
+                <div class="pl-nav">
+                    <span class="bx-app-ico bx-i-planning pl-logo">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>
+                    </span>
+                    <h2 id="pl-periode"></h2>
+                    <div class="pl-fleches">
+                        <button type="button" class="pl-btn icone" data-pl="prev" aria-label="Précédent"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+                        <button type="button" class="pl-btn icone" data-pl="next" aria-label="Suivant"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+                    </div>
+                    <button type="button" class="pl-btn" data-pl="today">Aujourd'hui</button>
+                </div>
+                <div class="pl-droite">
+                    <div class="pl-vues" role="radiogroup" aria-label="Vue">
+                        <button type="button" data-vue="dayGridMonth">Mois</button>
+                        <button type="button" data-vue="timeGridWeek" class="on">Semaine</button>
+                        <button type="button" data-vue="timeGridDay">Jour</button>
+                        <button type="button" data-vue="listWeek">Liste</button>
+                    </div>
+                    <button type="button" class="pl-nouveau" id="pl-nouveau">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                        <span>Nouveau</span>
+                    </button>
+                </div>
+            </div>
+            <div id="pl-calendrier" class="pl-calendrier"></div>
+        </section>
+
+        <aside class="pl-cote">
+            <div class="pl-carte pl-oubli" id="pl-oubli" hidden>
+                <div class="pl-carte-tete">
+                    <span class="pl-titre">À ne pas oublier</span>
+                    <button type="button" class="pl-notif-btn" id="pl-notif-btn" hidden title="Recevoir les rappels même dans un autre onglet">Activer les alertes</button>
+                </div>
+                <ul id="pl-oubli-liste"></ul>
+            </div>
+
+            <div class="pl-carte pl-mini" id="pl-mini" aria-label="Mini-calendrier"></div>
+
+            {% if groupes_js %}
+            <div class="pl-carte pl-groupes">
+                <div class="pl-carte-tete">
+                    <span class="pl-titre">Mes groupes</span>
+                    <small>{{ groupes_js|length }}</small>
+                </div>
+                <ul class="pl-equipe" id="pl-groupes">
+                    <li data-qui="moi" class="on"><span class="pl-av moi">Moi</span><span><b>Mon agenda</b><small>Mes rendez-vous et tâches</small></span></li>
+                    {% for g in groupes_js %}
+                    <li data-qui="grp:{{ g.pk }}" data-grp="{{ g.pk }}">
+                        <span class="pl-av grp" data-av="{{ g.titre }}"></span>
+                        <span><b>{{ g.titre }}</b><small>{{ g.membres|length }} membre{{ g.membres|length|pluralize }} · agenda partagé</small></span>
+                        <button type="button" class="pl-grp-plus" data-planifier="{{ g.pk }}" title="Planifier un rendez-vous avec tout le groupe" aria-label="Planifier avec {{ g.titre }}">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                        </button>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {# Chacun ne voit que son propre agenda (propriétaire compris) ; les groupes n'en partagent que les créneaux #}
+            <div class="pl-carte">
+                <div class="pl-carte-tete">
+                    <span class="pl-titre">Mon agenda</span>
+                    <small id="pl-qui-txt"></small>
+                </div>
+                <input type="hidden" id="pl-qui" value="moi" />
+                <ul class="pl-jour" id="pl-jour"><li class="pl-vide">Chargement…</li></ul>
+            </div>
+
+            <div class="pl-carte">
+                <span class="pl-titre">Afficher</span>
+                {% for c in couches %}
+                    {% if est_admin or c.cle == "taches" %}
+                    <label class="pl-couche-lbl"><input type="checkbox" data-couche="{{ c.cle }}" checked /><i style="--c: {{ c.couleur }}"></i>{{ c.nom }}</label>
+                    {% endif %}
+                {% endfor %}
+                <div class="pl-legende">
+                    {% for k, v, c in statuts_tache %}<span><i style="--c: {{ c }}"></i>Tâche {{ v|lower }}</span>{% endfor %}
+                </div>
+            </div>
+
+            <div class="pl-carte pl-prochains">
+                <span class="pl-titre">Prochains rendez-vous</span>
+                <ul id="pl-prochains"><li class="pl-vide">Chargement…</li></ul>
+            </div>
+        </aside>
+    </div>
+{% endblock content %}
+
+{% block drawer %}
+    <div class="drawer-head">
+        <div>
+            <h2 id="ev-titre-p">Nouveau rendez-vous</h2>
+            <p class="drawer-sub" id="ev-sous">Planifiez un rendez-vous, une réunion ou un appel.</p>
+        </div>
+        <button class="drawer-close" data-drawer-close aria-label="Fermer">×</button>
+    </div>
+    <div class="drawer-body">
+        <div class="ev-modes" role="radiogroup" aria-label="Que voulez-vous ajouter ?" id="ev-modes">
+            <button type="button" data-mode="rdv" class="on"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Rendez-vous</button>
+            <button type="button" data-mode="tache"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Tâche</button>
+        </div>
+        <form id="tk-form" class="ev-form" novalidate hidden>
+            <input type="hidden" id="tk-pk" />
+            <section class="cfg-sec">
+                <h3 class="cfg-titre"><span>1</span>La tâche</h3>
+                <div class="fgrid">
+                    <div class="ffield fspan-2"><label for="tk-titre">Titre <span class="req">*</span></label>
+                        <input type="text" id="tk-titre" maxlength="200" placeholder="Ex : Préparer le devis Kongo SA" /></div>
+                    <div class="ffield fspan-2"><label for="tk-desc">Détails</label>
+                        <textarea id="tk-desc" rows="3" placeholder="Ce qu'il faut faire…"></textarea></div>
+                </div>
+            </section>
+            <section class="cfg-sec">
+                <h3 class="cfg-titre"><span>2</span>Quel jour</h3>
+                <div class="fgrid">
+                    <div class="ffield"><label for="tk-debut">Du</label><input type="date" id="tk-debut" /></div>
+                    <div class="ffield"><label for="tk-fin">Au (échéance) <span class="req">*</span></label><input type="date" id="tk-fin" /></div>
+                    <div class="ffield fspan-2"><label for="tk-prio">Priorité</label>
+                        <select id="tk-prio">{% for k, v in priorites %}<option value="{{ k }}"{% if k == "MOYENNE" %} selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
+                </div>
+            </section>
+            <section class="cfg-sec">
+                <h3 class="cfg-titre"><span>3</span>Pour qui</h3>
+                {% if est_admin %}
+                <div class="fgrid"><div class="ffield fspan-2"><label for="tk-assignee">Employé <span class="req">*</span></label>
+                    <select id="tk-assignee" data-searchable><option value="">— Choisir un employé —</option>{% for e in employes_js %}<option value="{{ e.pk }}">{{ e.nom }}{% if e.fonction %} · {{ e.fonction }}{% endif %}</option>{% endfor %}</select></div></div>
+                {% else %}
+                <p class="tk-moi"><span class="pl-av moi">Moi</span>Cette tâche sera ajoutée à votre propre liste.</p>
+                {% endif %}
+            </section>
+            <div class="tk-statut" id="tk-statut" hidden>
+                <span class="pl-titre">Statut</span>
+                <div class="ev-durees">{% for k, v, c in statuts_tache %}<button type="button" data-statut="{{ k }}" style="--c: {{ c }}">{{ v }}</button>{% endfor %}</div>
+            </div>
+            <p class="ev-org" id="tk-info" hidden></p>
+            <div class="factions">
+                <a class="btn-ghost tk-ouvrir" id="tk-ouvrir" href="{% url 'gestion:taches' %}" hidden>Ouvrir dans Tâches</a>
+                <button type="button" class="btn-ghost" data-drawer-close>Annuler</button>
+                <button type="submit" class="btn-primary" id="tk-enregistrer">Enregistrer la tâche</button>
+            </div>
+        </form>
+        <form id="ev-form" class="ev-form" novalidate>
+            <input type="hidden" id="ev-pk" />
+            <section class="cfg-sec">
+                <h3 class="cfg-titre"><span>1</span>Rendez-vous</h3>
+                <div class="fgrid">
+                    <div class="ffield fspan-2">
+                        <label for="ev-titre">Titre <span class="req">*</span></label>
+                        <input type="text" id="ev-titre" maxlength="200" placeholder="Ex : Rendez-vous avec Kongo SA" required />
+                    </div>
+                    <div class="ffield fspan-2">
+                        <label for="ev-type">Type</label>
+                        <select id="ev-type">{% for k, v in types %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select>
+                    </div>
+                </div>
+            </section>
+            <section class="cfg-sec">
+                <h3 class="cfg-titre"><span>2</span>Quand</h3>
+                <label class="ev-switch"><input type="checkbox" id="ev-journee" /><span></span>Toute la journée</label>
+                <div class="fgrid">
+                    <div class="ffield"><label for="ev-debut-j">Début</label><input type="date" id="ev-debut-j" /></div>
+                    <div class="ffield ev-heure"><label for="ev-debut-h">Heure</label><input type="time" id="ev-debut-h" step="900" /></div>
+                    <div class="ffield"><label for="ev-fin-j">Fin</label><input type="date" id="ev-fin-j" /></div>
+                    <div class="ffield ev-heure"><label for="ev-fin-h">Heure</label><input type="time" id="ev-fin-h" step="900" /></div>
+                </div>
+                <div class="ev-durees" id="ev-durees">
+                    <button type="button" data-min="15">15 min</button><button type="button" data-min="30">30 min</button>
+                    <button type="button" data-min="60">1 h</button><button type="button" data-min="120">2 h</button>
+                </div>
+            </section>
+            <section class="cfg-sec">
+                <h3 class="cfg-titre"><span>3</span>Avec qui</h3>
+                <div class="ev-part" data-gf="off">
+                    <div class="ev-chips" id="ev-chips"></div>
+                    <div class="tp-champ"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                        <input type="text" id="ev-part-q" autocomplete="off" placeholder="Ajouter un participant…" /></div>
+                    <ul class="sal-sugg ev-part-liste" id="ev-part-liste" hidden></ul>
+                </div>
+                <div class="fgrid">
+                    <div class="ffield fspan-2">
+                        <label for="ev-client">Client concerné</label>
+                        <select id="ev-client" data-searchable>
+                            <option value="">— Aucun client —</option>
+                            {% for c in clients_js %}<option value="{{ c.pk }}">{{ c.nom }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="ffield fspan-2">
+                        <label for="ev-lieu">Lieu ou lien de visio</label>
+                        <input type="text" id="ev-lieu" maxlength="255" placeholder="Ex : Bureau, Pointe-Noire / https://meet…" />
+                    </div>
+                </div>
+            </section>
+            <section class="cfg-sec">
+                <h3 class="cfg-titre"><span>4</span>Détails</h3>
+                <div class="fgrid">
+                    <div class="ffield fspan-2">
+                        <label for="ev-desc">Notes</label>
+                        <textarea id="ev-desc" rows="3" placeholder="Ordre du jour, documents à préparer…"></textarea>
+                    </div>
+                    <div class="ffield fspan-2" data-gf="off">
+                        <label for="ev-image-btn" class="ev-image-titre">Image</label>
+                        <div class="ev-image" id="ev-image">
+                            <img id="ev-image-apercu" alt="Image du rendez-vous" hidden />
+                            <div class="ev-image-actions">
+                                <button type="button" class="ev-image-btn" id="ev-image-btn">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+                                    <span id="ev-image-lib">Ajouter une image</span>
+                                </button>
+                                <button type="button" class="ev-image-btn danger" id="ev-image-retirer" hidden>Retirer</button>
+                            </div>
+                            <input type="file" id="ev-image-fichier" accept="image/png,image/jpeg,image/webp,image/gif" hidden />
+                        </div>
+                    </div>
+                    <div class="ffield fspan-2">
+                        <label for="ev-rappel">Rappel</label>
+                        <select id="ev-rappel">
+                            <option value="">Aucun</option><option value="10">10 minutes avant</option>
+                            <option value="30">30 minutes avant</option><option value="60">1 heure avant</option>
+                            <option value="1440">1 jour avant</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="ev-couleurs" id="ev-couleurs" role="radiogroup" aria-label="Couleur">
+                    <button type="button" data-c="" class="on" title="Couleur du type">Auto</button>
+                    <button type="button" data-c="#0ea5e9" style="--c:#0ea5e9" aria-label="Bleu"></button>
+                    <button type="button" data-c="#6366f1" style="--c:#6366f1" aria-label="Indigo"></button>
+                    <button type="button" data-c="#10b981" style="--c:#10b981" aria-label="Vert"></button>
+                    <button type="button" data-c="#f59e0b" style="--c:#f59e0b" aria-label="Ambre"></button>
+                    <button type="button" data-c="#e11d48" style="--c:#e11d48" aria-label="Rouge"></button>
+                    <button type="button" data-c="#8b5cf6" style="--c:#8b5cf6" aria-label="Violet"></button>
+                </div>
+            </section>
+            <p class="ev-org" id="ev-org" hidden></p>
+            <div class="factions">
+                <button type="button" class="btn-ghost ev-suppr" id="ev-suppr" hidden>Supprimer</button>
+                <button type="button" class="btn-ghost" data-drawer-close>Annuler</button>
+                <button type="submit" class="btn-primary" id="ev-enregistrer">Enregistrer</button>
+            </div>
+        </form>
+    </div>
+{% endblock drawer %}
+
+{% block extra_js %}
+    {{ employes_js|json_script:"pl-employes" }}
+    {{ groupes_js|json_script:"pl-groupes-js" }}
+    <script>
+        window.PL = {
+            flux: "{{ flux_url }}", sauver: "{{ sauver_url }}", admin: {{ est_admin|yesno:"true,false" }},
+            moi: {{ moi_pk|default:"null" }}, rappels: "{{ rappels_url }}"
+        };
+    </script>
+    <script src="{% static 'gestion/vendor/fullcalendar/fullcalendar.min.js' %}?v=fc-6.1.19"></script>
+    <script src="{% static 'gestion/vendor/fullcalendar/fr.min.js' %}?v=fc-6.1.19"></script>
+    <script src="{% static 'gestion/planning.js' %}?v={{ UI_VERSION }}"></script>
+{% endblock extra_js %}

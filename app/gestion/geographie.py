@@ -320,6 +320,28 @@ VILLES = {
     ("nigeria", "abuja"): (9.06, 7.49),
     ("cameroun", "douala"): (4.05, 9.70),
     ("congo-brazzaville", "brazzaville"): (-4.27, 15.28),
+    ("congo-brazzaville", "pointe-noire"): (-4.78, 11.86),
+    ("congo-brazzaville", "dolisie"): (-4.20, 12.67),
+    ("congo-brazzaville", "nkayi"): (-4.18, 13.29),
+    ("congo-brazzaville", "ouesso"): (1.61, 16.05),
+    ("congo-brazzaville", "owando"): (-0.48, 15.90),
+    ("congo-brazzaville", "impfondo"): (1.62, 18.06),
+    ("congo-brazzaville", "madingou"): (-4.15, 13.55),
+    ("congo-brazzaville", "sibiti"): (-3.68, 13.35),
+    ("congo-brazzaville", "oyo"): (-1.16, 15.99),
+    ("congo-brazzaville", "mossendjo"): (-2.95, 12.72),
+    ("congo-brazzaville", "kinkala"): (-4.36, 14.76),
+    ("congo-brazzaville", "djambala"): (-2.54, 14.75),
+    ("congo-brazzaville", "ewo"): (-0.87, 14.82),
+    ("rdc", "lubumbashi"): (-11.66, 27.48),
+    ("rdc", "matadi"): (-5.82, 13.45),
+    ("rdc", "goma"): (-1.68, 29.22),
+    ("rdc", "kisangani"): (0.52, 25.19),
+    ("rdc", "mbuji-mayi"): (-6.13, 23.59),
+    ("gabon", "port-gentil"): (-0.72, 8.78),
+    ("gabon", "franceville"): (-1.63, 13.58),
+    ("cameroun", "yaounde"): (3.85, 11.50),
+    ("angola", "luanda"): (-8.84, 13.23),
     ("rdc", "kinshasa"): (-4.44, 15.27),
     ("benin", "cotonou"): (6.37, 2.43),
     ("togo", "lome"): (6.13, 1.22),
@@ -374,6 +396,12 @@ def _pays_pour_texte(pays):
     norm = normaliser(pays)
     if not norm:
         return None
+    # Nom français canonique des listes déroulantes (« Viêt Nam », « Eswatini »…).
+    iso_fr = _ISO_PAR_NOM_FR().get(norm)
+    if iso_fr and iso_fr in PAYS_PAR_ISO:
+        lat, lng, iso, *_ = PAYS_PAR_ISO[iso_fr]
+        cle = next(k for k, v in PAYS_PAR_NOM.items() if v[2] == iso)
+        return lat, lng, iso, cle
     for cle, valeurs in PAYS_PAR_NOM.items():
         if norm == cle:
             lat, lng, iso, *_ = valeurs
@@ -397,12 +425,17 @@ def resoudre(pays, ville=""):
     ville = (ville or "").strip()
     info = _pays_pour_texte(pays) if pays else None
     if info is None:
-        return None
+        # Pays absent ou inconnu : on tente de déduire le pays depuis la ville
+        # (uniquement si le nom de ville est sans ambiguïté).
+        return ville_seule(ville)
 
     lat, lng, iso, nom = info
     if ville:
+        cible = normaliser(ville)
         for cle, coords in VILLES.items():
-            if cle[0] == nom and normaliser(cle[1]) == normaliser(ville):
+            # Comparaison par code ISO : « Congo » et « Congo-Brazzaville » sont le même pays.
+            iso_ville = PAYS_PAR_NOM.get(cle[0], (None, None, None))[2]
+            if iso_ville == iso and normaliser(cle[1]) == cible:
                 return (coords[0], coords[1], iso, nom)
     _, _, _, lat_v, lng_v = PAYS_PAR_NOM[nom]
     if lat_v is not None:
@@ -410,5 +443,134 @@ def resoudre(pays, ville=""):
     return (lat, lng, iso, nom)
 
 
+def ville_seule(ville):
+    """(lat, lng, iso2, nom_pays) d'après la ville seule, si elle est unique ; sinon None."""
+    cible = normaliser(ville)
+    if not cible:
+        return None
+    trouves = [(cle, c) for cle, c in VILLES.items() if normaliser(cle[1]) == cible]
+    isos = {PAYS_PAR_NOM[cle[0]][2] for cle, _ in trouves if cle[0] in PAYS_PAR_NOM}
+    if len(isos) != 1:
+        return None
+    (nom, _), coords = trouves[0]
+    return (coords[0], coords[1], PAYS_PAR_NOM[nom][2], nom)
+
+
+#: Libellés d'affichage pour les noms de pays normalisés ambigus.
+NOMS_AFFICHES = {"congo-brazzaville": "Congo", "congo": "Congo", "rdc": "RD Congo"}
+
+
+def nom_affiche(nom):
+    """Nom de pays lisible à partir de sa clé normalisée (« benin » → « Bénin » si connu)."""
+    if not nom:
+        return ""
+    if nom in NOMS_AFFICHES:
+        return NOMS_AFFICHES[nom]
+    iso = PAYS_PAR_NOM.get(nom, (None, None, None))[2]
+    if iso and iso in globals().get("NOMS_FR", {}):
+        return {"cg": "Congo", "cd": "RD Congo", "cf": "Centrafrique"}.get(iso, NOMS_FR[iso])
+    return nom[:1].upper() + nom[1:]
+
+
 def est_connu(pays):
     return _pays_pour_texte(pays) is not None
+
+#: Nom français (avec accents) de chaque pays connu, par code ISO-2 — utilisé
+#: pour les listes déroulantes (formulaires client / société).
+NOMS_FR = {
+    "ad": "Andorre", "ae": "Émirats arabes unis", "af": "Afghanistan", "ag": "Antigua-et-Barbuda",
+    "al": "Albanie", "am": "Arménie", "ao": "Angola", "ar": "Argentine", "at": "Autriche",
+    "au": "Australie", "az": "Azerbaïdjan", "ba": "Bosnie-Herzégovine", "bb": "Barbade",
+    "bd": "Bangladesh", "be": "Belgique", "bf": "Burkina Faso", "bg": "Bulgarie", "bh": "Bahreïn",
+    "bi": "Burundi", "bj": "Bénin", "bn": "Brunei", "bo": "Bolivie", "br": "Brésil", "bs": "Bahamas",
+    "bt": "Bhoutan", "bw": "Botswana", "by": "Biélorussie", "bz": "Belize", "ca": "Canada",
+    "cd": "République démocratique du Congo", "cf": "République centrafricaine",
+    "cg": "Congo-Brazzaville", "ch": "Suisse", "ci": "Côte d'Ivoire", "cl": "Chili", "cm": "Cameroun",
+    "cn": "Chine", "co": "Colombie", "cr": "Costa Rica", "cu": "Cuba", "cv": "Cap-Vert", "cy": "Chypre",
+    "cz": "République tchèque", "de": "Allemagne", "dj": "Djibouti", "dk": "Danemark", "dm": "Dominique",
+    "do": "République dominicaine", "dz": "Algérie", "ec": "Équateur", "ee": "Estonie", "eg": "Égypte",
+    "er": "Érythrée", "es": "Espagne", "et": "Éthiopie", "fi": "Finlande", "fj": "Fidji",
+    "fm": "Micronésie", "fr": "France", "ga": "Gabon", "gb": "Royaume-Uni", "gd": "Grenade",
+    "ge": "Géorgie", "gh": "Ghana", "gm": "Gambie", "gn": "Guinée", "gq": "Guinée équatoriale",
+    "gr": "Grèce", "gt": "Guatemala", "gw": "Guinée-Bissau", "gy": "Guyana", "hn": "Honduras",
+    "hr": "Croatie", "ht": "Haïti", "hu": "Hongrie", "id": "Indonésie", "ie": "Irlande", "il": "Israël",
+    "in": "Inde", "iq": "Irak", "ir": "Iran", "is": "Islande", "it": "Italie", "jm": "Jamaïque",
+    "jo": "Jordanie", "jp": "Japon", "ke": "Kenya", "kg": "Kirghizistan", "kh": "Cambodge",
+    "km": "Comores", "kn": "Saint-Kitts-et-Nevis", "kp": "Corée du Nord", "kr": "Corée du Sud",
+    "kw": "Koweït", "kz": "Kazakhstan", "la": "Laos", "lb": "Liban", "lc": "Sainte-Lucie",
+    "li": "Liechtenstein", "lk": "Sri Lanka", "lr": "Liberia", "ls": "Lesotho", "lt": "Lituanie",
+    "lu": "Luxembourg", "lv": "Lettonie", "ly": "Libye", "ma": "Maroc", "mc": "Monaco", "md": "Moldavie",
+    "me": "Monténégro", "mg": "Madagascar", "mh": "Îles Marshall", "mk": "Macédoine du Nord", "ml": "Mali",
+    "mm": "Myanmar", "mn": "Mongolie", "mr": "Mauritanie", "mt": "Malte", "mu": "Maurice",
+    "mv": "Maldives", "mw": "Malawi", "mx": "Mexique", "my": "Malaisie", "mz": "Mozambique",
+    "na": "Namibie", "ne": "Niger", "ng": "Nigeria", "ni": "Nicaragua", "nl": "Pays-Bas",
+    "no": "Norvège", "np": "Népal", "nz": "Nouvelle-Zélande", "om": "Oman", "pa": "Panama",
+    "pe": "Pérou", "pg": "Papouasie-Nouvelle-Guinée", "ph": "Philippines", "pk": "Pakistan",
+    "pl": "Pologne", "pr": "Porto Rico", "ps": "Palestine", "pt": "Portugal", "py": "Paraguay",
+    "qa": "Qatar", "ro": "Roumanie", "rs": "Serbie", "ru": "Russie", "rw": "Rwanda",
+    "sa": "Arabie saoudite", "sc": "Seychelles", "sd": "Soudan", "se": "Suède", "sg": "Singapour",
+    "si": "Slovénie", "sk": "Slovaquie", "sl": "Sierra Leone", "sn": "Sénégal", "so": "Somalie",
+    "sr": "Suriname", "st": "Sao Tomé-et-Principe", "sv": "Salvador", "sy": "Syrie", "sz": "Eswatini",
+    "td": "Tchad", "tg": "Togo", "th": "Thaïlande", "tj": "Tadjikistan", "tl": "Timor oriental",
+    "tm": "Turkménistan", "tn": "Tunisie", "to": "Tonga", "tr": "Turquie", "tt": "Trinité-et-Tobago",
+    "tv": "Tuvalu", "tw": "Taïwan", "tz": "Tanzanie", "ua": "Ukraine", "ug": "Ouganda",
+    "us": "États-Unis", "uy": "Uruguay", "uz": "Ouzbékistan", "va": "Vatican", "ve": "Venezuela",
+    "vn": "Viêt Nam", "vu": "Vanuatu", "ws": "Samoa", "ye": "Yémen", "za": "Afrique du Sud",
+    "zm": "Zambie", "zw": "Zimbabwe",
+}
+
+#: Pays mis en tête des listes (Afrique centrale / francophone).
+PAYS_PRIORITAIRES = ["cg", "cd", "ga", "cm", "cf", "td", "ao", "fr", "be", "ci", "sn", "bj"]
+
+
+def _ISO_PAR_NOM_FR():
+    """{nom français normalisé: iso} (construit à la demande)."""
+    global _CACHE_NOM_FR
+    try:
+        return _CACHE_NOM_FR
+    except NameError:
+        _CACHE_NOM_FR = {normaliser(n): i for i, n in NOMS_FR.items()}
+        return _CACHE_NOM_FR
+
+
+def iso_de(pays):
+    """Code ISO-2 d'un pays écrit librement (« congo », « Congo-Brazzaville », « CG »), sinon ''."""
+    info = _pays_pour_texte(pays) if pays else None
+    return info[2] if info else ""
+
+
+def nom_fr(pays):
+    """Nom français canonique d'un pays saisi librement (ou le texte d'origine s'il est inconnu)."""
+    iso = iso_de(pays)
+    return NOMS_FR.get(iso, (pays or "").strip())
+
+
+def choix_pays(valeur_actuelle=""):
+    """Choix (valeur, libellé) pour un <select> : prioritaires, puis le reste trié."""
+    tri = sorted(NOMS_FR.items(), key=lambda kv: normaliser(kv[1]))
+    tete = [(NOMS_FR[i], NOMS_FR[i]) for i in PAYS_PRIORITAIRES if i in NOMS_FR]
+    reste = [(nom, nom) for iso, nom in tri if iso not in PAYS_PRIORITAIRES]
+    choix = [("", "— Choisir un pays —")] + tete + reste
+    v = (valeur_actuelle or "").strip()
+    if v and v not in dict(choix):
+        connu = nom_fr(v)
+        if connu not in dict(choix):
+            choix.insert(1, (v, f"{v} (non reconnu sur la carte)"))
+    return choix
+
+
+def villes_par_pays():
+    """{nom_fr_du_pays: [villes connues…]} pour les suggestions de ville."""
+    sortie = {}
+    for (cle_pays, ville) in VILLES:
+        iso = PAYS_PAR_NOM.get(cle_pays, (None, None, None))[2]
+        if not iso or iso not in NOMS_FR:
+            continue
+        nom = " ".join(m[:1].upper() + m[1:] for m in str(ville).split(" "))
+        nom = "-".join(p[:1].upper() + p[1:] for p in nom.split("-"))
+        liste = sortie.setdefault(NOMS_FR[iso], [])
+        if nom not in liste:
+            liste.append(nom)
+    for liste in sortie.values():
+        liste.sort(key=normaliser)
+    return sortie

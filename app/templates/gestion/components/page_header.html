@@ -1,0 +1,9 @@
+{% comment %}En-tête de page. Usage :
+{% include "gestion/components/page_header.html" with title="Tableau de bord" subtitle="Bienvenue" action_label="Assistant IA" action_url=url %}{% endcomment %}
+<div class="ui-page-head">
+    <div>
+        <h1>{{ title }}</h1>
+        {% if subtitle %}<p>{{ subtitle }}</p>{% endif %}
+    </div>
+    {% if action_url %}<a class="btn-primary" href="{{ action_url }}">{{ action_label }}</a>{% endif %}
+</div>

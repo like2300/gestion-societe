@@ -17,7 +17,7 @@ import datetime
 from django.db.models import Q
 
 from . import services
-from .geographie import resoudre
+from .geographie import nom_affiche, resoudre
 
 
 MESURES = ["clients", "commandes", "prospects", "ca",
@@ -50,7 +50,8 @@ MESURES_SOMME = {"ca", "engagements", "abonnes"}
 #: « Réseaux sociaux » ; exclues de la vue « Plateforme »).
 MESURES_RESEAUX = {"publications", "engagements", "abonnes"}
 #: Modes d'affichage du globe, en phase avec le sélecteur du template.
-MODES_GLOBE = {"tous": "Global", "plateforme": "Plateforme", "sociaux": "Réseaux sociaux"}
+# Vues « plateforme » et « sociaux » désactivées : toute autre valeur retombe sur « tous ».
+MODES_GLOBE = {"tous": "Global"}
 
 
 def _mesure_canon(mesure):
@@ -71,6 +72,15 @@ def _resoudre_coords(pays, ville):
     if not info:
         return None, None
     return float(info[0]), float(info[1])
+
+
+def _pays_client(pays, ville):
+    """Pays saisi, ou déduit de la ville quand il manque (ex. « Pointe-Noire » → Congo)."""
+    pays = (pays or "").strip()
+    if pays:
+        return pays[:120]
+    info = resoudre("", ville)
+    return nom_affiche(info[3])[:120] if info else ""
 
 
 # ---------------------------------------------------------------------------
@@ -94,7 +104,7 @@ def alimenter_app(societe):
             societe=societe,
             source=source_module("clients"),
             mesure="prospect" if client.statut != "ACTIF" else "client",
-            pays=(client.pays or "").strip()[:120],
+            pays=_pays_client(client.pays, client.ville),
             region="",
             ville=(client.ville or "").strip()[:120],
             latitude=lat,
@@ -111,7 +121,7 @@ def alimenter_app(societe):
             societe=societe,
             source=source_module("finances"),
             mesure="ca",
-            pays=(client.pays or "").strip()[:120],
+            pays=_pays_client(client.pays, client.ville),
             region="",
             ville=(client.ville or "").strip()[:120],
             latitude=lat,
@@ -123,7 +133,7 @@ def alimenter_app(societe):
             societe=societe,
             source=source_module("finances"),
             mesure="commande",
-            pays=(client.pays or "").strip()[:120],
+            pays=_pays_client(client.pays, client.ville),
             region="",
             ville=(client.ville or "").strip()[:120],
             latitude=lat,

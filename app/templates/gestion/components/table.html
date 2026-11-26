@@ -1,0 +1,42 @@
+{% comment %}
+Tableau de données générique (recherche, filtres, onglets de statut, tri et
+pagination ajoutés automatiquement par gestion/static/gestion/ui-table.js).
+
+Usage (données préparées dans la vue) :
+    colonnes = ["Nom", "Ville", "Statut"]
+    lignes = [["Société A", "Brazzaville", "ACTIF"], ...]
+    {% include "gestion/components/table.html" with columns=colonnes rows=lignes badge_col="Statut" empty="Aucun client." %}
+
+Paramètres :
+  columns     liste des en-têtes
+  rows        liste de lignes (listes de cellules, texte échappé)
+  badge_col   en-tête dont les cellules s'affichent en badge de statut (facultatif)
+  page_size   lignes par page (défaut 10)
+  filters     en-têtes filtrables séparés par des virgules (défaut : automatique)
+  tabs        en-tête affiché en onglets soulignés, ou "off"
+  empty       message si aucune ligne
+Pour des cellules riches (liens, boutons), écrivez votre propre <table class="crud-table">
+dans un <div class="panel"> : le même composant s'applique.
+{% endcomment %}
+<div class="panel">
+    {% if rows %}
+        <table class="crud-table"{% if page_size %} data-page-size="{{ page_size }}"{% endif %}{% if filters %} data-filters="{{ filters }}"{% endif %}{% if tabs %} data-tabs="{{ tabs }}"{% endif %}>
+            <thead>
+                <tr>{% for c in columns %}<th>{{ c }}</th>{% endfor %}</tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                    <tr>
+                        {% for cell in row %}
+                            <td>
+                                {% for h in columns %}{% if forloop.counter0 == forloop.parentloop.counter0 %}{% if badge_col and h == badge_col %}<span class="badge-status {{ cell }}">{{ cell }}</span>{% elif forloop.first %}<span class="row-name">{{ cell }}</span>{% else %}{{ cell }}{% endif %}{% endif %}{% endfor %}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="ui-table-empty">{{ empty|default:"Aucune donnée pour le moment." }}</div>
+    {% endif %}
+</div>

@@ -1,0 +1,13 @@
+{% comment %}
+Champ de saisie « style Google » (contour + libellé flottant). Réutilisable.
+Usage : {% include "gestion/components/gfield.html" with field=form.nom %}
+Le widget doit porter placeholder=" " et class="gf-input" (voir forms.py).
+Options : span=True (pleine largeur), help (texte d'aide, sinon field.help_text).
+{% endcomment %}
+<div class="gf{% if field.errors %} has-err{% endif %}{% if span %} gf-span{% endif %}">
+    {{ field }}
+    <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span class="req"> *</span>{% endif %}</label>
+    {% if field.errors %}<p class="gf-err">{{ field.errors.0 }}</p>
+    {% elif help %}<p class="gf-help">{{ help }}</p>
+    {% elif field.help_text %}<p class="gf-help">{{ field.help_text }}</p>{% endif %}
+</div>

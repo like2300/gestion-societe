@@ -1,3 +1,4 @@
+{% load static %}
 <!doctype html>
 <html lang="fr">
     <head>
@@ -9,6 +10,8 @@
         </title>
         <!-- Tailwind v4 via CDN (remplacer par un build CSS en production) -->
         <script src="https://cdn.tailwindcss.com"></script>
+        <link rel="stylesheet" href="{% static 'gestion/gfield.css' %}?v=1" />
+        <script defer src="{% static 'gestion/logout-confirm.js' %}?v=1"></script>
         <!--
             Thème Tailwind centralisé (tokens @theme).
             Modifier les couleurs ici change le thème de toutes les pages,

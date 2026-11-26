@@ -40,137 +40,225 @@
             .mode-chip { background: #0f172a; border-color: #334155; color: #f1f5f9; }
         }
     </style>
-    <div class="banner">
+    <div class="ui-page-head">
         <div>
             <h1>Ma société</h1>
-            <p>{{ societe.nom }} — informations générales et documents.</p>
+            <p>Identité, chiffres clés et documents officiels de <strong>{{ societe.nom }}</strong>.</p>
         </div>
-        <button type="button" class="btn-primary" data-open-config
-            style="margin-left:auto;background:rgba(255,255,255,0.2);box-shadow:none">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
-            </svg>
+        <button type="button" class="btn-primary" data-open-config>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
             Configurer la société
         </button>
     </div>
 
-    <div class="panel" style="padding:1.2rem 1.4rem">
-        <div style="display:flex;gap:1.2rem;align-items:center;flex-wrap:wrap">
-            <div style="width:5.5rem;height:5.5rem;border-radius:1rem;overflow:hidden;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);font-size:1.6rem;flex:none">
-                {% if societe.logo %}
-                    <img src="{{ MEDIA_PREFIX }}{{ societe.logo }}" alt="Logo {{ societe.nom }}"
-                        style="width:100%;height:100%;object-fit:cover" />
+    {% include "gestion/components/espace_dossiers.html" %}
+
+    <section class="so-bento">
+        {# ===== Carte d'identité ===== #}
+        <div class="ui-card so-id">
+            <div class="so-cover" aria-hidden="true"></div>
+            <div class="so-logo">
+                {% if societe.logo %}<img src="{{ MEDIA_PREFIX }}{{ societe.logo }}" alt="Logo {{ societe.nom }}" />{% else %}{{ societe.nom|first|upper }}{% endif %}
+            </div>
+            <h2 class="so-nom">{{ societe.nom }}</h2>
+            <p class="so-slogan">{{ societe.slogan|default:"Aucun slogan pour le moment" }}</p>
+            <div class="so-badges">
+                <span class="ui-badge" style="--tone:{% if societe.statut == 'ACTIF' %}#10b981{% else %}#f59e0b{% endif %}">{{ societe.get_statut_display|default:societe.statut }}</span>
+                {% if societe.type_societe %}<span class="ui-badge" style="--tone:#8b5cf6">{{ societe.type_societe }}</span>{% endif %}
+            </div>
+            <dl class="so-infos">
+                <div><dt>Pays</dt><dd style="text-transform:capitalize">{{ societe.pays|default:"—" }}</dd></div>
+                <div><dt>Créée le</dt><dd>{{ societe.created_at|date:"d/m/Y" }}</dd></div>
+                <div><dt>Propriétaire</dt><dd>{{ societe.createur.prenom|default:"" }} {{ societe.createur.nom|default:"" }}</dd></div>
+                <div><dt>Couleur</dt><dd><i class="so-swatch"></i>{{ societe.get_couleur_display }}</dd></div>
+            </dl>
+        </div>
+
+        {# ===== Chiffres clés + paiements ===== #}
+        <div class="so-droite">
+            <div class="so-tuiles">
+                {% url 'gestion:employes' as u_emp %}{% url 'gestion:clients' as u_cli %}{% url 'gestion:projets' as u_prj %}{% url 'gestion:crud' 'documents' as u_doc %}
+                {% for c in societe_cartes %}
+                    {% cycle u_emp u_cli u_prj u_doc as lien silent %}
+                    {% include "gestion/components/stat_card.html" with label=c.label value=c.value icon=c.icon series=c.series trend=c.trend trend_dir=c.trend_dir note=c.note uid=c.uid tone=c.tone href=lien %}
+                {% endfor %}
+            </div>
+
+            {# ===== Abonnement de la société ===== #}
+            <div class="ui-card so-abo so-abo-{{ etat_abo.niveau|default:'aucun' }}">
+                <div class="ui-card-head">
+                    <div>
+                        <h2 class="ui-card-title">Abonnement</h2>
+                        <p class="ui-card-sub">Type d'abonnement et validité</p>
+                    </div>
+                    {% if 'societe' in modules_autorises %}<a class="so-lien" href="{% url 'gestion:mon_abonnement' %}">Gérer</a>{% endif %}
+                </div>
+                {% if etat_abo %}
+                <div class="so-abo-corps">
+                    <div>
+                        <span class="so-abo-nom">{{ etat_abo.forfait.nom }}</span>
+                        <span class="so-abo-prix">{{ etat_abo.forfait.prix_affiche }}{% if etat_abo.forfait.prix %} / mois{% endif %}</span>
+                    </div>
+                    <span class="so-abo-etat">
+                        {% if etat_abo.niveau == "ok" %}Actif
+                        {% elif etat_abo.niveau == "bientot" %}Se termine bientôt
+                        {% elif etat_abo.niveau == "expire" %}Expiré
+                        {% elif etat_abo.niveau == "suspendu" %}Suspendu
+                        {% else %}En attente{% endif %}
+                    </span>
+                </div>
+                <p class="so-abo-info">
+                    {% if etat_abo.niveau == "ok" or etat_abo.niveau == "bientot" %}Valable jusqu'au <b>{{ etat_abo.abonnement.date_fin|date:"d/m/Y" }}</b> · {% if etat_abo.jours_restants == 0 %}dernier jour{% else %}{{ etat_abo.jours_restants }} jour{{ etat_abo.jours_restants|pluralize }} restant{{ etat_abo.jours_restants|pluralize }}{% endif %}
+                    {% elif etat_abo.niveau == "expire" %}Terminé depuis le {{ etat_abo.abonnement.date_fin|date:"d/m/Y" }} : l'accès de vos employés est restreint.
+                    {% elif etat_abo.niveau == "suspendu" %}Contactez le support pour le réactiver.
+                    {% else %}En attente de paiement ou d'activation.{% endif %}
+                </p>
+                {% if demande_abo and demande_abo.pk != etat_abo.abonnement.pk %}<p class="so-abo-info">Demande en cours : <b>{{ demande_abo.forfait.nom }}</b>.</p>{% endif %}
+                {% if est_createur and etat_abo.niveau != "ok" and etat_abo.niveau != "suspendu" %}
+                    <a class="btn-primary so-abo-btn" href="{% url 'abonnement_payer' etat_abo.abonnement.jeton %}">Se réabonner</a>
+                {% endif %}
                 {% else %}
-                    {{ societe.nom|first }}
+                    <p class="so-vide">Aucun abonnement enregistré.{% if est_createur %} <a class="so-lien" href="{% url 'gestion:mon_abonnement' %}">Choisir une offre</a>{% endif %}</p>
                 {% endif %}
             </div>
-            <div style="min-width:0">
-                <div class="row-name" style="font-size:1.15rem">{{ societe.nom }}</div>
-                <div class="row-muted">{{ societe.slogan|default:"Aucun slogan" }}</div>
-                <div class="row-muted" style="text-transform:capitalize">{{ societe.pays }}</div>
-                <div style="margin-top:0.45rem">
-                    <span class="badge-status ACTIF">{{ societe.statut }}</span>
-                    <span class="badge-status" style="background:var(--accent-soft);color:var(--accent)">
-                        Couleur {{ societe.get_couleur_display }}
-                    </span>
+
+            <div class="ui-card">
+                <div class="ui-card-head">
+                    <div>
+                        <h2 class="ui-card-title">Modes de paiement</h2>
+                        <p class="ui-card-sub">Proposés à vos clients</p>
+                    </div>
+                    <button type="button" class="so-lien" data-open-config>Modifier</button>
+                </div>
+                <div class="so-modes">
+                    {% for m in modes_disponibles %}
+                        <span class="so-mode">{% include "gestion/components/icon.html" with name="card" %}{{ m.nom }}</span>
+                    {% empty %}
+                        <p class="so-vide">Aucun mode de paiement configuré.</p>
+                    {% endfor %}
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.9rem">
-        {% for label, value in counts.items %}
-            <div class="panel" style="padding:1rem 1.1rem">
-                <div style="font-size:0.72rem;color:#64748b;text-transform:uppercase;letter-spacing:.05em">{{ label }}</div>
-                <div class="row-name" style="font-size:1.4rem">{{ value }}</div>
-            </div>
-        {% endfor %}
-    </div>
-
-    <div class="panel">
-        <div class="page-head" style="padding:1rem 1.1rem;border-bottom:1px solid #e2e8f0">
+    {# ===== Documents officiels ===== #}
+    <section class="ui-card so-docs">
+        <div class="ui-card-head">
             <div>
-                <h1 style="font-size:1.05rem">Documents de la société</h1>
-                <p class="sub">RCCM, NIU, licences…</p>
+                <h2 class="ui-card-title">Documents de la société</h2>
+                <p class="ui-card-sub">RCCM, NIU, licences… avec leur date d'expiration</p>
             </div>
+            <a class="so-lien" href="{% url 'gestion:crud' 'documents' %}">Gérer les documents</a>
         </div>
         {% if documents %}
-            <div style="display:flex;flex-direction:column">
+            <div class="so-doc-grid">
                 {% for doc in documents %}
-                    <div style="display:flex;align-items:center;gap:0.7rem;padding:0.75rem 1.1rem;border-bottom:1px solid #f1f5f9">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color:#64748b;flex:none">
-                            <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
-                            <path d="M14 2v5h5" />
-                        </svg>
-                        <div style="min-width:0">
-                            <div class="row-name">{{ doc.type_document }}</div>
-                            {% if doc.numero_document %}<div class="row-muted">N° {{ doc.numero_document }}</div>{% endif %}
-                        </div>
-                        <div style="margin-left:auto;display:flex;gap:0.4rem;align-items:center">
+                    <div class="so-doc">
+                        <span class="so-doc-ico">{% include "gestion/components/icon.html" with name="file" %}</span>
+                        <div class="so-doc-txt">
+                            <b>{{ doc.type_document }}</b>
+                            <small>{% if doc.numero_document %}N° {{ doc.numero_document }}{% else %}Sans numéro{% endif %}</small>
                             {% if doc.date_expiration %}
-                                <span class="row-muted">Expire le {{ doc.date_expiration|date:"d/m/Y" }}</span>
-                            {% endif %}
-                            <a href="{{ MEDIA_PREFIX }}{{ doc.fichier }}" target="_blank" class="btn-ghost">
-                                Télécharger
-                            </a>
+                                {% if doc.date_expiration < aujourdhui %}<span class="so-etat neg">Expiré le {{ doc.date_expiration|date:"d/m/Y" }}</span>
+                                {% else %}<span class="so-etat">Valide jusqu'au {{ doc.date_expiration|date:"d/m/Y" }}</span>{% endif %}
+                            {% else %}<span class="so-etat">Sans expiration</span>{% endif %}
                         </div>
+                        {% if doc.fichier %}<a href="{% url 'gestion:document_fichier' 'societe' doc.pk %}" target="_blank" rel="noopener" class="so-dl" title="Télécharger" aria-label="Télécharger">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg></a>{% endif %}
                     </div>
                 {% endfor %}
             </div>
         {% else %}
-            <div class="empty-state">
-                <p>Aucun document pour le moment.</p>
-            </div>
+            <p class="so-vide">Aucun document pour le moment. <a href="{% url 'gestion:crud' 'documents' %}?nouveau=1">Ajouter un document</a></p>
         {% endif %}
-    </div>
+    </section>
+    <style>
+        #dash .so-abo-corps { display: flex; align-items: center; justify-content: space-between; gap: .8rem; flex-wrap: wrap; }
+        #dash .so-abo-nom { display: block; font-size: 1.25rem; font-weight: 800; color: var(--ui-text); }
+        #dash .so-abo-prix { font-size: .85rem; color: var(--ui-muted); }
+        #dash .so-abo-etat { padding: .3rem .75rem; border-radius: 999px; font-size: .75rem; font-weight: 700; background: #ecfdf5; color: #047857; }
+        #dash .so-abo-bientot .so-abo-etat { background: #fffbeb; color: #b45309; }
+        #dash .so-abo-expire .so-abo-etat, #dash .so-abo-suspendu .so-abo-etat { background: #fef2f2; color: #b91c1c; }
+        #dash .so-abo-en_attente .so-abo-etat { background: #eff6ff; color: #1d4ed8; }
+        #dash .so-abo-bientot, #dash .so-abo-expire { border-color: #fcd34d; }
+        #dash .so-abo-info { margin: .6rem 0 0; font-size: .85rem; color: var(--ui-muted); }
+        #dash .so-abo-btn { margin-top: .8rem; display: inline-flex; }
+    </style>
 {% endblock content %}
 
 {% block drawer %}
     <div class="drawer-head">
         <div>
             <h2>Configurer la société</h2>
-            <p class="drawer-sub">Modifiez les informations et personnalisez votre dashboard (couleur, logo).</p>
+            <p class="drawer-sub">Informations, couleur du tableau de bord et logo.</p>
         </div>
         <button class="drawer-close" data-drawer-close aria-label="Fermer">×</button>
     </div>
 
     <div class="drawer-body">
-        <form method="post" action="{% url 'gestion:societe_profil' %}"
-            enctype="multipart/form-data" id="config-form" novalidate>
+        <form method="post" action="{% url 'gestion:societe_profil' %}" enctype="multipart/form-data" id="config-form" class="cfg" novalidate>
             {% csrf_token %}
-            {% if config_form.non_field_errors %}
-                <div class="form-errors">{{ config_form.non_field_errors }}</div>
-            {% endif %}
-            <div class="fgrid">
-                {% for field in config_form.visible_fields %}
-                    {% if field.name == "slogan" or field.name == "logo" %}
-                        {% include "gestion/snippets/drawer_field.html" with field=field span=True %}
-                    {% elif field.name == "modes_paiement" %}
-                        <div class="ffield fspan-2">
-                            <label>Modes de paiement disponibles</label>
-                            <div class="modes-paiement-grid">
-                                {% for checkbox in field %}
-                                    <label class="mode-chip">
-                                        {{ checkbox.tag }}{{ checkbox.choice_label }}
-                                    </label>
-                                {% endfor %}
-                            </div>
-                            {% if field.help_text %}<p class="mode-help">{{ field.help_text }}</p>{% endif %}
-                            {% if field.errors %}
-                                <ul class="errors">
-                                    {% for error in field.errors %}<li>{{ error }}</li>{% endfor %}
-                                </ul>
-                            {% endif %}
-                        </div>
-                    {% else %}
-                        {% include "gestion/snippets/drawer_field.html" with field=field %}
-                    {% endif %}
-                {% endfor %}
-            </div>
-            <div class="factions">
+            {% if config_form.non_field_errors %}<div class="form-errors">{{ config_form.non_field_errors }}</div>{% endif %}
+
+            {# ----- Identité ----- #}
+            <section class="cfg-sec">
+                <h3 class="cfg-titre"><span>1</span>Identité</h3>
+                <div class="cfg-grille">
+                    {% include "gestion/components/gfield.html" with field=config_form.nom span=True %}
+                    {% include "gestion/components/gfield.html" with field=config_form.pays %}
+                    {% include "gestion/components/gfield.html" with field=config_form.slogan help="Facultatif — affiché sous le nom" %}
+                </div>
+            </section>
+
+            {# ----- Logo (glisser-déposer) ----- #}
+            <section class="cfg-sec">
+                <h3 class="cfg-titre"><span>2</span>Logo</h3>
+                <label class="dz{% if societe.logo %} a-image{% endif %}" id="dz" for="{{ config_form.logo.id_for_label }}">
+                    <span class="dz-apercu" id="dz-apercu">
+                        {% if societe.logo %}<img src="{{ MEDIA_PREFIX }}{{ societe.logo }}" alt="Logo actuel" />{% else %}{{ societe.nom|first|upper }}{% endif %}
+                    </span>
+                    <span class="dz-texte">
+                        <b id="dz-titre">{% if societe.logo %}Remplacer le logo{% else %}Ajouter un logo{% endif %}</b>
+                        <small id="dz-sous">Glissez-déposez une image ici ou <u>parcourez</u> — PNG, JPG, WEBP, SVG</small>
+                    </span>
+                    {{ config_form.logo }}
+                </label>
+                {% if config_form.logo.errors %}<p class="gf-err">{{ config_form.logo.errors.0 }}</p>{% endif %}
+            </section>
+
+            {# ----- Couleur ----- #}
+            <section class="cfg-sec">
+                <h3 class="cfg-titre"><span>3</span>Couleur du tableau de bord</h3>
+                <div class="cfg-couleurs" role="radiogroup" aria-label="Couleur du tableau de bord">
+                    {% for valeur, libelle, hex in couleurs %}
+                        <label class="cfg-couleur" style="--c: {{ hex }}" title="{{ libelle }}">
+                            <input type="radio" name="couleur" value="{{ valeur }}" {% if valeur == couleur_actuelle %}checked{% endif %} />
+                            <span class="pastille"></span>
+                            <span class="nom">{{ libelle }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+                {% if config_form.couleur.errors %}<p class="gf-err">{{ config_form.couleur.errors.0 }}</p>{% endif %}
+            </section>
+
+            {# ----- Modes de paiement ----- #}
+            <section class="cfg-sec">
+                <h3 class="cfg-titre"><span>4</span>Modes de paiement</h3>
+                <p class="cfg-aide">{{ config_form.modes_paiement.help_text }}</p>
+                <div class="cfg-modes">
+                    {% for checkbox in config_form.modes_paiement %}
+                        <label class="cfg-mode">
+                            {{ checkbox.tag }}
+                            <span class="coche" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
+                            <span>{{ checkbox.choice_label }}</span>
+                        </label>
+                    {% empty %}
+                        <p class="cfg-aide">Aucun mode de paiement n'est disponible sur la plateforme.</p>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <div class="cfg-actions">
                 <button type="button" class="btn-ghost" data-drawer-close>Annuler</button>
                 <button type="submit" class="btn-primary">Enregistrer</button>
             </div>
@@ -181,15 +269,44 @@
 {% block extra_js %}
     <script>
         (function () {
-            var btn = document.querySelector("[data-open-config]");
-            if (btn) {
-                btn.addEventListener("click", function () {
-                    window.openDrawer();
-                });
-            }
+            document.querySelectorAll("[data-open-config]").forEach(function (btn) {
+                btn.addEventListener("click", function () { window.openDrawer(); });
+            });
             {% if open_config %}
             window.openDrawer();
             {% endif %}
+            /* Logo : glisser-déposer + aperçu */
+            var dz = document.getElementById("dz"), entree = dz && dz.querySelector('input[type="file"]');
+            function apercu(fichier) {
+                if (!fichier || !/^image\//.test(fichier.type)) return;
+                var r = new FileReader();
+                r.onload = function (e) {
+                    document.getElementById("dz-apercu").innerHTML = '<img src="' + e.target.result + '" alt="Aperçu du logo" />';
+                    dz.classList.add("a-image");
+                    document.getElementById("dz-titre").textContent = fichier.name;
+                    document.getElementById("dz-sous").textContent = Math.round(fichier.size / 1024) + " Ko — cliquez sur Enregistrer pour l'appliquer";
+                };
+                r.readAsDataURL(fichier);
+            }
+            if (dz && entree) {
+                entree.addEventListener("change", function () { apercu(entree.files[0]); });
+                ["dragenter", "dragover"].forEach(function (t) { dz.addEventListener(t, function (e) { e.preventDefault(); dz.classList.add("survol"); }); });
+                ["dragleave", "drop"].forEach(function (t) { dz.addEventListener(t, function (e) { e.preventDefault(); dz.classList.remove("survol"); }); });
+                dz.addEventListener("drop", function (e) {
+                    var f = e.dataTransfer && e.dataTransfer.files[0];
+                    if (!f) return;
+                    try { var dt = new DataTransfer(); dt.items.add(f); entree.files = dt.files; } catch (err) { }
+                    apercu(f);
+                });
+            }
+            /* Couleur : aperçu immédiat sur la page */
+            document.querySelectorAll('.cfg-couleur input').forEach(function (r) {
+                r.addEventListener("change", function () {
+                    var c = r.closest(".cfg-couleur").style.getPropertyValue("--c");
+                    document.body.style.setProperty("--accent", c);
+                    var d = document.getElementById("dash"); if (d) d.style.setProperty("--accent", c);
+                });
+            });
             var params = new URLSearchParams(window.location.search);
             if (params.get("ok")) {
                 window.showToast && window.showToast("success", "Société mise à jour avec succès.");

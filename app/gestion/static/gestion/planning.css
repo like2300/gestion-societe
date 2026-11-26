@@ -1,0 +1,301 @@
+/* ===== Planning (agenda) — style épuré : grille claire, cartes pastel à liseré coloré ===== */
+.bx-i-planning { background: linear-gradient(140deg, #a78bfa, #7c3aed); }
+
+#dash .pl-app { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 1.1rem; align-items: start; }
+@media (max-width: 1180px) { #dash .pl-app { grid-template-columns: minmax(0, 1fr); } #dash .pl-cote { position: static !important; display: grid !important; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); } }
+
+/* --- Carte calendrier --- */
+#dash .pl-main {
+    min-width: 0; background: var(--ui-card); border: 1px solid var(--ui-border); border-radius: 22px;
+    box-shadow: 0 18px 40px -28px rgba(15, 23, 42, .35); padding: 1.1rem 1.1rem .6rem; height: calc(100vh - 120px); min-height: 640px;
+    display: flex; flex-direction: column;
+}
+#dash .pl-barre { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .7rem; margin-bottom: 1rem; }
+#dash .pl-nav, #dash .pl-droite { display: flex; align-items: center; gap: .55rem; min-width: 0; }
+#dash .pl-logo { width: 38px; height: 38px; }
+#dash .pl-nav h2 { margin: 0 .2rem; font-size: 1.3rem; font-weight: 800; letter-spacing: -.01em; color: var(--ui-text); text-transform: capitalize; white-space: nowrap; }
+#dash .pl-fleches { display: inline-flex; gap: .3rem; }
+#dash .pl-btn {
+    height: 36px; padding: 0 .9rem; border-radius: 11px; border: 0; background: color-mix(in srgb, var(--accent) 9%, var(--ui-card));
+    color: var(--accent); font-weight: 700; font-size: .8rem; cursor: pointer; transition: background .15s;
+}
+#dash .pl-btn.icone { width: 36px; padding: 0; display: inline-grid; place-items: center; }
+#dash .pl-btn:hover { background: color-mix(in srgb, var(--accent) 16%, var(--ui-card)); }
+#dash .pl-vues { display: inline-flex; padding: 3px; border-radius: 12px; background: var(--ui-card-2); }
+#dash .pl-vues button { border: 0; background: none; color: var(--ui-muted); font-weight: 700; font-size: .78rem; height: 32px; padding: 0 .85rem; border-radius: 9px; cursor: pointer; }
+#dash .pl-vues button.on { background: var(--ui-card); color: var(--accent); box-shadow: 0 2px 6px -2px rgba(0,0,0,.18); }
+#dash .pl-nouveau {
+    display: inline-flex; align-items: center; gap: .45rem; height: 40px; padding: 0 1.1rem; border: 0; border-radius: 12px;
+    background: var(--accent); color: #fff; font-weight: 700; font-size: .85rem; cursor: pointer;
+    box-shadow: 0 10px 20px -12px var(--accent); transition: transform .15s, filter .15s;
+}
+#dash .pl-nouveau:hover { filter: brightness(1.07); transform: translateY(-1px); }
+@media (max-width: 700px) {
+    #dash .pl-main { height: auto; min-height: 0; padding: .8rem; }
+    #dash .pl-nav h2 { font-size: 1.02rem; } #dash .pl-logo { display: none; }
+    #dash .pl-vues button { padding: 0 .55rem; } #dash .pl-nouveau span { display: none; } #dash .pl-nouveau { padding: 0 .75rem; }
+    #dash .pl-calendrier { min-height: 520px; }
+}
+
+/* --- FullCalendar habillé --- */
+#dash .pl-calendrier {
+    flex: 1; min-height: 0;
+    --fc-border-color: color-mix(in srgb, var(--ui-border) 70%, transparent);
+    --fc-page-bg-color: var(--ui-card);
+    --fc-neutral-bg-color: var(--ui-card-2);
+    --fc-list-event-hover-bg-color: var(--ui-card-2);
+    --fc-today-bg-color: color-mix(in srgb, var(--accent) 5%, transparent);
+    --fc-now-indicator-color: var(--accent);
+    --fc-event-border-color: transparent;
+    --fc-event-text-color: var(--ui-text);
+    --fc-highlight-color: color-mix(in srgb, var(--accent) 12%, transparent);
+    --fc-non-business-color: transparent;
+    --fc-small-font-size: .78em;
+    color: var(--ui-text); font-size: .84rem;
+}
+#dash .pl-calendrier .fc-scrollgrid { border: 0 !important; }
+#dash .pl-calendrier .fc-scrollgrid td:last-of-type, #dash .pl-calendrier .fc-scrollgrid th:last-of-type { border-right: 0; }
+#dash .pl-calendrier .fc-col-header-cell { border-left: 0; border-right: 0; }
+#dash .pl-calendrier .fc-col-header-cell-cushion { color: var(--ui-muted); font-weight: 600; text-transform: capitalize; padding: .55rem .2rem; text-decoration: none; display: flex; flex-direction: column; align-items: center; line-height: 1.15; }
+#dash .pl-jn { font-size: 1.2rem; font-weight: 800; color: var(--ui-text); }
+#dash .pl-jw { font-size: .72rem; font-weight: 500; color: var(--ui-faint); text-transform: capitalize; }
+#dash .pl-calendrier .fc-day-today .pl-jn, #dash .pl-calendrier .fc-day-today .pl-jw { color: var(--accent); }
+#dash .pl-calendrier .fc-timegrid-col.fc-day-today { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+#dash .pl-calendrier .fc-daygrid-day-number, #dash .pl-calendrier .fc-list-day-text, #dash .pl-calendrier .fc-list-day-side-text { color: var(--ui-text); text-decoration: none; font-weight: 600; }
+#dash .pl-calendrier .fc-day-today .fc-daygrid-day-number { background: var(--accent); color: #fff; border-radius: 999px; min-width: 24px; text-align: center; margin: 3px; padding: 2px 6px; }
+#dash .pl-calendrier .fc-timegrid-slot-label-cushion, #dash .pl-calendrier .fc-timegrid-axis-cushion { color: var(--ui-faint); font-size: .72rem; font-weight: 600; }
+#dash .pl-calendrier .fc-timegrid-slot { height: 3.1em; }
+#dash .pl-calendrier .fc-timegrid-slot-minor { border-top-style: none; }
+#dash .pl-calendrier .fc-timegrid-now-indicator-line { border-width: 2px 0 0; }
+#dash .pl-calendrier .fc-timegrid-now-indicator-arrow { border-color: var(--accent); border-top-color: transparent; border-bottom-color: transparent; }
+#dash .pl-calendrier a { color: inherit; }
+#dash .pl-calendrier .fc-more-link { color: var(--accent); font-weight: 700; }
+#dash .pl-calendrier .fc-popover { background: var(--ui-card); border-color: var(--ui-border); border-radius: 14px; box-shadow: var(--ui-shadow); overflow: hidden; }
+#dash .pl-calendrier .fc-popover-header { background: var(--ui-card-2); color: var(--ui-text); }
+#dash .pl-calendrier .fc-list { border: 0; }
+#dash .pl-calendrier .fc-list-day-cushion { background: var(--ui-card-2); }
+#dash .pl-calendrier .fc-list-event td { background: transparent; }
+#dash .pl-calendrier .fc-list-empty { background: var(--ui-card); color: var(--ui-muted); }
+#dash .pl-calendrier .fc-timegrid-axis-cushion { font-size: .68rem; text-transform: uppercase; letter-spacing: .04em; }
+
+/* Cartes d'événements : fond pastel + liseré supérieur coloré */
+#dash .pl-calendrier .fc-event.pl-carte-ev:not(.fc-list-event) {
+    background: color-mix(in srgb, var(--c) 13%, var(--ui-card)) !important; border: 0 !important;
+    border-top: 3px solid var(--c) !important; border-radius: 10px; box-shadow: none; cursor: pointer; overflow: hidden;
+    transition: transform .12s, box-shadow .12s;
+}
+#dash .pl-calendrier .fc-event.pl-carte-ev:not(.fc-list-event):hover { transform: translateY(-1px); box-shadow: 0 10px 18px -14px var(--c); }
+#dash .pl-calendrier .fc-daygrid-event.pl-carte-ev { border-top: 0 !important; border-left: 3px solid var(--c) !important; border-radius: 8px; margin-bottom: 3px; }
+#dash .pl-calendrier .fc-timegrid-event-harness-inset .fc-timegrid-event { box-shadow: 0 0 0 2px var(--ui-card) !important; }
+#dash .pl-calendrier .fc-daygrid-dot-event .fc-daygrid-event-dot { border-color: var(--c); }
+#dash .pl-calendrier .fc-list-event-dot { border-color: var(--c) !important; }
+
+#dash .pl-ev { display: flex; flex-direction: column; gap: 2px; padding: 5px 7px; min-width: 0; overflow: hidden; line-height: 1.25; color: var(--ui-text); height: 100%; }
+#dash .pl-ev b { font-size: .78rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#dash .pl-ev-h, #dash .pl-ev-l { font-size: .7rem; color: var(--ui-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#dash .pl-ev-av { display: flex; align-items: center; margin-top: auto; padding-top: 3px; }
+#dash .pl-ev-av i, #dash .pl-mini-av {
+    width: 20px; height: 20px; border-radius: 7px; display: inline-grid; place-items: center; font-style: normal; font-size: .55rem;
+    font-weight: 800; color: #fff; border: 2px solid color-mix(in srgb, var(--c) 13%, var(--ui-card)); margin-left: -5px; flex: none;
+}
+#dash .pl-ev-av i:first-child { margin-left: 0; }
+#dash .pl-ev-av em { font-style: normal; font-size: .66rem; font-weight: 700; color: var(--ui-muted); margin-left: 4px; }
+
+/* Tâches (ligne « Tâches » en haut de la semaine, ou dans le mois) */
+#dash .pl-ev-tache { flex-direction: row; align-items: center; gap: .4rem; padding: 3px 6px; }
+#dash .pl-ev-tache b { flex: 1; min-width: 0; font-weight: 600; }
+#dash .pl-ev-tache.fait b { text-decoration: line-through; color: var(--ui-muted); }
+#dash .pl-coche {
+    width: 15px; height: 15px; border-radius: 5px; border: 2px solid var(--c); display: inline-grid; place-items: center;
+    flex: none; color: #fff; background: transparent; padding: 0;
+}
+#dash .fait > .pl-coche, #dash .pl-jt.fait .pl-coche { background: var(--c); }
+#dash .pl-prio { width: 15px; height: 15px; border-radius: 999px; background: #e11d48; color: #fff; font-size: .62rem; font-weight: 900; display: inline-grid; place-items: center; flex: none; }
+#dash .pl-mini-av { margin-left: 0; border-radius: 999px; width: 18px; height: 18px; border-width: 0; }
+#dash .pl-calendrier .fc-event.pl-tache.autre { opacity: .78; }
+#dash .pl-calendrier .fc-event.pl-tache.autre .pl-coche { border-style: dashed; }
+
+/* Couches en lecture seule (échéances, factures, contrats) */
+#dash .pl-calendrier .fc-event.pl-couche .fc-event-main { color: var(--ui-text); font-weight: 600; font-size: .74rem; padding: 2px 6px; }
+
+/* --- Colonne de droite --- */
+#dash .pl-cote { position: sticky; top: 1rem; display: flex; flex-direction: column; gap: 1rem; }
+#dash .pl-carte {
+    background: var(--ui-card); border: 1px solid var(--ui-border); border-radius: 20px; padding: 1rem;
+    box-shadow: 0 18px 40px -30px rgba(15, 23, 42, .35); display: flex; flex-direction: column; gap: .5rem;
+}
+#dash .pl-carte-tete { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
+#dash .pl-carte-tete small { font-size: .74rem; color: var(--accent); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
+#dash .pl-titre { font-size: .95rem; font-weight: 800; color: var(--ui-text); }
+
+/* Mini-calendrier */
+#dash .pl-mini-tete { display: flex; align-items: center; justify-content: space-between; margin-bottom: .4rem; }
+#dash .pl-mini-tete b { font-size: 1rem; font-weight: 800; color: var(--ui-text); }
+#dash .pl-mini-tete span { display: inline-flex; gap: .3rem; }
+#dash .pl-mini-tete button {
+    width: 30px; height: 30px; border-radius: 9px; border: 0; background: color-mix(in srgb, var(--accent) 9%, var(--ui-card));
+    color: var(--accent); font-size: 1.1rem; font-weight: 700; cursor: pointer; line-height: 1;
+}
+#dash .pl-mini-grille { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px 0; text-align: center; }
+#dash .pl-mini-grille em { font-style: normal; font-size: .68rem; font-weight: 700; color: var(--ui-faint); padding: .25rem 0; }
+#dash .pl-mini-grille button {
+    position: relative; height: 32px; border: 0; background: none; color: var(--ui-text); font-size: .8rem; font-weight: 600;
+    cursor: pointer; border-radius: 9px;
+}
+#dash .pl-mini-grille button:hover { background: var(--ui-card-2); }
+#dash .pl-mini-grille button.hors { color: var(--ui-faint); font-weight: 500; }
+#dash .pl-mini-grille button.vue { background: color-mix(in srgb, var(--accent) 9%, transparent); border-radius: 0; }
+#dash .pl-mini-grille button.vue:nth-child(7n+1) { border-radius: 9px 0 0 9px; }
+#dash .pl-mini-grille button.vue:nth-child(7n) { border-radius: 0 9px 9px 0; }
+#dash .pl-mini-grille button.auj { color: var(--accent); font-weight: 800; }
+#dash .pl-mini-grille button.choisi { background: var(--accent); color: #fff; border-radius: 9px; }
+#dash .pl-mini-grille button.pt::after { content: ""; position: absolute; left: 50%; bottom: 3px; width: 4px; height: 4px; border-radius: 999px; background: var(--accent); transform: translateX(-50%); }
+#dash .pl-mini-grille button.choisi.pt::after { background: #fff; }
+
+/* Équipe */
+#dash .pl-equipe-q { position: relative; display: flex; align-items: center; }
+#dash .pl-equipe-q svg { position: absolute; left: .7rem; color: var(--ui-faint); pointer-events: none; }
+#dash .pl-equipe-q input { width: 100%; height: 38px !important; padding: 0 .8rem 0 2.1rem !important; border-radius: 11px !important; font-size: .82rem !important; }
+#dash .pl-equipe { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .15rem; max-height: 300px; overflow: auto; }
+#dash .pl-equipe li { display: flex; align-items: center; gap: .65rem; padding: .45rem .5rem; border-radius: 12px; cursor: pointer; transition: background .15s; }
+#dash .pl-equipe li[hidden] { display: none; }
+#dash .pl-equipe li:hover { background: var(--ui-card-2); }
+#dash .pl-equipe li.on { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+#dash .pl-equipe li.on b { color: var(--accent); }
+#dash .pl-equipe li > span:last-child { min-width: 0; display: flex; flex-direction: column; }
+#dash .pl-equipe b { font-size: .84rem; color: var(--ui-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#dash .pl-equipe small { font-size: .72rem; color: var(--ui-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#dash .pl-av {
+    width: 36px; height: 36px; border-radius: 12px; display: inline-grid; place-items: center; flex: none;
+    color: #fff; font-size: .74rem; font-weight: 800; background: #94a3b8;
+}
+#dash .pl-av.tous { background: color-mix(in srgb, var(--accent) 14%, var(--ui-card)); color: var(--accent); }
+#dash .pl-av.moi { background: linear-gradient(140deg, #a78bfa, #7c3aed); font-size: .66rem; }
+
+/* Ma journée (employé) */
+#dash .pl-jour { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .3rem; }
+#dash .pl-jour-titre { font-size: .76rem; font-weight: 700; color: var(--accent); text-transform: capitalize; padding-bottom: .1rem; }
+#dash .pl-jt, #dash .pl-jr { display: flex; align-items: center; gap: .6rem; padding: .5rem .6rem; border-radius: 12px; background: color-mix(in srgb, var(--c) 10%, var(--ui-card)); }
+#dash .pl-jt .pl-coche { width: 20px; height: 20px; border-radius: 7px; cursor: pointer; }
+#dash .pl-jr i { width: 4px; align-self: stretch; border-radius: 4px; background: var(--c); flex: none; }
+#dash .pl-jt > span, #dash .pl-jr > span { min-width: 0; display: flex; flex-direction: column; cursor: pointer; flex: 1; }
+#dash .pl-jt b, #dash .pl-jr b { font-size: .83rem; color: var(--ui-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#dash .pl-jt.fait b { text-decoration: line-through; color: var(--ui-muted); }
+#dash .pl-jt small, #dash .pl-jr small { font-size: .72rem; color: var(--ui-muted); }
+
+/* Couches + légende */
+#dash .pl-couche-lbl { display: flex; align-items: center; gap: .55rem; font-size: .84rem; color: var(--ui-text); cursor: pointer; padding: .1rem 0; }
+#dash .pl-couche-lbl input { width: 16px; height: 16px; accent-color: var(--accent); margin: 0; }
+#dash .pl-couche-lbl i, #dash .pl-legende i { width: 10px; height: 10px; border-radius: 3px; background: var(--c); flex: none; }
+#dash .pl-legende { display: flex; flex-wrap: wrap; gap: .35rem .8rem; padding-top: .45rem; margin-top: .2rem; border-top: 1px dashed var(--ui-border); }
+#dash .pl-legende span { display: inline-flex; align-items: center; gap: .4rem; font-size: .74rem; color: var(--ui-muted); }
+
+/* Prochains rendez-vous */
+#dash .pl-prochains ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .3rem; }
+#dash .pl-prochains li[data-id] { display: flex; gap: .6rem; align-items: stretch; padding: .5rem .55rem; border-radius: 12px; cursor: pointer; transition: background .15s; }
+#dash .pl-prochains li[data-id]:hover { background: var(--ui-card-2); }
+#dash .pl-prochains li i { width: 4px; border-radius: 4px; flex: none; background: var(--c); }
+#dash .pl-prochains li span { min-width: 0; display: flex; flex-direction: column; }
+#dash .pl-prochains li b { font-size: .83rem; color: var(--ui-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#dash .pl-prochains li small { font-size: .72rem; color: var(--ui-muted); }
+#dash .pl-vide { font-size: .8rem; color: var(--ui-faint); padding: .3rem 0; }
+
+/* --- Tiroir --- */
+#dash .ev-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 14px; background: var(--ui-card-2); margin-bottom: 1rem; }
+#dash .ev-modes[hidden] { display: none; }
+#dash .ev-modes button { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; height: 40px; border: 0; border-radius: 11px; background: none; color: var(--ui-muted); font-weight: 700; font-size: .86rem; cursor: pointer; }
+#dash .ev-modes button.on { background: var(--ui-card); color: var(--accent); box-shadow: 0 2px 8px -3px rgba(0,0,0,.2); }
+#dash .ev-form { display: flex; flex-direction: column; gap: 1rem; }
+#dash .ev-form[hidden] { display: none; }
+#dash .tk-moi { display: flex; align-items: center; gap: .7rem; margin: 0; font-size: .84rem; color: var(--ui-muted); padding: .6rem; border-radius: 12px; background: var(--ui-card-2); }
+#dash .tk-statut { display: flex; flex-direction: column; gap: .4rem; }
+#dash .tk-statut[hidden] { display: none; }
+#dash .tk-statut .ev-durees { margin-top: 0; }
+#dash .tk-statut [data-statut].on { background: var(--c); border-color: var(--c); color: #fff; }
+#dash .tk-ouvrir { margin-right: auto; }
+#dash .tk-ouvrir[hidden] { display: none; }
+#dash .ev-switch { display: inline-flex; align-items: center; gap: .6rem; font-size: .86rem; color: var(--ui-text); cursor: pointer; margin-bottom: .7rem; }
+#dash .ev-switch input { position: absolute; opacity: 0; pointer-events: none; }
+#dash .ev-switch span { width: 38px; height: 22px; border-radius: 999px; background: var(--ui-border); position: relative; transition: background .2s; flex: none; }
+#dash .ev-switch span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 999px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .2s; }
+#dash .ev-switch input:checked + span { background: var(--accent); }
+#dash .ev-switch input:checked + span::after { transform: translateX(16px); }
+#dash .ev-switch input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+#dash .ev-heure[hidden], #dash .ev-durees[hidden] { display: none; }
+#dash .ev-durees { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .7rem; }
+#dash .ev-durees button, #dash .ev-couleurs button {
+    height: 30px; padding: 0 .75rem; border-radius: 999px; border: 1px solid var(--ui-border); background: var(--ui-card);
+    color: var(--ui-muted); font-size: .76rem; font-weight: 600; cursor: pointer;
+}
+#dash .ev-durees button:hover { border-color: var(--accent); color: var(--accent); }
+#dash .ev-part { position: relative; display: flex; flex-direction: column; gap: .5rem; margin-bottom: .8rem; }
+#dash .ev-part .tp-champ { position: relative; display: flex; align-items: center; }
+#dash .ev-part .tp-champ svg { position: absolute; left: .8rem; color: var(--ui-faint); pointer-events: none; }
+#dash .ev-part .tp-champ input { width: 100%; height: 44px !important; padding: 0 .9rem 0 2.3rem !important; border-radius: 12px !important; }
+#dash .ev-part-liste { position: absolute; left: 0; right: 0; top: 100%; margin-top: 4px; z-index: 30; }
+#dash .ev-part-liste[hidden] { display: none; }
+#dash .ev-chips { display: flex; flex-wrap: wrap; gap: .4rem; }
+#dash .ev-chips:empty { display: none; }
+#dash .ev-chip { display: inline-flex; align-items: center; gap: .4rem; padding: 3px 4px 3px 3px; border-radius: 999px; background: var(--ui-card-2); border: 1px solid var(--ui-border); font-size: .8rem; color: var(--ui-text); }
+#dash .ev-chip i { width: 22px; height: 22px; border-radius: 999px; display: grid; place-items: center; font-style: normal; font-size: .62rem; font-weight: 700; color: #fff; }
+#dash .ev-chip button { border: 0; background: none; color: var(--ui-faint); width: 20px; height: 20px; border-radius: 999px; cursor: pointer; font-size: 1rem; line-height: 1; }
+#dash .ev-chip button:hover { background: var(--ui-border); color: var(--ui-text); }
+#dash .ev-couleurs { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem; margin-top: .8rem; }
+#dash .ev-couleurs button[data-c]:not([data-c=""]) { width: 28px; height: 28px; padding: 0; border-radius: 999px; background: var(--c); border: 2px solid transparent; }
+#dash .ev-couleurs button.on { border-color: var(--ui-text) !important; color: var(--ui-text); box-shadow: 0 0 0 2px var(--ui-card) inset; }
+#dash .ev-org { margin: 0; font-size: .78rem; color: var(--ui-muted); }
+#dash .ev-org[hidden] { display: none; }
+#dash .ev-suppr { margin-right: auto; color: #e11d48 !important; }
+#dash .ev-suppr[hidden] { display: none; }
+
+/* Sombre */
+html[data-theme="dark"] #dash .pl-main, html[data-theme="dark"] #dash .pl-carte { box-shadow: none; }
+html[data-theme="dark"] #dash .pl-calendrier .fc-event.pl-carte-ev:not(.fc-list-event) { background: color-mix(in srgb, var(--c) 20%, var(--ui-card)) !important; }
+html[data-theme="dark"] #dash .ev-switch span::after { background: #e5e7eb; }
+
+/* Image d'un rendez-vous : aperçu dans le tiroir + miniature dans le calendrier */
+#dash .ev-image { display: flex; flex-direction: column; gap: .5rem; }
+#dash .ev-image img { width: 100%; max-height: 180px; object-fit: cover; border-radius: 12px; border: 1px solid var(--ui-border); }
+#dash .ev-image-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+#dash .ev-image-btn { display: inline-flex; align-items: center; gap: .4rem; height: 34px; padding: 0 .8rem; border-radius: 10px; border: 1px dashed var(--ui-border); background: var(--ui-card-2); color: var(--ui-text); font-size: .8rem; font-weight: 600; cursor: pointer; }
+#dash .ev-image-btn:hover { border-color: var(--accent); color: var(--accent); }
+#dash .ev-image-btn.danger { border-style: solid; color: #dc2626; }
+#dash .ev-image-btn[hidden] { display: none; }
+#dash .pl-ev-img { display: block; width: 100%; max-height: 64px; object-fit: cover; border-radius: 6px; margin-top: 4px; }
+#dash .ev-image-titre { font-size: .78rem; font-weight: 600; color: var(--ui-muted); margin-bottom: .35rem; display: block; }
+
+/* « À ne pas oublier » : tâches en retard / du jour + rendez-vous des prochaines 24 h */
+#dash .pl-oubli { border: 1px solid color-mix(in srgb, #f59e0b 40%, var(--ui-border)); background: color-mix(in srgb, #f59e0b 6%, var(--ui-card)); }
+#dash .pl-oubli[hidden] { display: none; }
+#dash .pl-oubli ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .25rem; max-height: 260px; overflow: auto; }
+#dash .pl-ob { display: flex; gap: .6rem; align-items: stretch; padding: .45rem .5rem; border-radius: 11px; cursor: pointer; transition: background .15s; }
+#dash .pl-ob:hover { background: var(--ui-card); }
+#dash .pl-ob i { width: 4px; border-radius: 4px; flex: none; background: #3b82f6; }
+#dash .pl-ob.t-retard i { background: #dc2626; }
+#dash .pl-ob.t-jour i { background: #f59e0b; }
+#dash .pl-ob.t-demain i { background: #64748b; }
+#dash .pl-ob.t-retard small { color: #dc2626; font-weight: 600; }
+#dash .pl-ob span { min-width: 0; display: flex; flex-direction: column; }
+#dash .pl-ob b { font-size: .83rem; color: var(--ui-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#dash .pl-ob small { font-size: .72rem; color: var(--ui-muted); }
+#dash .pl-notif-btn { border: 0; background: transparent; color: var(--accent); font-size: .72rem; font-weight: 700; cursor: pointer; padding: 0; }
+#dash .pl-notif-btn[hidden] { display: none; }
+
+/* Groupes : agenda partagé */
+#dash .pl-av.grp { border-radius: 10px; }
+#dash .pl-groupes li > span:nth-child(2) { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+#dash .pl-grp-plus { flex: none; width: 28px; height: 28px; border-radius: 9px; border: 1px solid var(--ui-border); background: var(--ui-card); color: var(--ui-muted); display: inline-grid; place-items: center; cursor: pointer; opacity: .75; transition: all .15s; }
+#dash .pl-grp-plus:hover { opacity: 1; color: #fff; background: var(--accent); border-color: var(--accent); }
+/* Créneau d'un collègue : seul l'horaire est partagé */
+#dash .fc .pl-occupe { background: repeating-linear-gradient(135deg, color-mix(in srgb, #94a3b8 22%, var(--ui-card)) 0 6px, color-mix(in srgb, #94a3b8 12%, var(--ui-card)) 6px 12px) !important; border-color: #94a3b8 !important; cursor: default; }
+#dash .fc .pl-occupe .pl-ev b { color: var(--ui-muted); }
+
+/* Mobile : déclaré après « .pl-calendrier { min-height: 0 } », qui annulait la hauteur
+   et rendait le calendrier invisible (0 px) sur téléphone. */
+@media (max-width: 700px) {
+    #dash .pl-main .pl-calendrier { flex: none; height: 540px; min-height: 540px; }
+    #dash .pl-nav { flex-wrap: wrap; row-gap: .5rem; }
+    #dash .pl-nav h2 { flex: 1 1 100%; white-space: normal; margin: 0; }
+    #dash .pl-droite { width: 100%; justify-content: space-between; }
+    #dash .pl-cote { grid-template-columns: minmax(0, 1fr) !important; }
+}

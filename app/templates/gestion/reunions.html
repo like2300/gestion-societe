@@ -1,0 +1,489 @@
+{% extends "gestion/base_dashboard.html" %}
+{% load static %}
+
+{% block dash_title %}Réunions — {{ societe.nom }}{% endblock %}
+
+{% block content %}
+<style>
+    [x-cloak] { display: none !important; }
+    .rc { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+    @media (max-width: 1100px) { .rc { grid-template-columns: minmax(0, 1fr); } }
+
+    /* Panneau latéral */
+    .rc-side { background: var(--ui-card); border: 1px solid var(--ui-border); border-radius: var(--ui-radius); box-shadow: var(--ui-shadow); padding: 18px; display: flex; flex-direction: column; gap: 20px; position: sticky; top: 84px; }
+    .rc-new { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 11px 14px; border: 0; border-radius: 12px; background: var(--accent); color: #fff; font: inherit; font-weight: 600; font-size: 0.88rem; cursor: pointer; box-shadow: 0 10px 22px -12px var(--accent); transition: transform 0.15s ease, filter 0.15s ease; }
+    .rc-new:hover { transform: translateY(-1px); filter: brightness(1.06); }
+    .rc-new svg { width: 15px; height: 15px; transition: transform 0.3s ease; }
+    .rc-new:hover svg { transform: rotate(90deg); }
+    .rc-label { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ui-faint); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .rc-label em { font-style: normal; text-transform: none; letter-spacing: 0; color: var(--accent); font-weight: 600; font-size: 0.75rem; }
+    .rc-cat { width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--ui-muted); font: inherit; font-size: 0.84rem; cursor: pointer; transition: background 0.15s ease, color 0.15s ease; }
+    .rc-cat:hover { background: var(--ui-card-2); color: var(--ui-text); }
+    .rc-cat.on { background: var(--ui-card-2); color: var(--ui-text); font-weight: 600; }
+    .rc-cat:not(.on) .rc-dot { opacity: 0.35; }
+    .rc-cat .n { margin-left: auto; font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--ui-text) 7%, transparent); color: var(--ui-muted); }
+    .rc-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+    .rc-day-list { display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow-y: auto; }
+    .rc-empty { padding: 18px 12px; text-align: center; border: 1px dashed var(--ui-border); border-radius: 12px; font-size: 0.8rem; color: var(--ui-faint); }
+    .rc-item { display: block; width: 100%; text-align: left; padding: 10px 12px; border: 1px solid var(--ui-border); border-radius: 12px; background: var(--ui-card-2); color: var(--ui-text); font: inherit; cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease; }
+    .rc-item:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--ui-border)); background: var(--ui-card); transform: translateY(-1px); }
+    .rc-item b { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.84rem; font-weight: 600; }
+    .rc-item span { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 0.74rem; color: var(--ui-muted); }
+    .rc-item svg { width: 12px; height: 12px; }
+    .rc-meet { display: block; padding: 10px 12px; border-radius: 12px; font-size: 0.78rem; line-height: 1.4; }
+    .rc-meet.ok { background: color-mix(in srgb, #10b981 10%, transparent); color: #047857; }
+    .rc-meet.ko { background: color-mix(in srgb, #f59e0b 12%, transparent); color: #b45309; }
+    html[data-theme="dark"] .rc-meet.ok { color: #34d399; }
+    html[data-theme="dark"] .rc-meet.ko { color: #fbbf24; }
+    .rc-meet a { color: inherit; font-weight: 700; }
+
+    /* Calendrier */
+    .rc-main { min-width: 0; }
+    .rc-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+    .rc-top h2 { margin: 0; font-size: 1.55rem; font-weight: 700; letter-spacing: -0.025em; color: var(--ui-text); text-transform: capitalize; }
+    .rc-nav { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid var(--ui-border); border-radius: 12px; background: var(--ui-card); box-shadow: var(--ui-shadow); }
+    .rc-nav button { height: 32px; min-width: 32px; padding: 0 10px; border: 0; border-radius: 9px; background: transparent; color: var(--ui-muted); font: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+    .rc-nav button:hover { background: var(--ui-card-2); color: var(--ui-text); }
+    .rc-nav svg { width: 14px; height: 14px; }
+    .rc-hint { display: inline-flex; align-items: center; gap: 6px; font-size: 0.76rem; color: var(--ui-muted); }
+    .rc-hint i { width: 6px; height: 6px; border-radius: 50%; background: #10b981; animation: rc-pulse 1.8s ease-in-out infinite; }
+    @keyframes rc-pulse { 50% { opacity: 0.35; } }
+
+    .rc-cal { border: 1px solid var(--ui-border); border-radius: var(--ui-radius); overflow: hidden; background: var(--ui-border); box-shadow: var(--ui-shadow); }
+    .rc-week, .rc-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; }
+    .rc-week div { background: var(--ui-card-2); padding: 10px 0; text-align: center; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.08em; color: var(--ui-muted); }
+    .rc-cell { background: var(--ui-card); min-height: 112px; padding: 8px; display: flex; flex-direction: column; gap: 4px; cursor: pointer; position: relative; transition: background 0.12s ease, box-shadow 0.12s ease; }
+    .rc-cell:hover { background: color-mix(in srgb, var(--accent) 3%, var(--ui-card)); }
+    .rc-cell.out { background: color-mix(in srgb, var(--ui-card-2) 70%, var(--ui-card)); }
+    .rc-cell.out .rc-num { color: var(--ui-faint); }
+    .rc-cell.sel { box-shadow: inset 0 0 0 2px var(--accent); z-index: 1; }
+    .rc-cell.drop { background: color-mix(in srgb, var(--accent) 10%, var(--ui-card)); box-shadow: inset 0 0 0 2px var(--accent); outline: 2px dashed color-mix(in srgb, var(--accent) 50%, transparent); outline-offset: -6px; }
+    .rc-cell-head { display: flex; align-items: center; justify-content: space-between; }
+    .rc-num { width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 600; color: var(--ui-text); }
+    .rc-num.today { background: var(--accent); color: #fff; box-shadow: 0 6px 14px -6px var(--accent); }
+    .rc-add { opacity: 0; width: 22px; height: 22px; border: 0; border-radius: 7px; background: transparent; color: var(--ui-muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: opacity 0.15s ease, background 0.15s ease; }
+    .rc-cell:hover .rc-add { opacity: 1; }
+    .rc-add:hover { background: var(--ui-card-2); color: var(--accent); }
+    .rc-add svg { width: 12px; height: 12px; }
+    .rc-ev { display: flex; align-items: center; gap: 6px; padding: 3px 7px; border-radius: 7px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ev); background: color-mix(in srgb, var(--ev) 11%, var(--ui-card)); border: 1px solid color-mix(in srgb, var(--ev) 22%, transparent); user-select: none; transition: opacity 0.15s ease, transform 0.15s ease; }
+    .rc-ev[draggable="true"] { cursor: grab; }
+    .rc-ev[draggable="true"]:active { cursor: grabbing; }
+    .rc-ev.drag { opacity: 0.4; transform: scale(0.95); }
+    .rc-ev .rc-dot { width: 6px; height: 6px; background: var(--ev); }
+    .rc-ev em { font-style: normal; font-weight: 500; opacity: 0.75; }
+    .rc-ev span:last-child { overflow: hidden; text-overflow: ellipsis; }
+    .rc-more { font-size: 0.68rem; font-weight: 600; color: var(--ui-faint); padding-left: 4px; }
+    @media (max-width: 700px) {
+        .rc-cell { min-height: 70px; padding: 4px; }
+        .rc-ev { padding: 2px 4px; font-size: 0.62rem; }
+        .rc-ev em, .rc-ev .rc-dot { display: none; }
+    }
+
+    /* Fenêtres modales */
+    .rc-modal { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .rc-backdrop { position: absolute; inset: 0; background: rgba(15, 23, 42, 0.32); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); }
+    .rc-dialog { position: relative; width: 100%; max-width: 540px; max-height: calc(100vh - 32px); overflow-y: auto; background: var(--ui-card); border: 1px solid var(--ui-border); border-radius: 20px; box-shadow: 0 30px 80px -30px rgba(15, 23, 42, 0.5); animation: rc-in 0.2s ease; }
+    .rc-dialog.sm { max-width: 460px; }
+    @keyframes rc-in { from { opacity: 0; transform: translateY(8px) scale(0.98); } }
+    .rc-dhead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 20px 22px 14px; border-bottom: 1px solid var(--ui-border); }
+    .rc-dhead h3 { margin: 0; font-size: 1.12rem; font-weight: 700; color: var(--ui-text); letter-spacing: -0.01em; }
+    .rc-dhead p { margin: 4px 0 0; font-size: 0.8rem; color: var(--ui-muted); }
+    .rc-x { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--ui-border); background: var(--ui-card-2); color: var(--ui-muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+    .rc-x:hover { color: var(--ui-text); }
+    .rc-x svg { width: 14px; height: 14px; }
+    .rc-dbody { padding: 18px 22px; display: flex; flex-direction: column; gap: 14px; }
+    .rc-field label { display: block; font-size: 0.76rem; font-weight: 600; color: var(--ui-text); margin-bottom: 6px; }
+    .rc-field input, .rc-field select, .rc-field textarea { width: 100%; }
+    .rc-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    @media (max-width: 520px) { .rc-row { grid-template-columns: 1fr; } }
+    .rc-people { border: 1px solid var(--ui-border); border-radius: 12px; overflow: hidden; }
+    .rc-people input[type="search"] { border: 0 !important; border-bottom: 1px solid var(--ui-border) !important; border-radius: 0 !important; box-shadow: none !important; }
+    .rc-people-list { max-height: 170px; overflow-y: auto; padding: 6px; }
+    .rc-person { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 8px; font-size: 0.84rem; color: var(--ui-text); cursor: pointer; }
+    .rc-person:hover { background: var(--ui-card-2); }
+    .rc-person small { margin-left: auto; color: var(--ui-faint); font-size: 0.72rem; }
+    .rc-av { width: 26px; height: 26px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); font-size: 0.66rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+    .rc-dfoot { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 14px 22px 18px; border-top: 1px solid var(--ui-border); }
+    .rc-btn { display: inline-flex; align-items: center; gap: 7px; padding: 10px 16px; border-radius: 11px; border: 1px solid var(--ui-border); background: var(--ui-card); color: var(--ui-text); font: inherit; font-size: 0.84rem; font-weight: 600; cursor: pointer; text-decoration: none; }
+    .rc-btn:hover { background: var(--ui-card-2); }
+    .rc-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 10px 20px -12px var(--accent); }
+    .rc-btn.primary:hover { filter: brightness(1.06); }
+    .rc-btn.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .rc-btn.danger { border-color: transparent; background: transparent; color: #e11d48; padding-left: 4px; }
+    .rc-btn.danger:hover { background: color-mix(in srgb, #e11d48 8%, transparent); }
+    .rc-btn svg { width: 15px; height: 15px; }
+    .rc-meta { display: flex; flex-direction: column; gap: 9px; font-size: 0.86rem; color: var(--ui-text); }
+    .rc-meta div { display: flex; align-items: center; gap: 10px; }
+    .rc-meta svg { width: 16px; height: 16px; color: var(--ui-faint); flex: none; }
+    .rc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .rc-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 999px; background: var(--ui-card-2); border: 1px solid var(--ui-border); font-size: 0.76rem; color: var(--ui-text); }
+    .rc-desc { font-size: 0.84rem; color: var(--ui-muted); line-height: 1.6; padding-top: 12px; border-top: 1px solid var(--ui-border); white-space: pre-line; }
+    .rc-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; color: var(--ev); background: color-mix(in srgb, var(--ev) 12%, transparent); }
+    .rc-alert { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; font-size: 0.84rem; margin-bottom: 14px; }
+    .rc-alert.ok { background: color-mix(in srgb, #10b981 10%, var(--ui-card)); color: #047857; border: 1px solid color-mix(in srgb, #10b981 25%, transparent); }
+    .rc-alert.err { background: color-mix(in srgb, #e11d48 8%, var(--ui-card)); color: #be123c; border: 1px solid color-mix(in srgb, #e11d48 22%, transparent); }
+    .rc-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 90; padding: 10px 16px; border-radius: 12px; background: var(--ui-text); color: var(--ui-bg); font-size: 0.84rem; box-shadow: var(--ui-shadow-lg); }
+</style>
+
+<div class="ui-page-head">
+    <div>
+        <h1>Réunions</h1>
+        <p>Planifiez, déplacez et rejoignez les réunions de {{ societe.nom }}.</p>
+    </div>
+</div>
+
+{% if reunion_ok == "ok" %}<div class="rc-alert ok">Réunion programmée et lien Meet partagé aux participants.</div>{% endif %}
+{% if reunion_ok == "partage" %}<div class="rc-alert ok">Lien Meet re-partagé aux participants.</div>{% endif %}
+{% if reunion_erreur %}<div class="rc-alert err">{{ reunion_erreur }}</div>{% endif %}
+
+{{ reunions_json|json_script:"rc-reunions" }}
+{{ employes_json|json_script:"rc-employes" }}
+
+<div class="rc" x-data="reunionsApp()">
+
+    <!-- ===== Panneau latéral ===== -->
+    <aside class="rc-side">
+        {% if peut_gerer %}
+        <button type="button" class="rc-new" @click="openAdd(selected)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Nouvelle réunion
+        </button>
+        {% endif %}
+
+        <div>
+            <div class="rc-label">Statut</div>
+            <template x-for="c in cats" :key="c.key">
+                <button type="button" class="rc-cat" :class="{ on: actives.includes(c.key) }" @click="toggleCat(c.key)">
+                    <span class="rc-dot" :style="'background:' + c.color"></span>
+                    <span x-text="c.label"></span>
+                    <span class="n" x-text="countCat(c.key)"></span>
+                </button>
+            </template>
+        </div>
+
+        <div>
+            <div class="rc-label"><span x-text="readable(selected)"></span><em x-text="dayEvents.length + ' réunion' + (dayEvents.length > 1 ? 's' : '')"></em></div>
+            <div class="rc-day-list">
+                <template x-if="dayEvents.length === 0">
+                    <div class="rc-empty">Aucune réunion ce jour-là.</div>
+                </template>
+                <template x-for="e in dayEvents" :key="rev + '-' + e.id">
+                    <button type="button" class="rc-item" @click="openDetail(e)">
+                        <b><span x-text="e.titre"></span><i class="rc-dot" :style="'background:' + color(e)"></i></b>
+                        <span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                            <span x-text="e.heure + ' – ' + e.fin"></span>
+                            <span x-show="e.participants.length" x-text="'· ' + e.participants.length + ' participant' + (e.participants.length > 1 ? 's' : '')"></span>
+                        </span>
+                    </button>
+                </template>
+            </div>
+        </div>
+
+        {% if meet.connecte %}
+            <div class="rc-meet ok">Google Meet connecté{% if meet.compte %} ({{ meet.compte }}){% endif %} : chaque réunion reçoit un lien Meet.</div>
+        {% else %}
+            <div class="rc-meet ko">Google Meet n'est pas connecté. <a href="{{ meet.connecter_url }}">Connecter Google Meet</a> pour programmer des réunions.</div>
+        {% endif %}
+    </aside>
+
+    <!-- ===== Calendrier ===== -->
+    <section class="rc-main">
+        <div class="rc-top">
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+                <h2 x-text="monthLabel"></h2>
+                <div class="rc-nav">
+                    <button type="button" @click="move(-1)" aria-label="Mois précédent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m15 18-6-6 6-6"/></svg></button>
+                    <button type="button" @click="today()">Aujourd'hui</button>
+                    <button type="button" @click="move(1)" aria-label="Mois suivant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg></button>
+                </div>
+            </div>
+            {% if peut_gerer %}<span class="rc-hint"><i></i>Glissez une réunion à venir pour changer sa date</span>{% endif %}
+        </div>
+
+        <div class="rc-cal">
+            <div class="rc-week"><div>LUN</div><div>MAR</div><div>MER</div><div>JEU</div><div>VEN</div><div>SAM</div><div>DIM</div></div>
+            <div class="rc-grid">
+                <template x-for="(d, i) in days" :key="d.date">
+                    <div class="rc-cell" :class="{ out: !d.inMonth, sel: d.date === selected && dragOver !== d.date, drop: dragOver === d.date }"
+                        @click="selected = d.date"
+                        @dragover.prevent="dragOver = d.date"
+                        @dragleave="if (dragOver === d.date) dragOver = null"
+                        @drop.prevent="drop(d.date)">
+                        <div class="rc-cell-head">
+                            <span class="rc-num" :class="{ today: d.date === todayStr }" x-text="d.n"></span>
+                            {% if peut_gerer %}
+                            <button type="button" class="rc-add" x-show="d.date >= todayStr" @click.stop="openAdd(d.date)" aria-label="Ajouter une réunion">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                            </button>
+                            {% endif %}
+                        </div>
+                        <template x-for="e in eventsOf(d.date).slice(0, 3)" :key="rev + '-' + e.id">
+                            <div class="rc-ev" :style="'--ev:' + color(e)" :class="{ drag: dragId === e.id }"
+                                :draggable="canDrag(e) ? 'true' : 'false'"
+                                @dragstart.stop="dragStart($event, e)" @dragend="dragId = null; dragOver = null"
+                                @click.stop="openDetail(e)" :title="e.heure + ' · ' + e.titre">
+                                <span class="rc-dot"></span><em x-text="e.heure"></em><span x-text="e.titre"></span>
+                            </div>
+                        </template>
+                        <span class="rc-more" x-show="eventsOf(d.date).length > 3" x-text="'+ ' + (eventsOf(d.date).length - 3) + ' autre(s)'"></span>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== Modale : nouvelle réunion ===== -->
+    {% if peut_gerer %}
+    <div class="rc-modal" x-show="addOpen" x-cloak @keydown.escape.window="addOpen = false">
+        <div class="rc-backdrop" @click="addOpen = false"></div>
+        <form class="rc-dialog" method="post" action="{% url 'gestion:reunions_creer' %}">
+            {% csrf_token %}
+            <input type="hidden" name="retour" value="reunions" />
+            <div class="rc-dhead">
+                <div><h3>Nouvelle réunion</h3><p>Un lien Google Meet est créé et partagé aux participants.</p></div>
+                <button type="button" class="rc-x" @click="addOpen = false" aria-label="Fermer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+            </div>
+            <div class="rc-dbody">
+                {% if not meet.connecte %}
+                    <div class="rc-meet ko">Google Meet n'est pas connecté : <a href="{{ meet.connecter_url }}">connectez-le</a> avant de programmer une réunion.</div>
+                {% endif %}
+                <div class="rc-field">
+                    <label for="rc-titre">Titre</label>
+                    <input id="rc-titre" type="text" name="titre" required maxlength="160" placeholder="Ex. : Point hebdo équipe" x-ref="titre" />
+                </div>
+                <div class="rc-row">
+                    <div class="rc-field"><label for="rc-date">Date</label><input id="rc-date" type="date" name="date" required :min="todayStr" x-model="form.date" /></div>
+                    <div class="rc-field"><label for="rc-heure">Heure</label><input id="rc-heure" type="time" name="heure" required x-model="form.heure" /></div>
+                    <div class="rc-field"><label for="rc-duree">Durée</label>
+                        <select id="rc-duree" name="duree">
+                            {% for val, lib in durees %}<option value="{{ val }}"{% if val == 60 %} selected{% endif %}>{{ lib }}</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="rc-field">
+                    <label>Participants <span style="color:var(--ui-muted);font-weight:500" x-text="'(' + form.participants.length + ' sélectionné' + (form.participants.length > 1 ? 's' : '') + ')'"></span></label>
+                    <div class="rc-people">
+                        <input type="search" placeholder="Rechercher un employé…" x-model="peopleQuery" aria-label="Rechercher un employé" />
+                        <div class="rc-people-list">
+                            <template x-for="p in filteredPeople" :key="p.id">
+                                <label class="rc-person">
+                                    <input type="checkbox" name="participants" :value="p.id" x-model="form.participants" />
+                                    <span class="rc-av" x-text="initials(p.nom)"></span>
+                                    <span x-text="p.nom"></span>
+                                    <small x-text="p.email"></small>
+                                </label>
+                            </template>
+                            <div class="rc-empty" x-show="filteredPeople.length === 0">Aucun employé trouvé.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="rc-field">
+                    <label for="rc-desc">Ordre du jour</label>
+                    <textarea id="rc-desc" name="description" rows="3" placeholder="Points à aborder, documents à préparer…"></textarea>
+                </div>
+            </div>
+            <div class="rc-dfoot">
+                <button type="button" class="rc-btn" @click="addOpen = false">Annuler</button>
+                <button type="submit" class="rc-btn primary" :disabled="!form.participants.length{% if not meet.connecte %} || true{% endif %}">Programmer la réunion</button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
+    <!-- ===== Modale : détails ===== -->
+    <div class="rc-modal" x-show="detail" x-cloak @keydown.escape.window="detail = null">
+        <div class="rc-backdrop" @click="detail = null"></div>
+        <div class="rc-dialog sm" x-show="detail">
+            <template x-if="detail">
+                <div>
+                    <div class="rc-dhead">
+                        <div>
+                            <span class="rc-pill" :style="'--ev:' + color(detail)"><i class="rc-dot" :style="'background:' + color(detail)"></i><span x-text="catLabel(detail)"></span></span>
+                            <h3 style="margin-top:10px" x-text="detail.titre"></h3>
+                        </div>
+                        <button type="button" class="rc-x" @click="detail = null" aria-label="Fermer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+                    </div>
+                    <div class="rc-dbody">
+                        <div class="rc-meta">
+                            <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span x-text="readable(detail.date)"></span></div>
+                            <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span x-text="detail.heure + ' – ' + detail.fin + ' (' + detail.duree + ' min)'"></span></div>
+                            <div x-show="detail.cree_par"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span x-text="'Organisée par ' + detail.cree_par"></span></div>
+                        </div>
+                        <div x-show="detail.participants.length">
+                            <div class="rc-label">Participants</div>
+                            <div class="rc-chips">
+                                <template x-for="n in detail.participants" :key="n"><span class="rc-chip"><span class="rc-av" x-text="initials(n)"></span><span x-text="n"></span></span></template>
+                            </div>
+                        </div>
+                        <div class="rc-desc" x-show="detail.description" x-text="detail.description"></div>
+                    </div>
+                    <div class="rc-dfoot" style="justify-content:space-between">
+                        {% if peut_gerer %}
+                        <button type="button" class="rc-btn danger" x-show="!detail.google" @click="remove(detail)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>Supprimer
+                        </button>
+                        {% else %}<span></span>{% endif %}
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+                            {% if peut_gerer %}
+                            <form method="post" :action="shareUrl(detail.id)" x-show="!detail.google && detail.lien && !detail.passee" style="margin:0">
+                                {% csrf_token %}<input type="hidden" name="retour" value="reunions" />
+                                <button type="submit" class="rc-btn">Partager le lien</button>
+                            </form>
+                            {% endif %}
+                            <a class="rc-btn" x-show="detail.google && detail.agenda_url" :href="detail.agenda_url" target="_blank" rel="noopener">Ouvrir dans Google Agenda</a>
+                            <a class="rc-btn primary" x-show="detail.lien && !detail.passee" :href="detail.lien" target="_blank" rel="noopener">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>Rejoindre
+                            </a>
+                            <button type="button" class="rc-btn" x-show="!detail.lien || detail.passee" @click="detail = null">Fermer</button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <div class="rc-toast" x-show="toast" x-cloak x-text="toast"></div>
+</div>
+
+<script>
+    function reunionsApp() {
+        var CSRF = "{{ csrf_token }}";
+        var URL_DEPLACER = "{% url 'gestion:reunions_deplacer' 0 %}";
+        var URL_SUPPRIMER = "{% url 'gestion:reunions_supprimer' 0 %}";
+        var URL_PARTAGER = "{% url 'gestion:reunions_partager' 0 %}";
+        var PEUT_GERER = {{ peut_gerer|yesno:"true,false" }};
+        var GW_ACTIF = {{ gw_calendrier|yesno:"true,false" }};
+        var URL_GOOGLE = "{% url 'gestion:reunions_google' %}";
+        var MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+        var JOURS = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+        function iso(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+        function lire(id) { try { return JSON.parse(document.getElementById(id).textContent); } catch (e) { return []; } }
+
+        return {
+            events: [], people: [], cursor: new Date(), todayStr: "", selected: "",
+            actives: ["avenir", "aujourdhui", "passee", "google"],
+            cats: [
+                { key: "avenir", label: "À venir", color: "var(--accent)" },
+                { key: "aujourdhui", label: "Aujourd'hui", color: "#f59e0b" },
+                { key: "passee", label: "Passées", color: "#94a3b8" },
+            ].concat(GW_ACTIF ? [{ key: "google", label: "Google Agenda", color: "#34a853" }] : []),
+            rev: 0, addOpen: false, detail: null, dragId: null, dragOver: null, toast: "",
+            peopleQuery: "", form: { date: "", heure: "10:00", participants: [] },
+
+            init() {
+                this.events = lire("rc-reunions");
+                this.people = lire("rc-employes");
+                this.todayStr = iso(new Date());
+                this.selected = this.todayStr;
+                this.cursor = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+                if (GW_ACTIF) this.loadGoogle();
+            },
+            loadGoogle() {
+                var self = this;
+                fetch(URL_GOOGLE, { headers: { "Accept": "application/json" } })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        if (!d.actif) return;
+                        self.rev++;
+                        self.events = self.events.concat(d.events || []);
+                        if (d.erreur) self.notify(d.erreur);
+                    })
+                    .catch(function () {});
+            },
+            get monthLabel() { return MOIS[this.cursor.getMonth()] + " " + this.cursor.getFullYear(); },
+            get days() {
+                var y = this.cursor.getFullYear(), m = this.cursor.getMonth();
+                var first = new Date(y, m, 1), offset = (first.getDay() + 6) % 7, out = [];
+                for (var i = 0; i < 42; i++) {
+                    var d = new Date(y, m, 1 - offset + i);
+                    out.push({ date: iso(d), n: d.getDate(), inMonth: d.getMonth() === m });
+                }
+                return out;
+            },
+            cat(e) { if (e.google) return "google"; return e.passee ? "passee" : (e.date === this.todayStr ? "aujourdhui" : "avenir"); },
+            color(e) { var c = this.cat(e); if (c === "google") return "#34a853"; return c === "passee" ? "#94a3b8" : (c === "aujourdhui" ? "#f59e0b" : "var(--accent)"); },
+            catLabel(e) { var k = this.cat(e); return this.cats.filter(function (c) { return c.key === k; })[0].label; },
+            visible(e) { return this.actives.indexOf(this.cat(e)) !== -1; },
+            eventsOf(date) {
+                var self = this;
+                return this.events.filter(function (e) { return e.date === date && self.visible(e); })
+                    .sort(function (a, b) { return a.heure.localeCompare(b.heure); });
+            },
+            get dayEvents() { return this.eventsOf(this.selected); },
+            countCat(k) { var self = this; return this.events.filter(function (e) { return self.cat(e) === k; }).length; },
+            toggleCat(k) {
+                var i = this.actives.indexOf(k);
+                if (i === -1) this.actives.push(k); else this.actives.splice(i, 1);
+            },
+            move(n) { this.cursor = new Date(this.cursor.getFullYear(), this.cursor.getMonth() + n, 1); },
+            today() { this.cursor = new Date(new Date().getFullYear(), new Date().getMonth(), 1); this.selected = this.todayStr; },
+            readable(s) {
+                if (!s) return "";
+                var p = s.split("-"), d = new Date(+p[0], +p[1] - 1, +p[2]);
+                return JOURS[d.getDay()] + " " + d.getDate() + " " + MOIS[d.getMonth()];
+            },
+            initials(n) { return (n || "?").split(" ").filter(Boolean).slice(0, 2).map(function (x) { return x[0].toUpperCase(); }).join(""); },
+            get filteredPeople() {
+                var q = this.peopleQuery.trim().toLowerCase();
+                return q ? this.people.filter(function (p) { return (p.nom + " " + p.email).toLowerCase().indexOf(q) !== -1; }) : this.people;
+            },
+            openAdd(date) {
+                if (!PEUT_GERER) return;
+                this.form = { date: (date && date >= this.todayStr) ? date : this.todayStr, heure: "10:00", participants: [] };
+                this.peopleQuery = "";
+                this.addOpen = true;
+                var self = this;
+                this.$nextTick(function () { if (self.$refs.titre) self.$refs.titre.focus(); });
+            },
+            openDetail(e) { this.detail = e; },
+            shareUrl(id) { return URL_PARTAGER.replace("0", id); },
+            notify(msg) { var self = this; this.toast = msg; clearTimeout(this._t); this._t = setTimeout(function () { self.toast = ""; }, 2800); },
+            canDrag(e) { return PEUT_GERER && !e.passee && !e.google; },
+            dragStart(evt, e) {
+                if (!this.canDrag(e)) { evt.preventDefault(); return; }
+                this.dragId = e.id;
+                if (evt.dataTransfer) { evt.dataTransfer.effectAllowed = "move"; evt.dataTransfer.setData("text/plain", String(e.id)); }
+            },
+            drop(date) {
+                var id = this.dragId, self = this;
+                this.dragOver = null;
+                this.dragId = null;
+                if (!id) return;
+                var e = this.events.filter(function (x) { return x.id === id; })[0];
+                if (!e || e.date === date) return;
+                if (date < this.todayStr) { this.notify("Choisissez une date à venir."); return; }
+                var ancienne = e.date;
+                e.date = date;
+                this.selected = date;
+                fetch(URL_DEPLACER.replace("0", id), {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "X-CSRFToken": CSRF },
+                    body: JSON.stringify({ date: date }),
+                })
+                    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+                    .then(function (res) {
+                        if (res.ok && res.d.ok) { Object.assign(e, res.d.reunion); self.notify("Réunion déplacée au " + self.readable(date) + "."); }
+                        else { e.date = ancienne; self.notify(res.d.error || "Déplacement impossible."); }
+                    })
+                    .catch(function () { e.date = ancienne; self.notify("Erreur réseau : déplacement annulé."); });
+            },
+            remove(e) {
+                if (!window.confirm("Supprimer la réunion « " + e.titre + " » ?")) return;
+                var self = this;
+                fetch(URL_SUPPRIMER.replace("0", e.id), { method: "POST", headers: { "X-CSRFToken": CSRF } })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        if (d.ok) {
+                            self.events = self.events.filter(function (x) { return x.id !== e.id; });
+                            self.detail = null;
+                            self.notify(d.avertissement || "Réunion supprimée.");
+                        } else { self.notify(d.error || "Suppression impossible."); }
+                    })
+                    .catch(function () { self.notify("Erreur réseau."); });
+            },
+        };
+    }
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+{% endblock content %}

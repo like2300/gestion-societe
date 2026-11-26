@@ -4,484 +4,8 @@
 {% block dash_title %}Tâches — {{ societe.nom }}{% endblock %}
 
 {% block content %}
-    <style>
-        .taches-grille {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(255px, 1fr));
-            gap: 1rem;
-            align-items: start;
-            margin-top: 0.2rem;
-        }
-        .taches-col {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.9rem;
-            padding: 0.8rem;
-            min-height: 200px;
-        }
-        .taches-col-tete {
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-            font-weight: 700;
-            color: #0f172a;
-            padding-bottom: 0.6rem;
-            border-bottom: 1px solid #e2e8f0;
-            margin-bottom: 0.7rem;
-        }
-        .taches-pastille {
-            width: 0.6rem;
-            height: 0.6rem;
-            border-radius: 9999px;
-            flex: none;
-        }
-        .taches-nb {
-            margin-left: auto;
-            background: #e2e8f0;
-            border-radius: 9999px;
-            padding: 0.1rem 0.55rem;
-            font-size: 0.78rem;
-            color: #475569;
-        }
-        .tache-card {
-            background: #fff;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.75rem;
-            padding: 0.75rem;
-            margin-bottom: 0.6rem;
-            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-        }
-        .tache-prio {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.3rem;
-            font-size: 0.72rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-            border-radius: 9999px;
-            padding: 0.15rem 0.55rem;
-        }
-        .prio-HAUTE { background: #fee2e2; color: #b91c1c; }
-        .prio-MOYENNE { background: #fef3c7; color: #b45309; }
-        .prio-FAIBLE { background: #dbeafe; color: #1d4ed8; }
-        .tache-titre {
-            font-weight: 700;
-            color: #0f172a;
-            margin: 0.5rem 0 0.15rem;
-            font-size: 0.95rem;
-        }
-        .tache-desc {
-            color: #475569;
-            font-size: 0.84rem;
-            line-height: 1.45;
-            white-space: pre-wrap;
-        }
-        .tache-meta {
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-            font-size: 0.8rem;
-            color: #64748b;
-            margin-top: 0.55rem;
-        }
-        .tache-actions {
-            display: flex;
-            gap: 0.5rem;
-            align-items: center;
-            margin-top: 0.6rem;
-        }
-        .tache-actions select {
-            font-size: 0.82rem;
-            padding: 0.3rem 0.45rem;
-            border-radius: 0.45rem;
-            border: 1px solid #e2e8f0;
-            background: #fff;
-            color: #0f172a;
-        }
-        .tache-progres {
-            margin-top: 0.6rem;
-        }
-        .tache-progres-tete {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.78rem;
-            color: #64748b;
-            margin-bottom: 0.25rem;
-        }
-        .barre {
-            height: 0.5rem;
-            border-radius: 9999px;
-            background: #e2e8f0;
-            overflow: hidden;
-        }
-        .barre > i {
-            display: block;
-            height: 100%;
-            border-radius: 9999px;
-            background: var(--accent);
-        }
-        .tache-objectifs {
-            list-style: none;
-            margin: 0.6rem 0 0;
-            padding: 0;
-            display: grid;
-            gap: 0.35rem;
-        }
-        .obj-ligne-carte {
-            display: flex;
-            align-items: center;
-            gap: 0.45rem;
-            font-size: 0.84rem;
-            color: #334155;
-            padding: 0.25rem 0.4rem;
-            border-radius: 0.45rem;
-        }
-        .obj-ligne-carte:hover { background: #f1f5f9; }
-        .obj-ligne-carte.fait { color: #059669; }
-        .obj-ligne-carte.fait .obj-lib { text-decoration: line-through; }
-        .obj-form { flex: 1; min-width: 0; }
-        .obj-label {
-            display: flex;
-            align-items: flex-start;
-            gap: 0.45rem;
-            cursor: pointer;
-        }
-        .obj-label input { margin-top: 0.15rem; accent-color: var(--accent); }
-        .obj-lib { word-break: break-word; }
-        .obj-indicateur { flex: none; font-weight: 700; color: #94a3b8; }
-        .obj-ligne-carte.fait .obj-indicateur { color: #059669; }
-        .obj-date { white-space: nowrap; font-size: 0.72rem; color: #94a3b8; }
-        .obj-info {
-            margin: 0.45rem 0 0;
-            font-size: 0.74rem;
-            color: #64748b;
-        }
-        details.tache-evo {
-            margin-top: 0.7rem;
-            border-top: 1px dashed #e2e8f0;
-            padding-top: 0.55rem;
-        }
-        details.tache-evo summary {
-            cursor: pointer;
-            font-size: 0.78rem;
-            font-weight: 600;
-            color: #475569;
-        }
-        .evo-ligne {
-            display: flex;
-            gap: 0.5rem;
-            align-items: baseline;
-            font-size: 0.8rem;
-            color: #475569;
-            padding: 0.28rem 0;
-        }
-        .evo-arrow {
-            color: var(--accent);
-            font-weight: 700;
-        }
-        .evo-date {
-            margin-left: auto;
-            white-space: nowrap;
-            color: #94a3b8;
-            font-size: 0.74rem;
-        }
-        .tache-vide {
-            color: #94a3b8;
-            font-size: 0.84rem;
-            text-align: center;
-            padding: 1rem 0;
-        }
-        .tache-del {
-            margin-left: auto;
-            border: none;
-            background: transparent;
-            color: #94a3b8;
-            cursor: pointer;
-            padding: 0.2rem;
-            border-radius: 0.4rem;
-        }
-        .tache-del:hover {
-            color: #dc2626;
-            background: #fef2f2;
-        }
-        .evolutions-col {
-            max-height: 260px;
-            overflow-y: auto;
-        }
-        .filtre-employe {
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-            font-size: 0.86rem;
-            color: #475569;
-        }
-        .btn-sm {
-            padding: 0.28rem 0.7rem;
-            font-size: 0.82rem;
-        }
-        .obj-ligne {
-            display: flex;
-            gap: 0.4rem;
-            align-items: center;
-            margin-bottom: 0.4rem;
-        }
-        .obj-ligne input[type="text"] { flex: 1; min-width: 0; }
-        .obj-suppr {
-            border: none;
-            background: transparent;
-            color: #94a3b8;
-            cursor: pointer;
-            font-size: 1rem;
-            line-height: 1;
-            padding: 0.2rem 0.35rem;
-            border-radius: 0.4rem;
-        }
-        .obj-suppr:hover { color: #dc2626; background: #fef2f2; }
-        .rapport-details {
-            margin: 1rem 0 0.2rem;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.9rem;
-            background: #fff;
-            overflow: hidden;
-        }
-        .rapport-tete {
-            display: flex;
-            align-items: center;
-            gap: 0.7rem;
-            padding: 0.7rem 0.9rem;
-            cursor: pointer;
-            user-select: none;
-            list-style: none;
-        }
-        .rapport-tete::-webkit-details-marker { display: none; }
-        .rapport-titre { font-weight: 700; color: #0f172a; font-size: 0.92rem; }
-        .rapport-sub { color: #64748b; font-size: 0.8rem; }
-        .rapport-chevron {
-            margin-left: auto;
-            color: #64748b;
-            transition: transform 0.15s ease;
-        }
-        .rapport-details[open] .rapport-chevron { transform: rotate(180deg); }
-        .rapport-ligne {
-            padding: 0.6rem 0.9rem;
-            border-top: 1px dashed #e2e8f0;
-        }
-        .rapport-ligne-tete {
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-            flex-wrap: wrap;
-            font-size: 0.86rem;
-        }
-        .rapport-assignee { color: #64748b; font-size: 0.8rem; }
-        .rapport-avancement {
-            margin-left: auto;
-            font-weight: 600;
-            color: var(--accent);
-            font-size: 0.8rem;
-            white-space: nowrap;
-        }
-        .rapport-objectifs {
-            margin: 0.4rem 0 0;
-            padding-left: 1rem;
-            font-size: 0.82rem;
-            color: #475569;
-            display: grid;
-            gap: 0.15rem;
-        }
-        .rapport-obj.fait { color: #059669; }
-        .rapport-obj.vide { color: #94a3b8; }
-        .rapport-date { color: #94a3b8; font-size: 0.74rem; }
-        .rapport-vide {
-            padding: 0.8rem;
-            color: #94a3b8;
-            font-size: 0.84rem;
-            text-align: center;
-            border-top: 1px dashed #e2e8f0;
-        }
-        .badge-site {
-            display: inline-block;
-            font-size: 0.72rem;
-            font-weight: 700;
-            border-radius: 9999px;
-            padding: 0.15rem 0.5rem;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-        }
-        .badge-a_faire { background: #e2e8f0; color: #475569; }
-        .badge-en_cours { background: #fef3c7; color: #b45309; }
-        .badge-terminee { background: #d1fae5; color: #047857; }
-        .badge-annulee { background: #fee2e2; color: #b91c1c; }
-        .livrables {
-            margin-top: 0.6rem;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.6rem;
-            background: #f8fafc;
-            padding: 0.35rem 0.6rem;
-        }
-        .livrables > summary {
-            cursor: pointer;
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: #1e293b;
-            user-select: none;
-        }
-        .livrables-liste { margin-top: 0.4rem; }
-        .livrable-ligne {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 0.35rem 0.6rem;
-            padding: 0.3rem 0;
-            border-top: 1px dashed #e2e8f0;
-            font-size: 0.78rem;
-        }
-        .livrable-ligne:first-child { border-top: none; }
-        .livrable-nom { font-weight: 600; color: #2563eb; text-decoration: none; }
-        .livrable-nom:hover { text-decoration: underline; }
-        .livrable-badge {
-            font-weight: 700;
-            border-radius: 9999px;
-            padding: 0.1rem 0.45rem;
-            font-size: 0.68rem;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-        }
-        .livrable-soumis { background: #fef3c7; color: #b45309; }
-        .livrable-valide { background: #d1fae5; color: #047857; }
-        .livrable-corriger { background: #fee2e2; color: #b91c1c; }
-        .livrable-date { color: #64748b; }
-        .livrable-msg, .livrable-correction {
-            width: 100%;
-            color: #475569;
-            font-style: italic;
-        }
-        .livrable-correction { color: #b91c1c; }
-        .livrable-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
-        .livrable-input {
-            border: 1px solid #cbd5e1;
-            border-radius: 0.45rem;
-            padding: 0.28rem 0.5rem;
-            font-size: 0.78rem;
-            max-width: 14rem;
-        }
-        .livrable-depot { margin-top: 0.5rem; }
-        .livrable-depot-ligne {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.4rem;
-            align-items: center;
-        }
-        .livrable-depot input[type="file"] { font-size: 0.75rem; }
-        .livrable-note { color: #64748b; font-size: 0.76rem; margin-top: 0.4rem; }
-        .histo-filtres {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.4rem;
-            padding: 0.55rem 0.9rem;
-            border-top: 1px dashed #e2e8f0;
-            align-items: center;
-        }
-        .histo-filtre {
-            font-size: 0.78rem;
-            font-weight: 700;
-            border-radius: 9999px;
-            padding: 0.22rem 0.7rem;
-            border: 1px solid #e2e8f0;
-            color: #475569;
-            text-decoration: none;
-            background: #f8fafc;
-        }
-        .histo-filtre:hover { border-color: #94a3b8; }
-        .histo-filtre.on { background: #0f172a; color: #fff; border-color: #0f172a; }
-        .histo-filtre .nb { opacity: 0.75; margin-left: 0.25rem; }
-        .historique-ligne {
-            padding: 0.75rem 0.9rem;
-            border-top: 1px dashed #e2e8f0;
-        }
-        .historique-tete {
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-            flex-wrap: wrap;
-            font-size: 0.88rem;
-        }
-        .historique-titre { font-weight: 700; color: #0f172a; }
-        .historique-meta {
-            color: #64748b;
-            font-size: 0.8rem;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.3rem 0.9rem;
-            margin-top: 0.35rem;
-        }
-        .historique-meta b { color: #334155; font-weight: 600; }
-        .historique-desc {
-            color: #475569;
-            font-size: 0.82rem;
-            margin-top: 0.4rem;
-            white-space: pre-wrap;
-        }
-        .historique-cloture {
-            margin-left: auto;
-            color: #94a3b8;
-            font-size: 0.76rem;
-            white-space: nowrap;
-        }
-        .historique-detail {
-            margin-top: 0.5rem;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.6rem;
-            background: #f8fafc;
-            padding: 0.35rem 0.6rem;
-        }
-        .historique-detail > summary {
-            cursor: pointer;
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: #1e293b;
-            user-select: none;
-        }
-        .historique-detail .evolutions-col { margin-top: 0.4rem; }
-        .rapport-livrables {
-            margin-top: 0.5rem;
-            padding-top: 0.4rem;
-            border-top: 1px dashed #e2e8f0;
-        }
-        .rapport-livrables-titre {
-            font-size: 0.78rem;
-            font-weight: 700;
-            color: #334155;
-            margin-bottom: 0.3rem;
-        }
-        .livrable-pdf {
-            font-size: 0.68rem;
-            font-weight: 800;
-            letter-spacing: 0.03em;
-            color: #b91c1c;
-            border: 1px solid #fca5a5;
-            background: #fee2e2;
-            border-radius: 0.3rem;
-            padding: 0.06rem 0.35rem;
-        }
-        .rapport-ref {
-            border-top: 1px solid #e2e8f0;
-            background: #fbfcfe;
-            border-radius: 0 0 0.85rem 0.85rem;
-            padding: 0.6rem 0.9rem 0.7rem;
-        }
-        .rapport-ref-titre {
-            font-size: 0.8rem;
-            font-weight: 800;
-            color: #334155;
-            margin-bottom: 0.4rem;
-        }
-        .livrable-ligne-ref {
-            color: #64748b;
-            font-size: 0.78rem;
-        }
-    </style>
+    <link rel="stylesheet" href="{% static 'gestion/taches.css' %}?v={{ UI_VERSION }}" />
+    <script src="{% static 'gestion/taches-board.js' %}?v={{ UI_VERSION }}" defer></script>
 
     <div class="page-head">
         <div>
@@ -511,7 +35,215 @@
         {% endif %}
     </div>
 
-    {% include "gestion/snippets/onglets_employes.html" %}
+    {% include "gestion/components/espace_dossiers.html" %}
+    {% include "gestion/components/stat_row.html" with cartes=stats_cartes %}
+
+
+
+    <div class="taches-board-tete">
+        <span class="taches-board-titre">Tableau</span>
+        <span class="taches-board-aide">Glissez-déposez les cartes d'une colonne à l'autre pour changer leur statut.</span>
+    </div>
+    <div class="taches-grille" id="taches-board" data-url="{% url 'gestion:taches' %}" data-createur="{{ est_createur|yesno:'1,0' }}">
+        {% for col in colonnes %}
+        <section class="taches-col col-{{ col.key }}" data-col="{{ col.key }}">
+            <div class="taches-col-tete">
+                <span class="taches-pastille"></span>
+                <span class="taches-col-nom">{{ col.label }}</span>
+                <span class="taches-nb">{{ col.taches|length }}</span>
+            </div>
+            <div class="taches-col-corps" data-col-corps>
+            {% for t in col.taches %}
+            <article class="tache-card p-{{ t.priorite }}" data-tache-id="{{ t.pk }}" data-statut="{{ t.statut }}"
+                {% if est_createur or t.statut != 'ANNULEE' %}data-draggable{% endif %}>
+                <div class="tache-haut">
+                    <span class="tache-prio prio-{{ t.priorite }}">{{ t.priorite_label }}</span>
+                    {% if est_createur %}
+                    <div class="tache-outils">
+                    <button type="button" class="tache-del" data-tache-edit="{{ t.pk }}"
+                        title="Modifier les détails de la tâche" aria-label="Modifier la tâche">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+                        </svg>
+                    </button>
+                    <form method="post" action="{% url 'gestion:taches' %}"
+                        onsubmit="return confirm('Supprimer la tâche « {{ t.titre|escapejs }} » ?');">
+                        {% csrf_token %}
+                        <input type="hidden" name="supprimer_tache" value="{{ t.pk }}" />
+                        <button type="submit" class="tache-del" title="Supprimer la tâche" aria-label="Supprimer">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                            </svg>
+                        </button>
+                    </form>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="tache-titre">{{ t.titre }}</div>
+                {% if t.description %}<div class="tache-desc">{{ t.description }}</div>{% endif %}
+                <div class="tache-meta">
+                    <span class="tache-qui" title="Assigné à {{ t.assignee_nom }}">
+                        <span class="tache-av">{{ t.assignee_nom|first|upper }}</span>{{ t.assignee_nom }}
+                    </span>
+                    {% if t.echeance %}<span class="tache-quand" title="Échéance">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                        {{ t.echeance }}</span>{% endif %}
+                </div>
+                <div class="tache-progres" title="Avancement{% if t.nb_objectifs %} (automatique){% endif %}">
+                    <div class="barre"><i style="width: {{ t.progres }}%"></i></div>
+                    <span class="tache-pct">{{ t.progres }}%</span>
+                </div>
+                <div class="tache-badges">
+                    {% if t.nb_objectifs %}<span class="tache-badge{% if t.nb_atteints == t.nb_objectifs %} ok{% endif %}" title="Objectifs atteints">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                        {{ t.nb_atteints }}/{{ t.nb_objectifs }}</span>{% endif %}
+                    {% if t.livrables %}<span class="tache-badge" title="Fichiers livrables">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                        {{ t.livrables|length }}</span>{% endif %}
+                    {% if t.description %}<span class="tache-badge" title="Contient une description">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span>{% endif %}
+                </div>
+                <details class="tache-plus">
+                <summary><span>Détails</span></summary>
+                <div class="tache-plus-corps">
+                {% if t.objectifs %}
+                <ul class="tache-objectifs">
+                    {% for o in t.objectifs %}
+                    <li class="obj-ligne-carte{% if o.termine %} fait{% endif %}">
+                        {% if est_createur %}
+                        <form method="post" action="{% url 'gestion:taches' %}" class="obj-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="objectif_id" value="{{ o.pk }}" />
+                            <input type="hidden" name="termine" value="{% if o.termine %}0{% else %}1{% endif %}" />
+                            <label class="obj-label">
+                                <input type="checkbox"{% if o.termine %} checked{% endif %}
+                                    onchange="this.form.submit()"
+                                    {% if t.statut == 'ANNULEE' %}disabled{% endif %}
+                                    aria-label="Objectif {{ o.ordre }} : {{ o.libelle }}" />
+                                <span class="obj-lib">{{ o.libelle }}</span>
+                            </label>
+                        </form>
+                        {% else %}
+                        <span class="obj-indicateur">{% if o.termine %}✓{% else %}○{% endif %}</span>
+                        <span class="obj-lib">{{ o.libelle }}</span>
+                        {% endif %}
+                        {% if o.date_termine %}<span class="obj-date">{{ o.date_termine|slice:":10" }}</span>{% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                <p class="obj-info">{{ t.nb_atteints }}/{{ t.nb_objectifs }} objectif(s) atteint(s)
+                    {% if not est_createur %}<em>(validation par l'administrateur)</em>{% endif %}
+                    {% if t.statut == 'ANNULEE' %}<em>(tâche annulée : objectifs verrouillés)</em>{% endif %}</p>
+                {% elif est_createur %}
+                <p class="obj-info">Aucun objectif défini : l'avancement reste à 0 %.</p>
+                {% endif %}
+                {% if est_createur %}
+                <form method="post" action="{% url 'gestion:taches' %}" class="tache-actions">
+                    {% csrf_token %}
+                    <input type="hidden" name="evo_tache_id" value="{{ t.pk }}" />
+                    <select name="statut" onchange="this.form.submit()" aria-label="Statut">
+                        {% for skey, slabel in statuts %}
+                        <option value="{{ skey }}"{% if skey == t.statut %} selected{% endif %}>{{ slabel }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+                {% endif %}
+                <details class="livrables"{% if t.livrables %} open{% endif %}>
+                    <summary>Fichiers livrables ({{ t.livrables|length }})</summary>
+                    {% if t.livrables %}
+                    <div class="livrables-liste">
+                        {% for l in t.livrables %}
+                        <div class="livrable-ligne">
+                            <a class="livrable-nom" href="{% url 'gestion:tache_livrable_fichier' l.pk %}"
+                                title="Télécharger {{ l.nom_fichier }}">↧ {{ l.nom_fichier }}</a>
+                            <span class="livrable-badge livrable-{{ l.statut|lower }}">{{ l.statut_label }}</span>
+                            <span class="livrable-date">par {{ l.employe_nom }} · {{ l.date_depot }}</span>
+                            {% if l.message %}<div class="livrable-msg">{{ l.message }}</div>{% endif %}
+                            {% if l.commentaire_admin %}<div class="livrable-correction">Correction demandée : {{ l.commentaire_admin }}</div>{% endif %}
+                            {% if est_createur and l.statut == 'SOUMIS' %}
+                            <div class="livrable-actions">
+                                <form method="post" action="{% url 'gestion:taches' %}" style="display:inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="livrable_valider" value="{{ l.pk }}" />
+                                    <button type="submit" class="btn-ghost btn-sm">Valider</button>
+                                </form>
+                                <form method="post" action="{% url 'gestion:taches' %}" style="display:inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="livrable_corriger" value="{{ l.pk }}" />
+                                    <input type="text" name="livrable_correction" class="livrable-input"
+                                        placeholder="Correction demandée…" required />
+                                    <button type="submit" class="btn-ghost btn-sm">Demander une correction</button>
+                                </form>
+                            </div>
+                            {% endif %}
+                            {% if l.peut_retirer %}
+                            <form method="post" action="{% url 'gestion:taches' %}" style="display:inline"
+                                onsubmit="return confirm('Retirer ce fichier ?');">
+                                {% csrf_token %}
+                                <input type="hidden" name="livrable_supprimer" value="{{ l.pk }}" />
+                                <button type="submit" class="tache-del" title="Retirer le fichier" aria-label="Retirer">×</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    {% if t.can_depot %}
+                    <form method="post" action="{% url 'gestion:taches' %}" enctype="multipart/form-data" class="livrable-depot">
+                        {% csrf_token %}
+                        <input type="hidden" name="livrable_depot" value="{{ t.pk }}" />
+                        <div class="livrable-depot-ligne">
+                            <input type="file" name="fichier" required
+                                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.webp,.txt,.csv,.odt,.ods,.csv" />
+                            <input type="text" name="livrable_note" class="livrable-input" maxlength="300"
+                                placeholder="Note (facultatif)" />
+                            <button type="submit" class="btn-primary btn-sm">Soumettre pour validation</button>
+                        </div>
+                    </form>
+                    {% endif %}
+                </details>
+                <details class="tache-evo">
+                    <summary>Évolution du travail ({{ t.evolutions|length }})</summary>
+                    <div class="evolutions-col">
+                        {% if t.evolutions %}
+                        {% for ev in t.evolutions %}
+                        <div class="evo-ligne">
+                            {% if ev.statut_label %}
+                            <span>{{ ev.statut_label }}</span>
+                            {% elif ev.commentaire %}
+                            <span>{{ ev.commentaire }}</span>
+                            {% else %}
+                            <span>{{ ev.progres_avant }}% <span class="evo-arrow">→</span> {{ ev.progres_apres }}%</span>
+                            {% endif %}
+                            {% if ev.auteur %}<span>· {{ ev.auteur }}</span>{% endif %}
+                            <span class="evo-date">{{ ev.date }}</span>
+                        </div>
+                        {% endfor %}
+                        {% else %}
+                        <div class="tache-vide">Aucune évolution pour l'instant.</div>
+                        {% endif %}
+                    </div>
+                </details>
+                </div>
+                </details>
+            </article>
+            {% endfor %}
+            <div class="tache-vide tache-vide-col">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M8 10h8M8 14h5"/></svg>
+                <span>Glissez une tâche ici</span>
+            </div>
+            </div>
+            {% if est_createur and col.key == 'A_FAIRE' %}
+            <button type="button" class="taches-col-ajout" data-tache-add>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                Ajouter une tâche
+            </button>
+            {% endif %}
+        </section>
+        {% endfor %}
+    </div>
 
     <details class="rapport-details" id="rapport-taches">
         <summary class="rapport-tete">
@@ -657,177 +389,6 @@
         </div>
     </details>
 
-    <div class="taches-grille">
-        {% for col in colonnes %}
-        <section class="taches-col">
-            <div class="taches-col-tete">
-                <span class="taches-pastille" style="background:
-                    {% if col.key == 'A_FAIRE' %}#94a3b8{% elif col.key == 'EN_COURS' %}#f59e0b{% elif col.key == 'TERMINEE' %}#10b981{% else %}#ef4444{% endif %}"></span>
-                {{ col.label }}
-                <span class="taches-nb">{{ col.taches|length }}</span>
-            </div>
-            {% for t in col.taches %}
-            <article class="tache-card">
-                <span class="tache-prio prio-{{ t.priorite }}">{{ t.priorite_label }}</span>
-                <div class="tache-titre">{{ t.titre }}</div>
-                {% if t.description %}<div class="tache-desc">{{ t.description }}</div>{% endif %}
-                <div class="tache-meta">
-                    <span><b>Assigné :</b> {{ t.assignee_nom }}</span>
-                    {% if t.echeance %}<span><b>Échéance :</b> {{ t.echeance }}</span>{% endif %}
-                </div>
-                <div class="tache-progres">
-                    <div class="tache-progres-tete">
-                        <span>Avancement{% if t.nb_objectifs %} (automatique){% endif %}</span><span>{{ t.progres }}%</span>
-                    </div>
-                    <div class="barre"><i style="width: {{ t.progres }}%"></i></div>
-                </div>
-                {% if t.objectifs %}
-                <ul class="tache-objectifs">
-                    {% for o in t.objectifs %}
-                    <li class="obj-ligne-carte{% if o.termine %} fait{% endif %}">
-                        {% if est_createur %}
-                        <form method="post" action="{% url 'gestion:taches' %}" class="obj-form">
-                            {% csrf_token %}
-                            <input type="hidden" name="objectif_id" value="{{ o.pk }}" />
-                            <input type="hidden" name="termine" value="{% if o.termine %}0{% else %}1{% endif %}" />
-                            <label class="obj-label">
-                                <input type="checkbox"{% if o.termine %} checked{% endif %}
-                                    onchange="this.form.submit()"
-                                    {% if t.statut == 'ANNULEE' %}disabled{% endif %}
-                                    aria-label="Objectif {{ o.ordre }} : {{ o.libelle }}" />
-                                <span class="obj-lib">{{ o.libelle }}</span>
-                            </label>
-                        </form>
-                        {% else %}
-                        <span class="obj-indicateur">{% if o.termine %}✓{% else %}○{% endif %}</span>
-                        <span class="obj-lib">{{ o.libelle }}</span>
-                        {% endif %}
-                        {% if o.date_termine %}<span class="obj-date">{{ o.date_termine|slice:":10" }}</span>{% endif %}
-                    </li>
-                    {% endfor %}
-                </ul>
-                <p class="obj-info">{{ t.nb_atteints }}/{{ t.nb_objectifs }} objectif(s) atteint(s)
-                    {% if not est_createur %}<em>(validation par l'administrateur)</em>{% endif %}
-                    {% if t.statut == 'ANNULEE' %}<em>(tâche annulée : objectifs verrouillés)</em>{% endif %}</p>
-                {% elif est_createur %}
-                <p class="obj-info">Aucun objectif défini : l'avancement reste à 0 %.</p>
-                {% endif %}
-                {% if est_createur %}
-                <form method="post" action="{% url 'gestion:taches' %}" class="tache-actions">
-                    {% csrf_token %}
-                    <input type="hidden" name="evo_tache_id" value="{{ t.pk }}" />
-                    <select name="statut" onchange="this.form.submit()" aria-label="Statut">
-                        {% for skey, slabel in statuts %}
-                        <option value="{{ skey }}"{% if skey == t.statut %} selected{% endif %}>{{ slabel }}</option>
-                        {% endfor %}
-                    </select>
-                </form>
-                {% endif %}
-                <details class="livrables"{% if t.livrables %} open{% endif %}>
-                    <summary>Fichiers livrables ({{ t.livrables|length }})</summary>
-                    {% if t.livrables %}
-                    <div class="livrables-liste">
-                        {% for l in t.livrables %}
-                        <div class="livrable-ligne">
-                            <a class="livrable-nom" href="{% url 'gestion:tache_livrable_fichier' l.pk %}"
-                                title="Télécharger {{ l.nom_fichier }}">↧ {{ l.nom_fichier }}</a>
-                            <span class="livrable-badge livrable-{{ l.statut|lower }}">{{ l.statut_label }}</span>
-                            <span class="livrable-date">par {{ l.employe_nom }} · {{ l.date_depot }}</span>
-                            {% if l.message %}<div class="livrable-msg">{{ l.message }}</div>{% endif %}
-                            {% if l.commentaire_admin %}<div class="livrable-correction">Correction demandée : {{ l.commentaire_admin }}</div>{% endif %}
-                            {% if est_createur and l.statut == 'SOUMIS' %}
-                            <div class="livrable-actions">
-                                <form method="post" action="{% url 'gestion:taches' %}" style="display:inline">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="livrable_valider" value="{{ l.pk }}" />
-                                    <button type="submit" class="btn-ghost btn-sm">Valider</button>
-                                </form>
-                                <form method="post" action="{% url 'gestion:taches' %}" style="display:inline">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="livrable_corriger" value="{{ l.pk }}" />
-                                    <input type="text" name="livrable_correction" class="livrable-input"
-                                        placeholder="Correction demandée…" required />
-                                    <button type="submit" class="btn-ghost btn-sm">Demander une correction</button>
-                                </form>
-                            </div>
-                            {% endif %}
-                            {% if l.peut_retirer %}
-                            <form method="post" action="{% url 'gestion:taches' %}" style="display:inline"
-                                onsubmit="return confirm('Retirer ce fichier ?');">
-                                {% csrf_token %}
-                                <input type="hidden" name="livrable_supprimer" value="{{ l.pk }}" />
-                                <button type="submit" class="tache-del" title="Retirer le fichier" aria-label="Retirer">×</button>
-                            </form>
-                            {% endif %}
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                    {% if t.can_depot %}
-                    <form method="post" action="{% url 'gestion:taches' %}" enctype="multipart/form-data" class="livrable-depot">
-                        {% csrf_token %}
-                        <input type="hidden" name="livrable_depot" value="{{ t.pk }}" />
-                        <div class="livrable-depot-ligne">
-                            <input type="file" name="fichier" required
-                                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.webp,.txt,.csv,.odt,.ods,.csv" />
-                            <input type="text" name="livrable_note" class="livrable-input" maxlength="300"
-                                placeholder="Note (facultatif)" />
-                            <button type="submit" class="btn-primary btn-sm">Soumettre pour validation</button>
-                        </div>
-                    </form>
-                    {% endif %}
-                </details>
-                <details class="tache-evo">
-                    <summary>Évolution du travail ({{ t.evolutions|length }})</summary>
-                    <div class="evolutions-col">
-                        {% if t.evolutions %}
-                        {% for ev in t.evolutions %}
-                        <div class="evo-ligne">
-                            {% if ev.statut_label %}
-                            <span>{{ ev.statut_label }}</span>
-                            {% elif ev.commentaire %}
-                            <span>{{ ev.commentaire }}</span>
-                            {% else %}
-                            <span>{{ ev.progres_avant }}% <span class="evo-arrow">→</span> {{ ev.progres_apres }}%</span>
-                            {% endif %}
-                            {% if ev.auteur %}<span>· {{ ev.auteur }}</span>{% endif %}
-                            <span class="evo-date">{{ ev.date }}</span>
-                        </div>
-                        {% endfor %}
-                        {% else %}
-                        <div class="tache-vide">Aucune évolution pour l'instant.</div>
-                        {% endif %}
-                    </div>
-                </details>
-                {% if est_createur %}
-                <div style="display:flex; align-items:center; margin-top:0.45rem">
-                    <button type="button" class="tache-del" data-tache-edit="{{ t.pk }}"
-                        title="Modifier les détails de la tâche" aria-label="Modifier la tâche">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-                        </svg>
-                    </button>
-                    <form method="post" action="{% url 'gestion:taches' %}"
-                        onsubmit="return confirm('Supprimer la tâche « {{ t.titre|escapejs }} » ?');">
-                        {% csrf_token %}
-                        <input type="hidden" name="supprimer_tache" value="{{ t.pk }}" />
-                        <button type="submit" class="tache-del" title="Supprimer la tâche" aria-label="Supprimer">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                            </svg>
-                        </button>
-                    </form>
-                </div>
-                {% endif %}
-            </article>
-            {% empty %}
-            <div class="tache-vide">Aucune tâche dans cette colonne.</div>
-            {% endfor %}
-        </section>
-        {% endfor %}
-    </div>
 {% endblock content %}
 
 {% block drawer %}
@@ -844,65 +405,80 @@
             <input type="hidden" name="ajouter_tache" value="1" id="tf-sentinel-ajouter" />
             <input type="hidden" name="modifier_tache" value="" id="tf-sentinel-modifier" />
             <input type="hidden" name="tache_id" value="" id="tf-id" />
-            <div class="fgrid">
-                <div class="ffield" style="grid-column:1 / -1">
-                    <label for="tf-titre">Titre de la tâche <span class="req">*</span></label>
-                    <input type="text" id="tf-titre" name="titre" maxlength="200" required
-                        placeholder="Ex : Relancer le client Kongo SA" />
-                </div>
-                <div class="ffield" style="grid-column:1 / -1">
-                    <label for="tf-desc">Description</label>
-                    <textarea id="tf-desc" name="description" rows="4"
-                        placeholder="Détails, livrables…"></textarea>
-                </div>
-                <div class="ffield">
-                    <label for="tf-assignee">Employé <span class="req">*</span></label>
-                    <select id="tf-assignee" name="assignee_id" required>
-                        <option value="">— Choisir —</option>
-                        {% for e in employes %}
-                        <option value="{{ e.pk }}">{{ e.nom }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="ffield">
-                    <label for="tf-projet">Projet lié</label>
-                    <select id="tf-projet" name="projet_id">
-                        <option value="">— Aucun projet —</option>
-                        {% for p in projets %}
-                        <option value="{{ p.pk }}">{{ p.client_nom }} — {{ p.nom }}</option>
-                        {% endfor %}
-                    </select>
-                    <p class="drawer-sub" style="margin-bottom:0">Rattaché au « suivi de l'activité » du client.</p>
-                </div>
-                <div class="ffield">
-                    <label for="tf-priorite">Priorité</label>
-                    <select id="tf-priorite" name="priorite">
-                        {% for skey, slabel in priorites %}
-                        <option value="{{ skey }}"{% if skey == 'MOYENNE' %} selected{% endif %}>{{ slabel }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="ffield" style="grid-column:1 / -1">
-                    <label for="tf-echeance">Échéance</label>
-                    <input type="date" id="tf-echeance" name="echeance" />
-                </div>
-                <div class="ffield" style="grid-column:1 / -1">
-                    <label>Objectifs à atteindre</label>
-                    <p class="drawer-sub" style="margin-bottom:0.4rem">
-                        L'avancement est calculé automatiquement : chaque objectif a le même poids
-                        (ex. 2 objectifs → 50 % + 50 %).
-                    </p>
-                    <div id="tf-objectifs">
-                        <div class="obj-ligne">
-                            <input type="text" name="objectifs" maxlength="255"
-                                placeholder="Objectif 1 — ex : Collecter les documents signés" />
-                            <button type="button" class="obj-suppr" data-objectif-suppr aria-label="Retirer l'objectif">×</button>
-                        </div>
+            <section class="cfg-sec">
+                <h3 class="cfg-titre"><span>1</span>La tâche</h3>
+                <div class="fgrid">
+                    <div class="ffield" style="grid-column:1 / -1">
+                        <label for="tf-titre">Titre de la tâche <span class="req">*</span></label>
+                        <input type="text" id="tf-titre" name="titre" maxlength="200" required
+                            placeholder="Ex : Relancer le client Kongo SA" />
                     </div>
-                    <button type="button" class="btn-ghost btn-sm" id="tf-ajouter-objectif"
-                        style="margin-top:0.4rem">+ Ajouter un objectif</button>
+                    <div class="ffield" style="grid-column:1 / -1">
+                        <label for="tf-desc">Description</label>
+                        <textarea id="tf-desc" name="description" rows="3"
+                            placeholder="Détails, livrables…"></textarea>
+                    </div>
                 </div>
-            </div>
+            </section>
+
+            <section class="cfg-sec">
+                <h3 class="cfg-titre"><span>2</span>Attribution</h3>
+                <div class="tp-picker" id="tp-picker" data-gf="off">
+                    <label class="tp-label" for="tp-recherche">Employé <span class="req">*</span></label>
+                    <input type="hidden" id="tf-assignee" name="assignee_id" required />
+                    <div class="tp-choisi" id="tp-choisi" hidden>
+                        <span class="sal-av" id="tp-av"></span>
+                        <span class="tp-choisi-txt"><b id="tp-nom"></b><small id="tp-info"></small></span>
+                        <button type="button" class="tp-changer" id="tp-changer">Changer</button>
+                    </div>
+                    <div class="tp-champ" id="tp-champ">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                        <input type="text" id="tp-recherche" autocomplete="off" placeholder="Rechercher un employé par nom ou fonction…"
+                            role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="tp-liste" />
+                    </div>
+                    <ul class="sal-sugg tp-liste" id="tp-liste" role="listbox" hidden></ul>
+                </div>
+                <div class="fgrid">
+                    <div class="ffield">
+                        <label for="tf-priorite">Priorité</label>
+                        <select id="tf-priorite" name="priorite">
+                            {% for skey, slabel in priorites %}
+                            <option value="{{ skey }}"{% if skey == 'MOYENNE' %} selected{% endif %}>{{ slabel }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="ffield">
+                        <label for="tf-echeance">Échéance</label>
+                        <input type="date" id="tf-echeance" name="echeance" />
+                    </div>
+                    <div class="ffield" style="grid-column:1 / -1">
+                        <label for="tf-projet">Projet lié</label>
+                        <select id="tf-projet" name="projet_id" data-searchable>
+                            <option value="">— Aucun projet —</option>
+                            {% for p in projets %}
+                            <option value="{{ p.pk }}">{{ p.client_nom }} — {{ p.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <section class="cfg-sec">
+                <h3 class="cfg-titre"><span>3</span>Objectifs</h3>
+                <p class="drawer-sub" style="margin:0">
+                    L'avancement est calculé automatiquement : chaque objectif a le même poids
+                    (ex. 2 objectifs → 50 % + 50 %).
+                </p>
+                <div id="tf-objectifs">
+                    <div class="obj-ligne">
+                        <input type="text" name="objectifs" maxlength="255"
+                            placeholder="Objectif 1 — ex : Collecter les documents signés" />
+                        <button type="button" class="obj-suppr" data-objectif-suppr aria-label="Retirer l'objectif">×</button>
+                    </div>
+                </div>
+                <button type="button" class="btn-ghost btn-sm" id="tf-ajouter-objectif" style="align-self:flex-start">+ Ajouter un objectif</button>
+            </section>
+
             <div class="factions">
                 <button type="button" class="btn-ghost" data-drawer-close>Annuler</button>
                 <button type="submit" class="btn-primary" id="tf-submit">Attribuer la tâche</button>
@@ -978,9 +554,12 @@
                 document.getElementById("tf-echeance").value = isEdit ? (t.echeance || "") : "";
                 if (isEdit) {
                     document.getElementById("tf-assignee").value = String(t.assignee_id || "");
+                    if (window.TachePicker) window.TachePicker.maj();
                     document.getElementById("tf-projet").value = String(t.projet_id || "");
                     document.getElementById("tf-priorite").value = t.priorite || "MOYENNE";
                 } else {
+                    document.getElementById("tf-assignee").value = "";
+                    if (window.TachePicker) window.TachePicker.maj();
                     document.getElementById("tf-projet").value = "";
                 }
                 conteneur.innerHTML = "";
@@ -998,13 +577,14 @@
                     isEdit ? "Enregistrer les modifications" : "Attribuer la tâche";
             }
 
-            var addBtn = document.querySelector("[data-tache-add]");
-            if (addBtn && window.openDrawer) {
-                addBtn.addEventListener("click", function () {
-                    setMode("ajouter", null);
-                    window.openDrawer();
-                    var titre = document.getElementById("tf-titre");
-                    if (titre) setTimeout(function () { titre.focus(); }, 60);
+            if (window.openDrawer) {
+                document.querySelectorAll("[data-tache-add]").forEach(function (addBtn) {
+                    addBtn.addEventListener("click", function () {
+                        setMode("ajouter", null);
+                        window.openDrawer();
+                        var titre = document.getElementById("tf-titre");
+                        if (titre) setTimeout(function () { titre.focus(); }, 60);
+                    });
                 });
             }
 
@@ -1033,5 +613,72 @@
                 });
             }
         })();
+    </script>
+    {{ employes|json_script:"tp-employes" }}
+    <script>
+    (function () {
+        "use strict";
+        var EMP = JSON.parse(document.getElementById("tp-employes").textContent || "[]");
+        var champ = document.getElementById("tp-recherche"), liste = document.getElementById("tp-liste");
+        var cache = document.getElementById("tf-assignee"), choisi = document.getElementById("tp-choisi"), zone = document.getElementById("tp-champ");
+        if (!champ) return;
+        function norm(t) { return String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); }
+        function esc(t) { return String(t == null ? "" : t).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+        function couleur(n) { var h = 0; for (var i = 0; i < n.length; i++) h = (h * 31 + n.charCodeAt(i)) % 360; return "hsl(" + h + " 62% 48%)"; }
+        function init(n) { return n.split(/\s+/).filter(Boolean).slice(0, 2).map(function (x) { return x[0]; }).join("").toUpperCase(); }
+        function surligne(t, m) {
+            var n = norm(t), out = "", pos = 0, marques = [];
+            m.forEach(function (w) { var i = n.indexOf(w); if (i !== -1) marques.push([i, i + w.length]); });
+            marques.sort(function (a, b) { return a[0] - b[0]; }).forEach(function (k) { if (k[0] < pos) return; out += esc(t.slice(pos, k[0])) + "<mark>" + esc(t.slice(k[0], k[1])) + "</mark>"; pos = k[1]; });
+            return out + esc(t.slice(pos));
+        }
+        function charge(e) { return e.charge ? e.charge + " tâche(s) en cours" : "Disponible"; }
+        var options = [], actif = -1;
+        function rendre() {
+            var m = norm(champ.value).trim().split(/\s+/).filter(Boolean);
+            options = EMP.filter(function (e) {
+                var q = norm(e.nom + " " + e.fonction);
+                return m.every(function (w) { return q.indexOf(w) !== -1; });
+            }).sort(function (a, b) { return (a.statut === "ACTIF" ? 0 : 1) - (b.statut === "ACTIF" ? 0 : 1) || a.charge - b.charge; }).slice(0, 8);
+            liste.innerHTML = options.length ? options.map(function (e, i) {
+                return '<li class="sal-sugg-opt" role="option" data-i="' + i + '"><span class="sal-av" style="background:' + couleur(e.nom) + '">' + esc(init(e.nom)) + "</span>" +
+                    '<span class="sal-sugg-txt"><b>' + surligne(e.nom, m) + "</b><small>" + (e.fonction ? surligne(e.fonction, m) : "Sans fonction") + "</small></span>" +
+                    '<span class="sal-sugg-tag ' + (e.charge > 2 ? "att" : "ok") + '">' + charge(e) + "</span></li>";
+            }).join("") : '<li class="sal-sugg-vide">Aucun employé ne correspond.</li>';
+            liste.hidden = false; champ.setAttribute("aria-expanded", "true"); actif = -1;
+        }
+        function fermer() { liste.hidden = true; champ.setAttribute("aria-expanded", "false"); }
+        function choisir(e) { cache.value = String(e.pk); champ.value = ""; fermer(); maj(); }
+        function maj() {
+            var e = EMP.find(function (x) { return String(x.pk) === String(cache.value); });
+            choisi.hidden = !e; zone.hidden = !!e;
+            if (e) {
+                var av = document.getElementById("tp-av");
+                av.textContent = init(e.nom); av.style.background = couleur(e.nom);
+                document.getElementById("tp-nom").textContent = e.nom;
+                document.getElementById("tp-info").textContent = (e.fonction || "Sans fonction") + " · " + charge(e);
+            }
+        }
+        champ.addEventListener("focus", rendre);
+        champ.addEventListener("input", rendre);
+        champ.addEventListener("keydown", function (ev) {
+            var lis = liste.querySelectorAll(".sal-sugg-opt");
+            if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
+                ev.preventDefault(); if (liste.hidden) rendre();
+                if (!lis.length) return;
+                actif = (actif + (ev.key === "ArrowDown" ? 1 : -1) + lis.length) % lis.length;
+                lis.forEach(function (l, i) { l.classList.toggle("on", i === actif); });
+            } else if (ev.key === "Enter") { ev.preventDefault(); if (options[actif >= 0 ? actif : 0]) choisir(options[actif >= 0 ? actif : 0]); }
+            else if (ev.key === "Escape") fermer();
+        });
+        liste.addEventListener("mousedown", function (ev) { var li = ev.target.closest(".sal-sugg-opt"); if (li) { ev.preventDefault(); choisir(options[+li.getAttribute("data-i")]); } });
+        document.addEventListener("click", function (ev) { if (!ev.target.closest("#tp-picker")) fermer(); });
+        document.getElementById("tp-changer").addEventListener("click", function () { cache.value = ""; maj(); champ.focus(); });
+        document.getElementById("tache-form").addEventListener("submit", function (ev) {
+            if (!cache.value) { ev.preventDefault(); champ.focus(); rendre(); window.showToast && window.showToast("error", "Choisissez l'employé à qui attribuer la tâche."); }
+        });
+        window.TachePicker = { maj: maj };
+        maj();
+    })();
     </script>
 {% endblock extra_js %}

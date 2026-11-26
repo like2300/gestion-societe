@@ -1,0 +1,40 @@
+{% extends "backoffice/base.html" %}
+{% block titre %}Demandes{% endblock %}
+{% block contenu %}
+<div class="page-titre"><h2>Demandes d'offre</h2><p>Activez les sociétés qui demandent une nouvelle offre ou un changement d'offre.</p></div>
+<div class="carte tableau" style="margin-bottom:18px">
+    <table>
+        <thead><tr><th>Société</th><th>Demande</th><th>Montant</th><th>Paiement</th><th>Reçue le</th><th style="text-align:right">Actions</th></tr></thead>
+        <tbody>
+        {% for d in demandes %}
+            <tr>
+                <td><b>{{ d.societe.nom }}</b><small>{{ d.societe.createur.email }}</small></td>
+                <td>{% if d.ancien_forfait %}<b>{{ d.ancien_forfait.nom }} → {{ d.forfait.nom }}</b><small>Changement d'offre</small>{% else %}<b>{{ d.forfait.nom }}</b><small>Nouvelle offre</small>{% endif %}</td>
+                <td><b>{{ d.forfait.prix_affiche }}</b></td>
+                <td>{% with p=d.paiements.last %}{% if p %}<span class="etat {{ p.statut }}">{{ p.get_statut_display }}</span><small>{{ p.mode_paiement.nom }} · réf. {{ p.reference|default:"—" }}</small>{% else %}<span class="etat AUCUN">Aucun</span>{% endif %}{% endwith %}</td>
+                <td>{{ d.created_at|date:"d/m/Y H:i" }}</td>
+                <td><div class="actions">
+                    {% if d.forfait.prix %}
+                        <form method="post" action="{% url 'backoffice:abonnement_action' d.pk 'encaisser' %}">{% csrf_token %}<button class="b ok" title="Le paiement a été reçu : il est compté dans les ventes">✓ Activer (payé)</button></form>
+                        <form method="post" action="{% url 'backoffice:abonnement_action' d.pk 'offrir' %}" onsubmit="return confirm('Activer sans paiement (offert) ?')">{% csrf_token %}<button class="b">Offrir</button></form>
+                    {% else %}
+                        <form method="post" action="{% url 'backoffice:abonnement_action' d.pk 'offrir' %}">{% csrf_token %}<button class="b ok">✓ Activer</button></form>
+                    {% endif %}
+                    <form method="post" action="{% url 'backoffice:abonnement_action' d.pk 'refuser' %}" onsubmit="return confirm('Refuser cette demande ?')">{% csrf_token %}<button class="b non">Refuser</button></form>
+                </div></td>
+            </tr>
+        {% empty %}<tr><td colspan="6" class="vide">Aucune demande en attente 🎉</td></tr>{% endfor %}
+        </tbody>
+    </table>
+</div>
+<div class="carte tableau">
+    <div class="carte-tete"><h2>Changements d'offre traités</h2></div>
+    <table>
+        <tbody>
+        {% for d in traitees %}
+            <tr><td><b>{{ d.societe.nom }}</b></td><td>{{ d.ancien_forfait.nom }} → {{ d.forfait.nom }}</td><td><span class="etat {{ d.statut }}">{{ d.get_statut_display }}</span></td><td style="text-align:right"><small>{{ d.created_at|date:"d/m/Y" }}</small></td></tr>
+        {% empty %}<tr><td class="vide">Aucun changement d'offre traité.</td></tr>{% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

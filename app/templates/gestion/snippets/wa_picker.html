@@ -1,0 +1,34 @@
+{% comment %}
+Sélecteur de membres « style WhatsApp » (recherche instantanée, puces, avatars).
+Usage : {% include "gestion/snippets/wa_picker.html" with liste_id="groupe-membres" items=items %}
+Les cases à cocher (value = pk employé) restent dans #liste_id : le JavaScript
+existant les lit sans changement. Comportement : gestion/static/gestion/wa-picker.js
+{% endcomment %}
+<div class="wa-picker" data-wa-picker>
+    <div class="wa-chips" data-wa-chips hidden></div>
+    <label class="wa-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="search" data-wa-q placeholder="Rechercher un employé…" autocomplete="off" aria-label="Rechercher un employé" />
+        <button type="button" class="wa-q-clear" data-wa-clear hidden aria-label="Effacer la recherche">×</button>
+    </label>
+    <div class="wa-entete"><span data-wa-titre>Employés</span><span class="wa-compte" data-wa-compte></span></div>
+    <div class="wa-list" id="{{ liste_id }}">
+        {% for item in items %}
+            <label class="wa-item" data-wa-nom="{{ item.prenom }} {{ item.nom }}" data-wa-sub="{{ item.fonction_nom|default:'' }} {{ item.email|default:'' }}">
+                <input type="checkbox" value="{{ item.pk }}" />
+                <span class="wa-av" style="--h: {% widthratio item.pk 1 47 %}">
+                    {% if item.photo %}<img src="{{ MEDIA_PREFIX }}{{ item.photo }}" alt="" loading="lazy" />{% else %}{{ item.prenom|first|upper }}{{ item.nom|first|upper }}{% endif %}
+                    {% if item.en_ligne %}<i class="wa-online" title="En ligne"></i>{% endif %}
+                </span>
+                <span class="wa-txt">
+                    <b>{{ item.prenom }} {{ item.nom }}</b>
+                    <small>{% if item.fonction_nom %}{{ item.fonction_nom }}{% if item.email %} · {% endif %}{% endif %}{{ item.email|default:"" }}</small>
+                </span>
+                <span class="wa-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
+            </label>
+        {% empty %}
+            <p class="wa-vide">Aucun employé pour le moment.</p>
+        {% endfor %}
+        <p class="wa-vide" data-wa-aucun hidden>Aucun employé ne correspond à « <span></span> ».</p>
+    </div>
+</div>

@@ -1,32 +1,41 @@
 {% extends "gestion/base_dashboard.html" %}
-{% load static %}
+{% load static ui %}
 
 {% block dash_title %}Tableau de bord — {{ societe.nom }}{% endblock %}
 
 {% block content %}
-    <section class="banner">
+    {# ===== En-tête de page ===== #}
+    {% url 'gestion:ai' as url_ai %}
+    <div class="ui-page-head">
         <div>
-            <h1>Bonjour, {{ user.prenom }} 👋</h1>
-            <p>Bienvenue sur le tableau de bord de <strong>{{ societe.nom }}</strong>
-                {% if societe.slogan %} — {{ societe.slogan }}{% endif %}.</p>
+            <h1>Tableau de bord</h1>
+            <p>Bon retour{% if user.prenom %}, {{ user.prenom }}{% endif %}. Voici ce qui se passe dans <strong>{{ societe.nom }}</strong>{% if societe.slogan %} — {{ societe.slogan }}{% endif %}.</p>
         </div>
-    </section>
+        <a class="btn-primary" href="{{ url_ai }}">
+            <span style="width:1rem;height:1rem;display:inline-flex">{% include "gestion/components/icon.html" with name="sparkles" %}</span>
+            Assistant IA
+        </a>
+    </div>
 
+    {# ===== Demandes d'adhésion (propriétaire) ===== #}
     {% if demandes_adhesion %}
-        <section class="panel" style="padding:1.1rem 1.3rem;margin-top:1rem">
-            <h2 class="modules-title" style="margin-bottom:0.8rem">
-                Demandes pour rejoindre l'équipe
-                <span style="font-size:0.8rem;font-weight:600;color:#64748b">({{ demandes_adhesion|length }})</span>
-            </h2>
+        <section class="ui-card">
+            <div class="ui-card-head">
+                <div>
+                    <h2 class="ui-card-title">Demandes pour rejoindre l'équipe</h2>
+                    <p class="ui-card-sub">{{ demandes_adhesion|length }} en attente de votre validation</p>
+                </div>
+                {% include "gestion/components/badge.html" with text=demandes_adhesion|length kind="warning" %}
+            </div>
             <div style="display:flex;flex-direction:column;gap:0.6rem">
                 {% for demande in demandes_adhesion %}
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;border:1px solid #e2e8f0;border-radius:0.6rem;padding:0.75rem 0.9rem">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;border:1px solid var(--ui-border);border-radius:0.7rem;padding:0.75rem 0.9rem">
                         <div>
-                            <div style="font-weight:600;color:#0f172a">
+                            <div style="font-weight:600;color:var(--ui-text)">
                                 {{ demande.user.prenom }} {{ demande.user.nom }}
                                 {% if not demande.user.prenom and not demande.user.nom %}—{% endif %}
                             </div>
-                            <div style="font-size:0.78rem;color:#64748b">
+                            <div style="font-size:0.78rem;color:var(--ui-muted)">
                                 {{ demande.user.email }} · demandé le {{ demande.created_at|date:"d/m/Y" }}
                             </div>
                         </div>
@@ -35,15 +44,13 @@
                                 {% csrf_token %}
                                 <input type="hidden" name="demande_id" value="{{ demande.pk }}" />
                                 <input type="hidden" name="action" value="adhesion_accepter" />
-                                <button type="submit" class="btn-primary"
-                                    style="padding:0.4rem 0.9rem;font-size:0.8rem">Accepter</button>
+                                <button type="submit" class="btn-primary" style="padding:0.4rem 0.9rem;font-size:0.8rem">Accepter</button>
                             </form>
                             <form method="post" action="{% url 'gestion:dashboard' %}" class="m-0">
                                 {% csrf_token %}
                                 <input type="hidden" name="demande_id" value="{{ demande.pk }}" />
                                 <input type="hidden" name="action" value="adhesion_refuser" />
-                                <button type="submit" class="btn-ghost"
-                                    style="padding:0.4rem 0.9rem;font-size:0.8rem">Refuser</button>
+                                <button type="submit" class="btn-ghost" style="padding:0.4rem 0.9rem;font-size:0.8rem">Refuser</button>
                             </form>
                         </div>
                     </div>
@@ -52,612 +59,219 @@
         </section>
     {% endif %}
 
+    {# ===== Abonnement (propriétaire) : paiement en attente, expiré ou suspendu ===== #}
+    {% if abonnement and abonnement.statut != "ACTIF" %}
+    <div class="abo-bandeau abo-{{ abonnement.statut }}">
+        <div>
+            <b>{% if abonnement.statut == "EN_ATTENTE" %}Abonnement {{ abonnement.forfait.nom }} en attente de paiement{% elif abonnement.statut == "EXPIRE" %}Votre abonnement {{ abonnement.forfait.nom }} a expiré le {{ abonnement.date_fin|date:"d/m/Y" }}{% else %}Abonnement suspendu{% endif %}</b>
+            <span>{% if abonnement.statut == "SUSPENDU" %}Contactez le support pour le réactiver.{% else %}Réglez-le en quelques secondes par Mobile Money ou virement.{% endif %}</span>
+        </div>
+        {% if abonnement.statut != "SUSPENDU" %}<a class="btn-primary" href="{% url 'abonnement_payer' abonnement.jeton %}">Payer maintenant</a>{% endif %}
+    </div>
+    {% endif %}
     <style>
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 1rem;
-        }
-        .stat-card {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.9rem;
-            padding: 1rem 1.1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.9rem;
-            transition: box-shadow 0.2s ease, transform 0.2s ease;
-        }
-        .stat-card:hover {
-            box-shadow: 0 14px 28px -18px rgba(2, 132, 199, 0.55);
-            transform: translateY(-2px);
-        }
-        .stat-ico {
-            flex: none;
-            width: 2.7rem;
-            height: 2.7rem;
-            border-radius: 0.75rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--accent);
-            background: var(--accent-soft);
-        }
-        .stat-ico svg {
-            width: 1.35rem;
-            height: 1.35rem;
-        }
-        .stat-num {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #0f172a;
-            line-height: 1.1;
-        }
-        .stat-lbl {
-            font-size: 0.76rem;
-            color: #64748b;
-        }
-        .modules-title {
-            font-weight: 700;
-            color: #0f172a;
-            margin: 0 0 0.8rem;
-            font-size: 1rem;
-        }
-        .chart-panel {
-            padding: 0;
-            overflow: hidden;
-        }
-        .chart-toggle {
-            width: 100%;
-            display: flex;
-            align-items: center;
-            gap: 0.85rem;
-            padding: 0.95rem 1.1rem;
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            text-align: left;
-            color: inherit;
-            font: inherit;
-            transition: background 0.15s ease;
-        }
-        .chart-toggle:hover {
-            background: #f8fafc;
-        }
-        .chart-toggle-ico {
-            flex: none;
-            width: 2.3rem;
-            height: 2.3rem;
-            border-radius: 0.65rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: var(--accent-soft);
-            color: var(--accent);
-        }
-        .chart-toggle-ico svg {
-            width: 1.2rem;
-            height: 1.2rem;
-        }
-        .chart-toggle-txt {
-            display: flex;
-            flex-direction: column;
-            gap: 0.1rem;
-            min-width: 0;
-        }
-        .chart-toggle-title {
-            font-weight: 700;
-            font-size: 0.92rem;
-            color: #0f172a;
-        }
-        .chart-toggle-sub {
-            font-size: 0.73rem;
-            color: #64748b;
-        }
-        .chart-toggle-badge {
-            margin-left: auto;
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: var(--accent);
-            background: var(--accent-soft);
-            border-radius: 9999px;
-            padding: 0.2rem 0.65rem;
-            white-space: nowrap;
-        }
-        .chart-chevron {
-            flex: none;
-            width: 1.1rem;
-            height: 1.1rem;
-            color: #94a3b8;
-            transition: transform 0.2s ease;
-        }
-        .chart-toggle[aria-expanded="true"] .chart-chevron {
-            transform: rotate(180deg);
-        }
-        .chart-body {
-            padding: 0.3rem 1.2rem 1rem;
-            border-top: 1px solid #f1f5f9;
-        }
-        .chart-body[hidden] {
-            display: none !important;
-        }
-        .chart-scroll {
-            overflow-x: auto;
-            padding-bottom: 0.3rem;
-        }
-        .chart-inner {
-            display: flex;
-            align-items: flex-end;
-            gap: 0.7rem;
-            min-width: 660px;
-            padding: 1.5rem 0.3rem 0;
-        }
-        .chart-yaxis {
-            flex: none;
-            width: 2.2rem;
-            display: flex;
-            flex-direction: column;
-        }
-        .chart-yaxis .y-plot {
-            position: relative;
-            height: 152px;
-        }
-        .chart-yaxis .y-tick {
-            position: absolute;
-            right: 0;
-            transform: translateY(50%);
-            font-size: 0.62rem;
-            color: #94a3b8;
-            white-space: nowrap;
-        }
-        .chart-yaxis .y-label-spacer {
-            height: 22px;
-        }
-        .bars {
-            flex: 1;
-            display: flex;
-            align-items: flex-end;
-            gap: 0.7rem;
-        }
-        .bar-col {
-            flex: 1 1 0;
-            min-width: 42px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-decoration: none;
-            color: inherit;
-        }
-        .bar-plot {
-            position: relative;
-            width: 100%;
-            height: 152px;
-            border-radius: 0.5rem 0.5rem 0.2rem 0.2rem;
-            background-color: #f8fafc;
-            background-image: repeating-linear-gradient(
-                to top,
-                #edf1f6 0,
-                #edf1f6 1px,
-                transparent 1px,
-                transparent 25%
-            );
-        }
-        .bar-fill {
-            position: absolute;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            border-radius: 0.5rem 0.5rem 0 0;
-            background: var(--bar, var(--accent));
-            background: linear-gradient(
-                180deg,
-                color-mix(in srgb, var(--bar, var(--accent)) 78%, #ffffff),
-                var(--bar, var(--accent))
-            );
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
-            transition: height 0.55s ease, filter 0.15s ease;
-        }
-        .bar-col:hover .bar-fill {
-            filter: brightness(1.08);
-        }
-        .bar-value {
-            position: absolute;
-            left: 0;
-            right: 0;
-            text-align: center;
-            font-size: 0.74rem;
-            font-weight: 700;
-            color: #0f172a;
-            transform: translateY(-3px);
-        }
-        .bar-col.zero .bar-value {
-            color: #cbd5e1;
-        }
-        .bar-col.zero .bar-plot::after {
-            content: "";
-            position: absolute;
-            left: 22%;
-            right: 22%;
-            bottom: 0;
-            height: 3px;
-            border-radius: 3px;
-            background: #cbd5e1;
-        }
-        .bar-label {
-            height: 22px;
-            margin-top: 0.15rem;
-            font-size: 0.64rem;
-            color: #64748b;
-            text-align: center;
-            line-height: 1.05;
-        }
-        .bar-col:hover .bar-label {
-            color: var(--accent);
-        }
-        .chart-legend {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem 1rem;
-            margin-top: 0.9rem;
-            font-size: 0.72rem;
-            color: #64748b;
-        }
-        .chart-legend .lg {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-        }
-        .chart-legend .lg-dot {
-            width: 0.6rem;
-            height: 0.6rem;
-            border-radius: 0.2rem;
-            flex: none;
-        }
-        .chart-foot {
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-            flex-wrap: wrap;
-            margin-top: 0.7rem;
-            font-size: 0.74rem;
-            color: #64748b;
-        }
-        .chart-foot b {
-            color: var(--accent);
-            font-size: 0.85rem;
-        }
-        .modules {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 0.9rem;
-        }
-        .module {
-            display: flex;
-            align-items: center;
-            gap: 0.85rem;
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.8rem;
-            padding: 0.9rem 1rem;
-            text-decoration: none;
-            color: #0f172a;
-            transition: all 0.18s ease;
-        }
-        .module:hover {
-            border-color: var(--accent);
-            box-shadow: 0 12px 24px -18px var(--accent);
-            transform: translateY(-2px);
-        }
-        .module .m-ico {
-            flex: none;
-            width: 2.2rem;
-            height: 2.2rem;
-            border-radius: 0.6rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: var(--accent-soft);
-            color: var(--accent);
-        }
-        .module .m-ico svg {
-            width: 1.1rem;
-            height: 1.1rem;
-        }
-        .module .m-name {
-            font-weight: 600;
-            font-size: 0.85rem;
-        }
-        .module .m-count {
-            font-size: 0.72rem;
-            color: #64748b;
-        }
-        .module .m-count b {
-            color: var(--accent);
-        }
-        @media (max-width: 1023px) {
-            .stats {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-            .modules {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-        }
-        @media (max-width: 520px) {
-            .modules {
-                grid-template-columns: 1fr;
-            }
-        }
-        @media (prefers-color-scheme: dark) {
-            .stat-card,
-            .module {
-                background: #1e293b;
-                border-color: #334155;
-            }
-            .stat-card:hover,
-            .module:hover {
-                border-color: var(--accent);
-            }
-            .stat-num,
-            .modules-title,
-            .module .m-name,
-            .chart-toggle-title,
-            .bar-value {
-                color: #f1f5f9;
-            }
-            .chart-toggle:hover {
-                background: #0f172a;
-            }
-            .chart-body {
-                border-color: #334155;
-            }
-            .bar-plot {
-                background-color: #0f172a;
-                background-image: repeating-linear-gradient(
-                    to top,
-                    #1e293b 0,
-                    #1e293b 1px,
-                    transparent 1px,
-                    transparent 25%
-                );
-            }
-            .bar-label {
-                color: #94a3b8;
-            }
-            .bar-col.zero .bar-value {
-                color: #475569;
-            }
-            .bar-col.zero .bar-plot::after {
-                background: #475569;
-            }
-        }
+        #dash .abo-bandeau { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding: .9rem 1.1rem; margin-bottom: 1.1rem; border-radius: 16px; background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+        #dash .abo-bandeau.abo-EXPIRE, #dash .abo-bandeau.abo-SUSPENDU { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+        #dash .abo-bandeau b { display: block; font-size: .92rem; }
+        #dash .abo-bandeau span { font-size: .82rem; opacity: .9; }
+        html[data-theme="dark"] #dash .abo-bandeau { background: rgba(245, 158, 11, .12); border-color: rgba(245, 158, 11, .35); color: #fcd34d; }
     </style>
 
-    <section class="stats">
+    {# ===== Cartes statistiques avec mini-courbes ===== #}
+    <section class="ui-grid-4">
         {% if 'employes' in modules_autorises %}
-        <a class="stat-card" href="{% url 'gestion:employes' %}" style="text-decoration:none">
-            <div class="stat-ico">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                </svg>
-            </div>
-            <div>
-                <div class="stat-num">{{ counts.employes }}</div>
-                <div class="stat-lbl">Employés ({{ counts.employes_actifs }} actifs
-                    {% if counts.employes_sans_contrat %} · {{ counts.employes_sans_contrat }} sans contrat{% endif %})</div>
-            </div>
-        </a>
+            {% url 'gestion:employes' as u %}
+            {% include "gestion/components/stat_card.html" with label="Employés" value=counts.employes icon="users" href=u series=series.employes trend=tendances.employes.texte trend_dir=tendances.employes.sens note=counts.employes_actifs|stringformat:"s"|add:" actifs" uid="emp" %}
         {% endif %}
         {% if 'clients' in modules_autorises %}
-        <a class="stat-card" href="{% url 'gestion:clients' %}" style="text-decoration:none">
-            <div class="stat-ico">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="2" y="4" width="20" height="13" rx="2" />
-                    <path d="M8 21h8m-4-4v4" />
-                </svg>
-            </div>
-            <div>
-                <div class="stat-num">{{ counts.clients }}</div>
-                <div class="stat-lbl">Clients</div>
-            </div>
-        </a>
+            {% url 'gestion:clients' as u %}
+            {% include "gestion/components/stat_card.html" with label="Clients" value=counts.clients icon="briefcase" href=u series=series.clients trend=tendances.clients.texte trend_dir=tendances.clients.sens uid="cli" tone="#8b5cf6" %}
         {% endif %}
         {% if 'projets' in modules_autorises %}
-        <a class="stat-card" href="{% url 'gestion:projets' %}" style="text-decoration:none">
-            <div class="stat-ico">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 3v18h18" />
-                    <path d="m7 14 4-4 3 3 5-6" />
-                </svg>
-            </div>
-            <div>
-                <div class="stat-num">{{ counts.projets }}</div>
-                <div class="stat-lbl">Projets ({{ counts.projets_en_cours }} en cours)</div>
-            </div>
-        </a>
+            {% url 'gestion:projets' as u %}
+            {% include "gestion/components/stat_card.html" with label="Projets" value=counts.projets icon="folder" href=u series=series.projets trend=tendances.projets.texte trend_dir=tendances.projets.sens note=counts.projets_en_cours|stringformat:"s"|add:" en cours" uid="prj" tone="#f59e0b" %}
         {% endif %}
         {% if 'finances' in modules_autorises %}
-        <div class="stat-card">
-            <div class="stat-ico">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                </svg>
-            </div>
-            <div>
-                <div class="stat-num">{{ counts.solde|floatformat:"0g" }}</div>
-                <div class="stat-lbl">Solde (finances)</div>
-            </div>
-        </div>
+            {% url 'gestion:finances' as u %}
+            {% include "gestion/components/stat_card.html" with label="Solde" value=counts.solde|floatformat:"0g" icon="wallet" href=u series=series.solde trend=tendances.solde.texte trend_dir=tendances.solde.sens uid="sol" tone="#10b981" %}
         {% endif %}
     </section>
 
-    <section class="panel chart-panel">
-        <button type="button" class="chart-toggle" id="chart-toggle" aria-expanded="false" aria-controls="chart-body">
-            <span class="chart-toggle-ico">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 3v18h18" />
-                    <rect x="7" y="11" width="3" height="7" rx="0.6" />
-                    <rect x="12.5" y="7" width="3" height="11" rx="0.6" />
-                    <rect x="18" y="13" width="3" height="5" rx="0.6" />
-                </svg>
-            </span>
-            <span class="chart-toggle-txt">
-                <span class="chart-toggle-title">Activité de la plateforme</span>
-                <span class="chart-toggle-sub">Diagramme par module — cliquez pour afficher</span>
-            </span>
-            <span class="chart-toggle-badge">{{ activite.total }} enregistrement{{ activite.total|pluralize }}</span>
-            <svg class="chart-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="m6 9 6 6 6-6" />
-            </svg>
-        </button>
+    {# ===== Mon espace : tâches, rendez-vous, groupes, raccourcis (personnel) ===== #}
+    {% with me=mon_espace %}
+    <section class="me-grille{% if est_employe %} me-employe{% endif %}">
+        <article class="me-carte me-taches">
+            <div class="me-tete"><h2>Mes tâches</h2><a href="{% url 'gestion:planning' %}">Planning →</a></div>
+            <div class="me-compteurs">
+                <span class="me-cpt rouge"><b>{{ me.retard }}</b>en retard</span>
+                <span class="me-cpt orange"><b>{{ me.jour }}</b>aujourd'hui</span>
+                <span class="me-cpt bleu"><b>{{ me.semaine }}</b>cette semaine</span>
+            </div>
+            <ul class="me-liste">
+                {% for t in me.taches %}
+                    <li><i class="{% if t.echeance and t.echeance < me.aujourd_hui %}rouge{% elif t.echeance == me.aujourd_hui %}orange{% else %}bleu{% endif %}"></i>
+                        <span><b>{{ t.titre }}</b><small>{% if t.echeance %}Échéance {{ t.echeance|date:"d/m" }}{% else %}Sans échéance{% endif %}{% if t.assignee and not est_employe %} · {{ t.assignee.prenom }} {{ t.assignee.nom }}{% endif %}</small></span></li>
+                {% empty %}
+                    <li class="me-vide">Rien à faire pour le moment 🎉</li>
+                {% endfor %}
+            </ul>
+        </article>
+        <article class="me-carte">
+            <div class="me-tete"><h2>Mes prochains rendez-vous</h2></div>
+            <ul class="me-liste">
+                {% for r in me.rdv %}
+                    <li><i class="violet"></i><span><b>{{ r.titre }}</b><small>{{ r.debut|date:"D d/m" }}{% if not r.journee %} · {{ r.debut|date:"H:i" }}{% endif %}{% if r.lieu %} · {{ r.lieu }}{% endif %}</small></span></li>
+                {% empty %}
+                    <li class="me-vide">Aucun rendez-vous à venir.</li>
+                {% endfor %}
+            </ul>
+        </article>
+        <article class="me-carte">
+            <div class="me-tete"><h2>Mes groupes</h2><a href="{% url 'gestion:groupes_page' %}">Tous →</a></div>
+            <ul class="me-liste">
+                {% for g in me.groupes %}
+                    <li><i class="vert"></i><span><a href="{{ g.url }}"><b>{{ g.titre }}</b></a><small>Ouvrir la discussion</small></span></li>
+                {% empty %}
+                    <li class="me-vide">Vous n'êtes dans aucun groupe.</li>
+                {% endfor %}
+            </ul>
+            <div class="me-raccourcis">
+                {% for r in me.raccourcis %}<a href="{{ r.url }}">{{ r.label }}</a>{% endfor %}
+            </div>
+        </article>
+    </section>
+    {% endwith %}
 
-        <div class="chart-body" id="chart-body" hidden>
-            <div class="chart-scroll">
-                <div class="chart-inner">
-                    <div class="chart-yaxis" aria-hidden="true">
-                        <div class="y-plot">
-                            {% for t in activite.ticks %}
-                                <span class="y-tick" style="bottom: {{ t.pct }}%">{{ t.value }}</span>
-                            {% endfor %}
-                        </div>
-                        <div class="y-label-spacer"></div>
-                    </div>
-                    <div class="bars">
+    <style>
+        #dash .me-grille { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1.2rem; }
+        @media (max-width: 1100px) { #dash .me-grille { grid-template-columns: minmax(0, 1fr); } }
+        #dash .me-carte { background: var(--ui-card); border: 1px solid var(--ui-border); border-radius: 18px; padding: 1rem 1.1rem; box-shadow: var(--ui-shadow); display: flex; flex-direction: column; gap: .7rem; min-width: 0; }
+        #dash .me-tete { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
+        #dash .me-tete h2 { margin: 0; font-size: .95rem; font-weight: 700; color: var(--ui-text); }
+        #dash .me-tete a { font-size: .76rem; font-weight: 600; color: var(--accent); text-decoration: none; }
+        #dash .me-compteurs { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
+        #dash .me-cpt { display: flex; flex-direction: column; padding: .55rem .6rem; border-radius: 12px; font-size: .7rem; color: var(--ui-muted); background: var(--ui-card-2); }
+        #dash .me-cpt b { font-size: 1.25rem; color: var(--ui-text); line-height: 1.1; }
+        #dash .me-cpt.rouge b { color: #dc2626; } #dash .me-cpt.orange b { color: #d97706; } #dash .me-cpt.bleu b { color: var(--accent); }
+        #dash .me-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .35rem; }
+        #dash .me-liste li { display: flex; gap: .6rem; align-items: stretch; }
+        #dash .me-liste li > i { width: 4px; border-radius: 4px; flex: none; background: var(--accent); }
+        #dash .me-liste i.rouge { background: #dc2626; } #dash .me-liste i.orange { background: #f59e0b; } #dash .me-liste i.violet { background: #7c3aed; } #dash .me-liste i.vert { background: #10b981; }
+        #dash .me-liste span { display: flex; flex-direction: column; min-width: 0; }
+        #dash .me-liste b { font-size: .84rem; color: var(--ui-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #dash .me-liste a { text-decoration: none; }
+        #dash .me-liste small { font-size: .72rem; color: var(--ui-muted); }
+        #dash .me-vide { font-size: .8rem; color: var(--ui-muted); }
+        #dash .me-raccourcis { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: auto; padding-top: .4rem; border-top: 1px dashed var(--ui-border); }
+        #dash .me-raccourcis a { font-size: .74rem; font-weight: 600; padding: .3rem .65rem; border-radius: 999px; background: color-mix(in srgb, var(--accent) 9%, var(--ui-card)); color: var(--accent); text-decoration: none; }
+    </style>
+
+
+    {# ===== Graphique + répartition ===== #}
+    <section class="ui-grid-main">
+        <div class="ui-card">
+            <div class="ui-card-head">
+                <div>
+                    <h2 class="ui-card-title">Activité de la plateforme</h2>
+                    <p class="ui-card-sub">Nombre d'enregistrements par module</p>
+                </div>
+                {% include "gestion/components/badge.html" with text=activite.total|stringformat:"s"|add:" enregistrements" %}
+            </div>
+            <div class="ui-bars">
+                <div class="ui-bars-y" aria-hidden="true">
+                    {% for t in activite.ticks %}<span style="bottom: {{ t.pct }}%">{{ t.value }}</span>{% endfor %}
+                </div>
+                <div class="ui-bars-body">
+                    <div class="ui-bars-plot">
                         {% for b in activite.bars %}
-                            <a class="bar-col{% if not b.value %} zero{% endif %}" href="{{ b.url }}"
-                                style="--bar: {{ b.color }}"
-                                title="{{ b.label }} · {{ b.family }} : {{ b.value }} enregistrement{{ b.value|pluralize }}"
+                            <a class="ui-bar{% if not b.value %} zero{% endif %}" href="{{ b.url }}"
+                                style="--h: {{ b.pct }}%; --bar: {{ b.color }}"
+                                title="{{ b.label }} · {{ b.family }} : {{ b.value }}"
                                 aria-label="{{ b.label }} : {{ b.value }}">
-                                <span class="bar-plot">
-                                    <span class="bar-fill" style="height: {{ b.pct }}%"></span>
-                                    <span class="bar-value" style="bottom: {{ b.pct }}%">{{ b.value }}</span>
-                                </span>
-                                <span class="bar-label">{{ b.short }}</span>
+                                <span class="ui-bar-fill"></span>
+                                <span class="ui-bar-val">{{ b.value }}</span>
                             </a>
                         {% endfor %}
                     </div>
+                    <div class="ui-bars-labels">
+                        {% for b in activite.bars %}<span title="{{ b.label }}">{{ b.short }}</span>{% endfor %}
+                    </div>
                 </div>
             </div>
-            <div class="chart-legend">
-                {% for f in activite.familles %}
-                    <span class="lg"><span class="lg-dot" style="background: {{ f.color }}"></span>{{ f.label }}</span>
-                {% endfor %}
+            <div class="ui-chart-legend">
+                {% for f in activite.familles %}<span><i style="background: {{ f.color }}"></i>{{ f.label }}</span>{% endfor %}
             </div>
-            <div class="chart-foot">
-                <span>Total : <b>{{ activite.total }}</b> enregistrement{{ activite.total|pluralize }} sur l'ensemble des modules.</span>
-                <span style="margin-left:auto">Échelle : 0 – {{ activite.scale_max }}</span>
+        </div>
+
+        <div class="ui-stack">
+            <div class="ui-card">
+                <div class="ui-card-head">
+                    <div>
+                        <h2 class="ui-card-title">Répartition</h2>
+                        <p class="ui-card-sub">Activité par famille de modules</p>
+                    </div>
+                </div>
+                <div class="ui-donut-wrap">
+                    <div class="ui-donut">
+                        <svg viewBox="0 0 36 36" aria-hidden="true">
+                            <circle cx="18" cy="18" r="15.9155" fill="none" stroke="var(--ui-border)" stroke-width="3.4" />
+                            {% for sgm in donut.segments %}
+                                {% if sgm.value %}
+                                    <circle cx="18" cy="18" r="15.9155" fill="none" style="stroke: {{ sgm.color }}" stroke-width="3.4"
+                                        stroke-dasharray="{{ sgm.dash }} {{ sgm.gap }}" stroke-dashoffset="{{ sgm.offset }}" />
+                                {% endif %}
+                            {% endfor %}
+                        </svg>
+                        <div class="ui-donut-center"><b>{{ donut.total }}</b><span>au total</span></div>
+                    </div>
+                    <ul class="ui-legend">
+                        {% for sgm in donut.segments %}
+                            <li><i style="background: {{ sgm.color }}"></i>{{ sgm.label }}<b>{{ sgm.pct }} %</b></li>
+                        {% endfor %}
+                    </ul>
+                </div>
             </div>
+
+            {% if 'employes' in modules_autorises or 'projets' in modules_autorises %}
+            <div class="ui-card">
+                <div class="ui-card-head">
+                    <div>
+                        <h2 class="ui-card-title">Suivi</h2>
+                        <p class="ui-card-sub">Où en est votre équipe</p>
+                    </div>
+                </div>
+                {% if 'employes' in modules_autorises %}
+                    {% include "gestion/components/progress.html" with label="Employés actifs" value=counts.employes_actifs total=counts.employes %}
+                    {% include "gestion/components/progress.html" with label="Employés sous contrat" value=counts.employes_avec_contrat total=counts.employes tone="#10b981" %}
+                {% endif %}
+                {% if 'projets' in modules_autorises %}
+                    {% include "gestion/components/progress.html" with label="Projets en cours" value=counts.projets_en_cours total=counts.projets tone="#f59e0b" %}
+                {% endif %}
+            </div>
+            {% endif %}
         </div>
     </section>
 
+    {# ===== Tous les modules (cartes « dossier ») ===== #}
     <section>
         <h2 class="modules-title">Tous les modules</h2>
-        <div class="modules">
-            {% if 'employes' in modules_autorises %}
-            <a class="module" href="{% url 'gestion:employes' %}">
-                <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg></span>
-                <span><span class="m-name">Employés</span><br /><span class="m-count"><b>{{ counts.employes }}</b> — {{ counts.employes_actifs }} actifs</span></span>
-            </a>
-            {% endif %}
-            {% if 'clients' in modules_autorises %}
-            <a class="module" href="{% url 'gestion:clients' %}">
-                <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2" /><path d="M8 21h8m-4-4v4" /></svg></span>
-                <span><span class="m-name">Clients</span><br /><span class="m-count"><b>{{ counts.clients }}</b> enregistrés</span></span>
-            </a>
-            {% endif %}
-            {% if 'projets' in modules_autorises %}
-            <a class="module" href="{% url 'gestion:projets' %}">
-                <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h6v12H9z" /><path d="M12 3v3" /><path d="M5 9H3v6h2" /><path d="M19 9h2v6h-2" /></svg></span>
-                <span><span class="m-name">Projets</span><br /><span class="m-count"><b>{{ counts.projets }}</b> — {{ counts.projets_en_cours }} en cours</span></span>
-            </a>
-            {% endif %}
-            {% if 'finances' in modules_autorises %}
-<a class="module" href="{% url 'gestion:finances' %}">
-                <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8" /><path d="M14 7h7v7" /></svg></span>
-                <span><span class="m-name">Finances</span><br /><span class="m-count">Synthèse &amp; soldes</span></span>
-            </a>
-            {% endif %}
-            {% if 'depenses' in modules_autorises %}
-            <a class="module" href="{% url 'gestion:crud' 'depenses' %}">
-                <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg></span>
-                <span><span class="m-name">Dépenses</span><br /><span class="m-count"><b>{{ counts.depenses }}</b> enregistrées</span></span>
-            </a>
-            {% endif %}
-            {% if 'salaires' in modules_autorises %}
-            <a class="module" href="{% url 'gestion:crud' 'salaires' %}">
-                <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2" /><circle cx="12" cy="12" r="3" /></svg></span>
-                <span><span class="m-name">Salaires</span><br /><span class="m-count">Paiements du personnel</span></span>
-            </a>
-            {% endif %}
-            {% if 'contrats' in modules_autorises %}
-            <a class="module" href="{% url 'gestion:crud' 'contrats' %}">
-                <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z" /><path d="M14 2v6h6" /></svg></span>
-                <span><span class="m-name">Contrats</span><br /><span class="m-count">CDI, CDD, STAGE…</span></span>
-            </a>
-            {% endif %}
-            {% if 'echeances' in modules_autorises %}
-            <a class="module" href="{% url 'gestion:crud' 'echeances' %}">
-                <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg></span>
-                <span><span class="m-name">Échéances</span><br /><span class="m-count">À venir &amp; encaissées</span></span>
-            </a>
-            {% endif %}
-            {% if 'paiements' in modules_autorises %}
-            <a class="module" href="{% url 'gestion:crud' 'paiements' %}">
-                <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></svg></span>
-                <span><span class="m-name">Paiements</span><br /><span class="m-count">Encaissements clients</span></span>
-            </a>
-            {% endif %}
-            {% if 'roles' in modules_autorises %}
-            <a class="module" href="{% url 'gestion:crud' 'roles' %}">
-                <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4a5 5 0 1 0 0 10 5 5 0 0 0 0-10Z" /><path d="M4 20a8 8 0 0 1 16 0" /></svg></span>
-                <span><span class="m-name">Rôles &amp; Permissions</span><br /><span class="m-count">Accès équipe</span></span>
-            </a>
-            {% endif %}
-            {% if 'fonctions' in modules_autorises %}
-            <a class="module" href="{% url 'gestion:crud' 'fonctions' %}">
-                <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" /></svg></span>
-                <span><span class="m-name">Fonctions</span><br /><span class="m-count">Postes de travail</span></span>
-            </a>
-            {% endif %}
-            {% if 'documents' in modules_autorises %}
-            <a class="module" href="{% url 'gestion:crud' 'documents' %}">
-                <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /><path d="M14 2v5h5" /></svg></span>
-                <span><span class="m-name">Documents</span><br /><span class="m-count">{{ counts.documents }} fichiers</span></span>
-            </a>
-            {% endif %}
-            {% if 'societe' in modules_autorises %}
-            <a class="module" href="{% url 'gestion:societe_profil' %}">
-                <span class="m-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M6 21v-5m6 5v-8m6 8V8m-6 3V6m6 2 3-3-3-3" /></svg></span>
-                <span><span class="m-name">Ma société</span><br /><span class="m-count">Profil &amp; paramètres</span></span>
-            </a>
-            {% endif %}
+        <div class="folders">
+            {% if 'employes' in modules_autorises %}{% url 'gestion:employes' as u %}
+                {% include "gestion/components/folder_card.html" with href=u name="Employés" icon="users" count=counts.employes sub=counts.employes_actifs|stringformat:"s"|add:" actifs" featured=True %}{% endif %}
+            {% if 'clients' in modules_autorises %}{% url 'gestion:clients' as u %}
+                {% include "gestion/components/folder_card.html" with href=u name="Clients" icon="briefcase" count=counts.clients sub="Portefeuille clients" %}{% endif %}
+            {% if 'projets' in modules_autorises %}{% url 'gestion:projets' as u %}
+                {% include "gestion/components/folder_card.html" with href=u name="Projets" icon="folder" count=counts.projets sub=counts.projets_en_cours|stringformat:"s"|add:" en cours" %}{% endif %}
+            {% if finances_url %}
+                {% include "gestion/components/folder_card.html" with href=finances_url name="Finances" icon="chart" sub="Paiements, dépenses, salaires, échéances" %}{% endif %}
+            {% if 'roles' in modules_autorises %}{% url 'gestion:crud' 'roles' as u %}
+                {% include "gestion/components/folder_card.html" with href=u name="Rôles & Permissions" icon="shield" sub="Accès de l'équipe" %}{% endif %}
+            {% if 'fonctions' in modules_autorises %}{% url 'gestion:crud' 'fonctions' as u %}
+                {% include "gestion/components/folder_card.html" with href=u name="Fonctions" icon="user" sub="Postes de travail" %}{% endif %}
+            {% if 'documents' in modules_autorises %}{% url 'gestion:crud' 'documents' as u %}
+                {% include "gestion/components/folder_card.html" with href=u name="Documents" icon="file" count=counts.documents sub="Fichiers de la société" %}{% endif %}
+            {% if 'societe' in modules_autorises %}{% url 'gestion:societe_profil' as u %}
+                {% include "gestion/components/folder_card.html" with href=u name="Ma société" icon="building" sub="Profil & paramètres" %}{% endif %}
         </div>
     </section>
 {% endblock content %}
-
-{% block extra_js %}
-    <script>
-        (function () {
-            var btn = document.getElementById("chart-toggle");
-            var body = document.getElementById("chart-body");
-            if (!btn || !body) return;
-            btn.addEventListener("click", function () {
-                var open = btn.getAttribute("aria-expanded") === "true";
-                btn.setAttribute("aria-expanded", open ? "false" : "true");
-                body.hidden = open;
-                var sub = btn.querySelector(".chart-toggle-sub");
-                if (sub) {
-                    sub.textContent = open
-                        ? "Diagramme par module — cliquez pour afficher"
-                        : "Diagramme par module — cliquez pour masquer";
-                }
-            });
-        })();
-    </script>
-{% endblock extra_js %}

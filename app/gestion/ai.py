@@ -54,8 +54,9 @@ def get_module_stats(societe, modules):
             "label": "Clients",
             "lines": [f"{cli.count()} clients",
                       f"{cli.filter(statut='ACTIF').count()} actifs",
-                      f"{cli.filter(projets__isnull=False).distinct().count()} avec projets",
-                      f"Total encaissé clients : {total_encaisse}"],
+                      f"{cli.filter(projets__isnull=False).distinct().count()} avec projets"]
+                     + ([f"Total encaissé clients : {total_encaisse}"]
+                        if {"finances", "paiements"} & set(mk) else []),
         }
     if "projets" in mk:
         proj = societe.projets
@@ -109,12 +110,6 @@ def get_module_stats(societe, modules):
             "lines": [f"{pai.count()} paiements clients",
                       f"Total encaissé : {total}"],
         }
-        # Accès KPay (Mobile Money) : lecture seule des clés configurées et
-        # des opérations réelles en base. Aucun appel réseau ici.
-        data["kpay"] = {
-            "label": "Paiements Mobile Money (KPay)",
-            "lines": _infos_kpay(societe),
-        }
     if "roles" in mk:
         data["roles"] = {
             "label": "Rôles & Permissions",
@@ -153,49 +148,6 @@ def get_module_stats(societe, modules):
     return data
 
 
-def _infos_kpay(societe):
-    """Lignes KPay (configuration + opérations réelles) pour le prompt IA.
-
-    Lecture seule : aucun appel réseau. La configuration vient des clés lues
-    dans app/.env (gestion.kpay), les opérations de la base locale
-    (KpayOperation). Réservé au module « paiements » côté appelant.
-    """
-    from django.db.models import Sum
-
-    from . import kpay
-
-    if not kpay.configuree():
-        return [
-            "KPay (Mobile Money) : clés API absentes (KPAY_API_KEY / "
-            "KPAY_SECRET_KEY) — moyen de paiement mobile désactivé"
-        ]
-    env = "TEST (sandbox, aucun argent réel)" if kpay.est_test() else "PRODUCTION"
-    lignes = [
-        f"KPay (Mobile Money) : configuré en {env} — "
-        f"{len(kpay.PROVIDERS)} opérateurs supportés"
-    ]
-    ops = societe.kpay_operations
-    nb = ops.count()
-    if nb:
-        depots = ops.filter(type_operation="DEPOSIT")
-        retraits = ops.filter(type_operation="PAYOUT")
-        total_depots = depots.filter(statut="COMPLETED").aggregate(
-            t=Sum("montant")
-        )["t"] or 0
-        total_retraits = retraits.filter(statut="COMPLETED").aggregate(
-            t=Sum("montant")
-        )["t"] or 0
-        lignes.append(
-            f"{nb} opérations KPay : {depots.filter(statut='COMPLETED').count()} "
-            f"dépôts réussis ({total_depots}) et "
-            f"{retraits.filter(statut='COMPLETED').count()} retraits réussis "
-            f"({total_retraits})"
-        )
-    else:
-        lignes.append("Aucune opération KPay pour l'instant")
-    return lignes
-
-
 def build_system_prompt(societe, modules):
     """Prompt système envoyé à Groq, borné aux modules autorisés."""
     stats = get_module_stats(societe, modules)
@@ -204,7 +156,7 @@ def build_system_prompt(societe, modules):
         blk = stats.get(key)
         if blk:
             contexte.append(f"- {blk['label']} : " + "; ".join(blk["lines"]))
-    # Blocs dérivés d'un module autorisé (ex. KPay attaché aux paiements).
+    # Blocs dérivés d'un module autorisé.
     for key, blk in stats.items():
         if key not in modules and blk:
             contexte.append(f"- {blk['label']} : " + "; ".join(blk["lines"]))
@@ -566,9 +518,6 @@ def repondre_hors_ligne(societe, modules, question):
     if has("financ", "solde", "tresor", "argent", "caisse", "budget",
            "depense", "revenu", "recette", "encaiss", "bilan", "wallet"):
         routes += ["finances", "paiements", "depenses"]
-    if has("kpay", "mobile money", "monnaie mobile", "momo", "orange money",
-           "m-pesa", "mpesa", "mtn", "moov", "retrait mobile", "virement mobile"):
-        routes += ["paiements", "kpay"]
     if has("employ", "personnel", "equipe", "effectif", "recrut", "contrat"):
         routes += ["employes", "contrats"]
     if has("client"):

@@ -1,0 +1,75 @@
+{% comment %}
+Pop-up de réabonnement — affiché UNIQUEMENT au créateur de la société (context processor
+abonnement_alerte) quand l'abonnement se termine dans 7 jours ou moins, ou a expiré / été suspendu.
+« Plus tard » le masque jusqu'au lendemain (avant l'échéance) ou pour la session (après).
+{% endcomment %}
+{% if abo_alerte %}
+{% with e=abo_alerte %}
+<div class="abo-pop" id="abo-pop" role="dialog" aria-modal="true" aria-labelledby="abo-pop-titre" hidden
+     data-cle="abo-pop:{{ e.abonnement.pk }}:{{ e.niveau }}" data-portee="{% if e.niveau == 'bientot' %}jour{% else %}session{% endif %}">
+    <div class="abo-pop-fond" data-abo-fermer></div>
+    <div class="abo-pop-carte">
+        <div class="abo-pop-ico {{ e.niveau }}" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                {% if e.niveau == "bientot" %}<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>{% else %}<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>{% endif %}
+            </svg>
+        </div>
+        <h2 id="abo-pop-titre">
+            {% if e.niveau == "bientot" %}{% if e.jours_restants == 0 %}Votre abonnement se termine aujourd'hui{% elif e.jours_restants == 1 %}Votre abonnement se termine demain{% else %}Votre abonnement se termine dans {{ e.jours_restants }} jours{% endif %}
+            {% elif e.niveau == "suspendu" %}Votre abonnement est suspendu
+            {% else %}Votre abonnement a pris fin{% endif %}
+        </h2>
+        <p>
+            {% if e.niveau == "bientot" %}Forfait <b>{{ e.forfait.nom }}</b> valable jusqu'au <b>{{ e.abonnement.date_fin|date:"d/m/Y" }}</b>.
+            Réabonnez-vous pour continuer à profiter de tous nos services, sans interruption pour votre équipe.
+            {% else %}Vos employés n'ont plus accès à l'application pour le moment ; vos données sont conservées.
+            Réabonnez-vous pour profiter à nouveau de tous nos services.{% endif %}
+        </p>
+        <div class="abo-pop-actions">
+            {% if e.niveau != "suspendu" %}
+            <a class="abo-pop-ok" href="{% if e.abonnement.statut == 'EN_ATTENTE' or e.niveau == 'expire' %}{% url 'abonnement_payer' e.abonnement.jeton %}{% else %}{% url 'gestion:mon_abonnement' %}{% endif %}">Se réabonner — {{ e.forfait.prix_affiche }}</a>
+            {% endif %}
+            <a class="abo-pop-sec" href="{% url 'gestion:mon_abonnement' %}">Voir les offres</a>
+            <button type="button" class="abo-pop-plus" data-abo-fermer>Plus tard</button>
+        </div>
+    </div>
+</div>
+<style>
+    .abo-pop { position: fixed; inset: 0; z-index: 9990; display: grid; place-items: center; padding: 16px; }
+    .abo-pop[hidden] { display: none; }
+    .abo-pop-fond { position: absolute; inset: 0; background: rgba(15, 23, 42, .45); backdrop-filter: blur(3px); }
+    .abo-pop-carte { position: relative; width: min(460px, 100%); background: var(--ui-card, #fff); color: var(--ui-text, #0f172a); border-radius: 22px; padding: 28px 26px 22px; text-align: center;
+        box-shadow: 0 40px 90px -40px rgba(15, 23, 42, .6); animation: abo-pop-in .25s ease; }
+    @keyframes abo-pop-in { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+    .abo-pop-ico { width: 60px; height: 60px; margin: 0 auto 14px; border-radius: 18px; display: grid; place-items: center; background: #fff7ed; color: #ea580c; }
+    .abo-pop-ico.bientot { background: #eff6ff; color: #2563eb; }
+    .abo-pop-carte h2 { margin: 0 0 8px; font-size: 1.2rem; letter-spacing: -.01em; }
+    .abo-pop-carte p { margin: 0 0 20px; font-size: .9rem; line-height: 1.6; color: var(--ui-muted, #64748b); }
+    .abo-pop-actions { display: flex; flex-direction: column; gap: .5rem; }
+    .abo-pop-ok, .abo-pop-sec, .abo-pop-plus { display: flex; align-items: center; justify-content: center; height: 44px; border-radius: 12px; font-weight: 700; font-size: .9rem; text-decoration: none; cursor: pointer; font-family: inherit; }
+    .abo-pop-ok { background: var(--accent, #2563eb); color: #fff; }
+    .abo-pop-sec { border: 1px solid var(--ui-border, #e2e8f0); color: var(--ui-text, #0f172a); }
+    .abo-pop-plus { border: 0; background: none; color: var(--ui-muted, #64748b); font-weight: 600; }
+</style>
+<script>
+(function () {
+    var pop = document.getElementById("abo-pop");
+    if (!pop) return;
+    var cle = pop.getAttribute("data-cle"), jour = new Date().toISOString().slice(0, 10);
+    var stockage = pop.getAttribute("data-portee") === "jour" ? window.localStorage : window.sessionStorage;
+    var valeur = pop.getAttribute("data-portee") === "jour" ? jour : "1";
+    try { if (stockage.getItem(cle) === valeur) return; } catch (e) { /* stockage indisponible : on affiche */ }
+    // Pas de pop-up par-dessus les pages d'abonnement elles-mêmes
+    if (location.pathname.indexOf("/gestion/societe/abonnement/") === 0) return;
+    pop.hidden = false;
+    pop.querySelectorAll("[data-abo-fermer]").forEach(function (b) {
+        b.addEventListener("click", function () {
+            pop.hidden = true;
+            try { stockage.setItem(cle, valeur); } catch (e) { /* ignore */ }
+        });
+    });
+    document.addEventListener("keydown", function (ev) { if (ev.key === "Escape" && !pop.hidden) pop.querySelector("[data-abo-fermer]").click(); });
+})();
+</script>
+{% endwith %}
+{% endif %}

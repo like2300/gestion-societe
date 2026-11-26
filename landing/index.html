@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Garage du Quartier — Réparation & entretien auto de confiance</title>
+  <meta name="description" content="Garage auto de quartier : révision, freins, climatisation, pneus, carrosserie. Devis gratuit, rendez-vous en ligne.">
+
+  <!-- Polices : Oswald pour les titres (fort, automobile), Inter pour le corps -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- shadcn CSS variables (fond, texte, chart-1…5 pour le globe) -->
+  <link rel="stylesheet" href="/components/ui/globals.css" />
+  <!-- GSAP + ScrollTrigger (vraies animations) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            garage: {
+              dark: '#0a0a0a',
+              surface: '#111111',
+              surface2: '#181818',
+              accent: '#f97316',
+              accentDark: '#ea580c',
+              text: '#f3f4f6',
+              muted: '#9ca3af',
+              border: '#272727',
+            },
+            chart: {
+              1: 'hsl(var(--chart-1))',
+              2: 'hsl(var(--chart-2))',
+              3: 'hsl(var(--chart-3))',
+              4: 'hsl(var(--chart-4))',
+              5: 'hsl(var(--chart-5))',
+            }
+          },
+          fontFamily: {
+            display: ['Oswald', 'sans-serif'],
+            body: ['Inter', 'sans-serif'],
+          },
+          spacing: {
+            '18': '4.5rem',
+            '22': '5.5rem',
+          },
+        },
+      },
+    }
+  </script>
+
+  <style>
+    /* Règle priorité 2 : focus visible pour la navigation au clavier */
+    :focus-visible {
+      outline: 3px solid #f97316;
+      outline-offset: 3px;
+    }
+    /* Règle priorité 7 : respecter prefers-reduced-motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+    body {
+      background-color: #0a0a0a;
+      color: #f3f4f6;
+      font-family: 'Inter', sans-serif;
+    }
+    .font-display {
+      font-family: 'Oswald', sans-serif;
+      letter-spacing: -0.02em;
+    }
+    .nav-blur {
+      backdrop-filter: blur(12px);
+      background: rgba(10, 10, 10, 0.8);
+    }
+    /* Illustration voiture stylisée en CSS (pas d'image externe, pas de droit) */
+    .car-body {
+      position: relative;
+      width: 100%;
+      height: 260px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      border: 1px solid #272727;
+      box-shadow: 0 20px 40px -10px rgba(0,0,0,0.6);
+      overflow: hidden;
+    }
+    .car-roof {
+      position: absolute;
+      top: 28px;
+      left: 10%;
+      right: 10%;
+      height: 70px;
+      background: #111827;
+      border-top-left-radius: 18px;
+      border-top-right-radius: 18px;
+      border: 1px solid #272727;
+      border-bottom: none;
+      z-index: 2;
+    }
+    .car-cabin {
+      position: absolute;
+      top: 34px;
+      left: 12%;
+      right: 12%;
+      height: 56px;
+      background: linear-gradient(180deg, #374151, #1f2937);
+      border-radius: 12px;
+      z-index: 3;
+    }
+    .car-window {
+      position: absolute;
+      top: 42px;
+      left: 14%;
+      right: 14%;
+      height: 40px;
+      background: #0ea5e9;
+      border-radius: 10px;
+      opacity: 0.85;
+      z-index: 4;
+    }
+    .car-wheel {
+      position: absolute;
+      bottom: 22px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 6px solid #f97316;
+      z-index: 5;
+    }
+    .car-wheel.left { left: 18%; }
+    .car-wheel.right { right: 18%; }
+    .car-wheel-inner {
+      position: absolute;
+      inset: 6px;
+      border-radius: 50%;
+      border: 2px solid #374151;
+      background: #0b0b0b;
+    }
+    .car-light {
+      position: absolute;
+      top: 130px;
+      width: 26px;
+      height: 14px;
+      border-radius: 7px;
+      background: #fbbf24;
+      box-shadow: 0 0 12px #fbbf24;
+      z-index: 4;
+    }
+    .car-light.left { left: 6px; }
+    .car-light.right { right: 6px; }
+
+    /* Révélation au scroll (GSAP) */
+    .reveal {
+      opacity: 0;
+      y: 30px;
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-garage-accent selection:text-white">
+
+  <!-- ===================== NAVBAR ===================== -->
+  <nav class="fixed top-0 left-0 right-0 z-50 nav-blur border-b border-garage-border">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <!-- Logo -->
+        <a href="#" class="flex items-center gap-2 font-display font-bold text-xl text-white tracking-tight">
+          <div class="w-9 h-9 rounded-lg bg-garage-accent flex items-center justify-center shadow-[0_0_12px_rgba(249,115,22,0.5)]">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          </div>
+          <span>Garage du Quartier</span>
+        </a>
+
+        <!-- Liens bureau -->
+        <div class="hidden md:flex items-center gap-8 text-sm font-medium text-garage-muted">
+          <a href="#services" class="hover:text-white transition-colors">Services</a>
+          <a href="#a-propos" class="hover:text-white transition-colors">À propos</a>
+          <a href="#temoignages" class="hover:text-white transition-colors">Témoignages</a>
+          <a href="#contact" class="hover:text-white transition-colors">Contact</a>
+          <a href="#rendez-vous" class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-garage-accent text-white font-semibold hover:bg-garage-accentDark transition-colors shadow-[0_0_14px_rgba(249,115,22,0.4)]">
+            Devis gratuit
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l8 0 0 8l-8 0l-8-8l8-8z"/></svg>
+          </a>
+        </div>
+
+        <!-- Bouton menu mobile -->
+        <button id="menuBtn" class="md:hidden p-2 text-garage-text hover:text-garage-accent" aria-label="Ouvrir le menu" aria-expanded="false">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Menu mobile -->
+    <div id="mobileMenu" class="hidden md:hidden border-t border-garage-border bg-garage-surface p-4">
+      <a href="#services" class="block px-4 py-3 text-sm font-medium text-garage-text hover:text-garage-accent transition-colors">Services</a>
+      <a href="#a-propos" class="block px-4 py-3 text-sm font-medium text-garage-text hover:text-garage-accent transition-colors">À propos</a>
+      <a href="#temoignages" class="block px-4 py-3 text-sm font-medium text-garage-text hover:text-garage-accent transition-colors">Témoignages</a>
+      <a href="#contact" class="block px-4 py-3 text-sm font-medium text-garage-text hover:text-garage-accent transition-colors">Contact</a>
+      <a href="#rendez-vous" class="mt-4 block text-center px-4 py-3 rounded-lg bg-garage-accent text-white font-semibold">Prendre rendez-vous</a>
+    </div>
+  </nav>
+
+  <main>
+
+    <!-- ===================== HERO ===================== -->
+    <section class="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
+      <div class="absolute inset-0 -z-10 bg-[linear-gradient(180deg,_#0a0a0a_0%,_#111827_100%)]"></div>
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid lg:grid-cols-2 gap-12 items-center">
+          <div class="reveal" id="heroText">
+            <span class="inline-block px-3 py-1.5 rounded-full bg-garage-accent/10 text-garage-accent text-[11px] font-semibold uppercase tracking-[0.15em] mb-6">
+              Réparation auto de quartier
+            </span>
+            <h1 class="font-display font-bold text-4xl sm:text-5xl lg:text-6xl text-white leading-tight mb-6">
+              Votre voiture, <br><span class="text-garage-accent">entre de bonnes mains.</span>
+            </h1>
+            <p class="text-lg text-garage-muted mb-8 max-w-lg leading-relaxed">
+              Révision, freins, climatisation, pneus, carrosserie et diagnostic. Devis transparent, pas de surprise. Rendez-vous en 2 clics.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4">
+              <a href="#rendez-vous" class="inline-flex items-center justify-center px-8 py-4 rounded-lg bg-garage-accent text-white font-display font-bold text-lg hover:bg-garage-accentDark transition-colors shadow-[0_0_20px_rgba(249,115,22,0.5)]">
+                Prendre rendez-vous
+              </a>
+              <a href="#services" class="inline-flex items-center justify-center px-8 py-4 rounded-lg bg-garage-surface border border-garage-border text-white font-semibold hover:bg-garage-surface2 transition-colors">
+                Voir nos services
+                <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l8 0 0 8l-8 0l-8-8l8-8z"/></svg>
+              </a>
+            </div>
+            <div class="mt-10 flex items-center gap-6 text-sm text-garage-muted">
+              <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 text-garage-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span>Devis gratuit en 24h</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 text-garage-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                <span>Garantie 12 mois</span>
+              </div>
+            </div>
+          </div>
+          <div class="reveal" id="heroVisual" class="flex justify-center">
+            <div class="w-full max-w-md relative">
+              <div class="car-body">
+                <div class="car-roof"></div>
+                <div class="car-cabin">
+                  <div class="car-window"></div>
+                </div>
+                <div class="car-wheel left"><div class="car-wheel-inner"></div></div>
+                <div class="car-wheel right"><div class="car-wheel-inner"></div></div>
+                <div class="car-light left"></div>
+                <div class="car-light right"></div>
+              </div>
+              <div class="absolute -bottom-6 -left-6 w-24 h-24 bg-garage-accent rounded-full blur-3xl opacity-20"></div>
+              <div class="absolute -top-8 -right-8 w-32 h-32 bg-garage-accent rounded-full blur-3xl opacity-10"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== SERVICES ===================== -->
+    <section id="services" class="py-20 bg-garage-surface border-y border-garage-border">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-16 reveal">
+          <h2 class="font-display font-bold text-3xl sm:text-4xl text-white mb-4">Nos services</h2>
+          <p class="text-garage-muted max-w-2xl mx-auto">Entretien et réparation de toutes marques, fait dans les règles de l'art.</p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-6 reveal" id="servicesGrid">
+          <!-- Service 1 -->
+          <div class="group p-6 rounded-2xl bg-garage-dark border border-garage-border hover:border-garage-accent/50 transition-colors hover:bg-garage-surface2 shadow-lg">
+            <div class="w-12 h-12 rounded-lg bg-garage-accent/10 flex items-center justify-center mb-5 group-hover:bg-garage-accent transition-colors">
+              <svg class="w-6 h-6 text-garage-accent group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+            </div>
+            <h3 class="font-display font-semibold text-lg text-white mb-2">Révision complète</h3>
+            <p class="text-sm text-garage-muted leading-relaxed">Vidange, filtres, niveaux, contrôle général. Votre voiture prête pour la route.</p>
+          </div>
+          <!-- Service 2 -->
+          <div class="group p-6 rounded-2xl bg-garage-dark border border-garage-border hover:border-garage-accent/50 transition-colors hover:bg-garage-surface2 shadow-lg">
+            <div class="w-12 h-12 rounded-lg bg-garage-accent/10 flex items-center justify-center mb-5 group-hover:bg-garage-accent transition-colors">
+              <svg class="w-6 h-6 text-garage-accent group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            </div>
+            <h3 class="font-display font-semibold text-lg text-white mb-2">Freins &amp; amortisseurs</h3>
+            <p class="text-sm text-garage-muted leading-relaxed">Plaquettes, disques, liquide de frein, amortisseurs. Sécurité avant tout.</p>
+          </div>
+          <!-- Service 3 -->
+          <div class="group p-6 rounded-2xl bg-garage-dark border border-garage-border hover:border-garage-accent/50 transition-colors hover:bg-garage-surface2 shadow-lg">
+            <div class="w-12 h-12 rounded-lg bg-garage-accent/10 flex items-center justify-center mb-5 group-hover:bg-garage-accent transition-colors">
+              <svg class="w-6 h-6 text-garage-accent group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+            </div>
+            <h3 class="font-display font-semibold text-lg text-white mb-2">Climatisation</h3>
+            <p class="text-sm text-garage-muted leading-relaxed">Recharge, entretien, filtre d'habitacle. Confort en toutes saisons.</p>
+          </div>
+          <!-- Service 4 -->
+          <div class="group p-6 rounded-2xl bg-garage-dark border border-garage-border hover:border-garage-accent/50 transition-colors hover:bg-garage-surface2 shadow-lg">
+            <div class="w-12 h-12 rounded-lg bg-garage-accent/10 flex items-center justify-center mb-5 group-hover:bg-garage-accent transition-colors">
+              <svg class="w-6 h-6 text-garage-accent group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            </div>
+            <h3 class="font-display font-semibold text-lg text-white mb-2">Pneumatique</h3>
+            <p class="text-sm text-garage-muted leading-relaxed">Montage, équilibrage, permutation, géométrie. Pneus toutes saisons.</p>
+          </div>
+          <!-- Service 5 -->
+          <div class="group p-6 rounded-2xl bg-garage-dark border border-garage-border hover:border-garage-accent/50 transition-colors hover:bg-garage-surface2 shadow-lg">
+            <div class="w-12 h-12 rounded-lg bg-garage-accent/10 flex items-center justify-center mb-5 group-hover:bg-garage-accent transition-colors">
+              <svg class="w-6 h-6 text-garage-accent group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            </div>
+            <h3 class="font-display font-semibold text-lg text-white mb-2">Diagnostic électronique</h3>
+            <p class="text-sm text-garage-muted leading-relaxed">Lecture des défauts, tableau de bord, capteurs. Intervention ciblée.</p>
+          </div>
+          <!-- Service 6 -->
+          <div class="group p-6 rounded-2xl bg-garage-dark border border-garage-border hover:border-garage-accent/50 transition-colors hover:bg-garage-surface2 shadow-lg">
+            <div class="w-12 h-12 rounded-lg bg-garage-accent/10 flex items-center justify-center mb-5 group-hover:bg-garage-accent transition-colors">
+              <svg class="w-6 h-6 text-garage-accent group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            </div>
+            <h3 class="font-display font-semibold text-lg text-white mb-2">Carrosserie &amp; peinture</h3>
+            <p class="text-sm text-garage-muted leading-relaxed">Bosses, rayures, peinture. Votre voiture retrouve son allure.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== STATS ===================== -->
+    <section class="py-20 bg-garage-dark">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid md:grid-cols-4 gap-8 text-center reveal" id="statsGrid">
+          <div>
+            <div class="text-3xl font-display font-bold text-garage-accent stat-counter" data-target="15">0</div>
+            <p class="text-garage-muted text-sm mt-2">ans d'expérience</p>
+          </div>
+          <div>
+            <div class="text-3xl font-display font-bold text-garage-accent stat-counter" data-target="4200">0</div>
+            <p class="text-garage-muted text-sm mt-2">véhicules révisés</p>
+          </div>
+          <div>
+            <div class="text-3xl font-display font-bold text-garage-accent stat-counter" data-target="98">0</div>
+            <p class="text-garage-muted text-sm mt-2">% clients satisfaits</p>
+          </div>
+          <div>
+            <div class="text-3xl font-display font-bold text-garage-accent stat-counter" data-target="24">0</div>
+            <p class="text-garage-muted text-sm mt-2">h de réponse devis</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== A PROPOS ===================== -->
+    <section id="a-propos" class="py-20">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid lg:grid-cols-2 gap-16 items-center">
+          <div class="reveal order-2 lg:order-1">
+            <h2 class="font-display font-bold text-3xl sm:text-4xl text-white mb-6">Un garage de quartier, honnête et proche de vous</h2>
+            <p class="text-lg text-garage-muted mb-6 leading-relaxed">
+              Ici, on vous parle vrai. Pas de réparation inutile, pas de prix caché. Nous prenons le temps de vous expliquer ce que votre voiture a besoin, et pourquoi.
+            </p>
+            <ul class="space-y-4 reveal mt-8" id="aboutList">
+              <li class="flex items-center gap-3">
+                <svg class="w-5 h-5 text-garage-accent flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                <span>Devis gratuit avant chaque intervention</span>
+              </li>
+              <li class="flex items-center gap-3">
+                <svg class="w-5 h-5 text-garage-accent flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                <span>Pièces de qualité, garantie 12 mois</span>
+              </li>
+              <li class="flex items-center gap-3">
+                <svg class="w-5 h-5 text-garage-accent flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                <span>Véhicule de prêt selon disponibilité</span>
+              </li>
+            </ul>
+          </div>
+          <div class="order-1 lg:order-2 reveal">
+            <div class="h-[400px] rounded-2xl bg-garage-surface border border-garage-border overflow-hidden relative">
+              <div class="absolute inset-0 bg-garage-dark/50"></div>
+              <div class="car-body mx-auto mt-8 w-[80%] max-w-md"></div>
+              <div class="absolute bottom-8 left-8 text-white">
+                <p class="font-display font-bold text-xl">Garage du Quartier</p>
+                <p class="text-garage-muted">Ouvert du lundi au samedi</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== TEMOIGNAGES (TestimonialGlobe React) ===================== -->
+    <section id="temoignages" class="py-20 bg-garage-surface border-y border-garage-border">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-16 reveal">
+          <h2 class="font-display font-bold text-3xl sm:text-4xl text-white mb-4">Ce qu'ils disent</h2>
+          <p class="text-garage-muted">Des clients du quartier, satisfaits.</p>
+        </div>
+        <!-- Conteneur monté par le composant React TestimonialGlobe (voir /components/ui/testimonial-globe.tsx) -->
+        <div id="testimonial-globe-root" class="reveal min-h-[560px] flex items-center justify-center">
+          <p class="text-garage-muted text-sm">Chargement des témoignages…</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== CONTACT / RENDEZ-VOUS ===================== -->
+    <section id="rendez-vous" class="py-20">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid lg:grid-cols-2 gap-12">
+          <div class="reveal">
+            <h2 class="font-display font-bold text-3xl sm:text-4xl text-white mb-6">Prenez rendez-vous</h2>
+            <p class="text-garage-muted mb-8 leading-relaxed">
+              Choisissez votre service et votre créneau. Nous vous rappelons pour confirmer dans les 24 heures.
+            </p>
+            <div class="space-y-4">
+              <div class="flex items-center gap-3">
+                <svg class="w-5 h-5 text-garage-accent flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                <span class="text-sm text-white">12 Rue de la République, Quartier Centre</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <svg class="w-5 h-5 text-garage-accent flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 011 1.72l.78 2.82a1 1 0 01-1.16 1.23l-3.14.63a1 1 0 01-1.11-1.01l-.78-2.82A1 1 0 014.3 3h.14A1 1 0 015 5c0 .31.13.58.27.81l2.2 4.43a1 1 0 01-.42 1.26l-2.3.46a1 1 0 01-1-.18l-.78-2.82A1 1 0 00-.16-.57l-.78-2.82A1 1 0 013 5z"/></svg>
+                <span class="text-sm text-white">01 23 45 67 89</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <svg class="w-5 h-5 text-garage-accent flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2 2 0 004 0V12zm0 0h3m-3-4hM11 12a2 2 0 114 0 2 2 0 01-4 0z"/></svg>
+                <span class="text-sm text-white">lun. – sam. : 8h30 – 18h30</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="reveal">
+            <form id="contactForm" class="space-y-4 p-8 rounded-2xl bg-garage-dark border border-garage-border shadow-xl">
+              <div class="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-garage-text mb-1">Nom complet</label>
+                  <input type="text" required class="w-full px-4 py-3 rounded-lg bg-garage-surface border border-garage-border text-white placeholder-garage-muted focus:outline-none focus:border-garage-accent focus:ring-1 focus:ring-garage-accent transition-colors" placeholder="Jean Dupont">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-garage-text mb-1">Email</label>
+                  <input type="email" required class="w-full px-4 py-3 rounded-lg bg-garage-surface border border-garage-border text-white placeholder-garage-muted focus:outline-none focus:border-garage-accent focus:ring-1 focus:ring-garage-accent transition-colors" placeholder="jean@email.com">
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-garage-text mb-1">Téléphone</label>
+                <input type="tel" required class="w-full px-4 py-3 rounded-lg bg-garage-surface border border-garage-border text-white placeholder-garage-muted focus:outline-none focus:border-garage-accent focus:ring-1 focus:ring-garage-accent transition-colors" placeholder="01 23 45 67 89">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-garage-text mb-1">Service souhaité</label>
+                <select class="w-full px-4 py-3 rounded-lg bg-garage-surface border border-garage-border text-white placeholder-garage-muted focus:outline-none focus:border-garage-accent focus:ring-1 focus:ring-garage-accent transition-colors">
+                  <option>Révision complète</option>
+                  <option>Freins &amp; amortisseurs</option>
+                  <option>Climatisation</option>
+                  <option>Pneumatique</option>
+                  <option>Diagnostic électronique</option>
+                  <option>Carrosserie &amp; peinture</option>
+                  <option>Autre</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-garage-text mb-1">Message (optionnel)</label>
+                <textarea rows="3" class="w-full px-4 py-3 rounded-lg bg-garage-surface border border-garage-border text-white placeholder-garage-muted focus:outline-none focus:border-garage-accent focus:ring-1 focus:ring-garage-accent transition-colors" placeholder="Précisez le souci constaté..."></textarea>
+              </div>
+              <button type="submit" class="w-full px-6 py-4 rounded-lg bg-garage-accent text-white font-display font-bold text-lg hover:bg-garage-accentDark transition-colors shadow-[0_0_18px_rgba(249,115,22,0.4)]">
+                Envoyer la demande
+              </button>
+              <p id="formMsg" class="text-sm text-garage-accent hidden"></p>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer class="border-t border-garage-border bg-garage-dark py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col md:flex-row justify-between items-center gap-6">
+        <div class="flex items-center gap-2 font-display font-bold text-xl text-white tracking-tight">
+          <div class="w-6 h-6 rounded bg-garage-accent flex items-center justify-center">
+            <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          </div>
+          <span>Garage du Quartier</span>
+        </div>
+        <p class="text-garage-muted text-sm">© 2026 Garage du Quartier. Tous droits réservés.</p>
+        <div class="flex gap-4">
+          <a href="#" class="text-garage-muted hover:text-white transition-colors" aria-label="Facebook"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.09 3.093 9.401 7.384 11.092v-7.023H3.792v-2.26h2.828v-2.85c0-2.016 1.182-3.228 3.248-3.228h1.983c.211 0 .42.015.631.046v2.59h-1.48c-1.233 0-1.484.662-1.484 1.43v1.834h2.773l-.463 2.26h-2.31v7.023C12.037 20.801 16.12 16.284 16.12 12.073z"/></svg></a>
+          <a href="#" class="text-garage-muted hover:text-white transition-colors" aria-label="Instagram"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.071 3.252.148 4.771 1.691 4.919 4.533.025.482.027.952-.002 1.425-.023.392-.06.782-.212 1.139-.296.694-.797 1.23-1.444 1.581-.346.148-1.819.152-2.165.152s-1.82-.004-2.165-.152c-.648-.351-1.149-.887-1.444-1.581-.152-.357-.189-.747-.212-1.139-.029-.473-.027-.943-.002-1.425.148-2.842 1.666-4.385 4.919-4.533 1.265-.06 1.645-.072 4.85-.071zm0 2.163c-3.259 0-3.662.014-4.922.07-3.177.137-4.66 1.7-4.797 4.461-.02.424-.023.837-.006 1.253.011.293.039.584.152.85.149.354.49.668.95.86.298.126.619.133.919.133.299 0 .621-.007.919-.133.46-.192.801-.506.95-.86.113-.266.142-.557.152-.85.017-.416.014-.829-.006-1.253-.137-2.762-1.62-4.325-4.797-4.461-1.26-.056-1.663-.071-4.922-.071-3.258 0-3.66.015-4.918.072-3.233.14-4.742 1.68-4.88 4.494-.023.43-.026.848-.01 1.275.012.302.045.603.164.877.153.352.504.664.958.855.308.129.641.136.951.136.31 0 .643-.007.951-.136.454-.191.805-.503.958-.855.119-.274.152-.575.164-.877.016-.427.013-.845-.01-1.275-.138-2.814-1.647-4.354-4.88-4.494-1.342-.065-1.829-.082-5.304-.082s-3.962.017-5.304.082c-2.866.14-4.207 1.6-4.324 4.245-.02.448-.024.885-.008 1.328.008.244.033.483.125.713.118.302.388.565.737.725.238.107.493.111.737.111s.499-.004.737-.111c.349-.16.619-.423.737-.725.092-.23.117-.469.125-.713.016-.443.012-.88-.008-1.328-.116-2.644-1.457-4.104-4.324-4.245-1.341-.064-1.828-.081-5.303-.081-3.474 0-3.961.017-5.303.082-2.866.14-4.207 1.6-4.324 4.245-.02.448-.024.885-.008 1.328.008.244.033.483.125.713.118.302.388.565.737.725.238.107.493.111.737.111s.499-.004.737-.111c.349-.16.619-.423.737-.725.092-.23.117-.469.125-.713.016-.443.012-.88-.008-1.328-.117-2.645-1.458-4.105-4.325-4.246C6.662 4.325 6.163 4.342 2.163 4.342c-.024 0-.045.011-.072.012-.298.014-.542.257-.598.558q-.005.025-.009.051c-.013.628.008 1.239.121 1.824.035.178.077.356.141.532.155.425.507.797.994 1.055.271.144 1.357.148 1.824.16.129.003.254.017.381.017h.003c3.115 0 3.604-.017 4.854-.08 2.72-.132 3.977-1.499 4.084-4.113.017-.435.02-.855.006-1.27-.006-.198-.026-.393-.098-.58-.127-.321-.414-.594-.772-.772-.187-.072-.382-.092-.58-.098-.415-.014-.835-.011-1.27.006-2.614.087-3.982 1.364-4.114 4.084-.062 1.25-.079 1.739-.08 4.854 0 .127.014.252.017.381.012.467.016 1.553.16 1.824.258.258.63.84 1.055.995.176.064.354.106.532.141.585.113 1.196.134 1.824.121q.026-.004.051-.009c.301-.056.544-.3.558-.598.001-.027.012-.048.012-.072 0-4.001-.017-4.5-4.341-4.5"/></svg></a>
+        </div>
+      </div>
+    </footer>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Règle priorité 7 : respecter prefers-reduced-motion
+      const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (prefersReduced) {
+        document.querySelectorAll('.reveal').forEach(function (el) {
+          el.style.opacity = '1';
+          el.style.transform = 'none';
+        });
+        return;
+      }
+
+      gsap.registerPlugin(ScrollTrigger);
+
+      // Révélation en cascade des sections au scroll
+      gsap.utils.toArray('.reveal').forEach(function (elem) {
+        gsap.from(elem, {
+          scrollTrigger: {
+            trigger: elem,
+            start: 'top 85%',
+            toggleActions: 'play none none reverse',
+          },
+          opacity: 0,
+          y: 40,
+          duration: 0.8,
+          ease: 'power2.out',
+        });
+      });
+
+      // Stagger des cartes de services
+      gsap.from('#servicesGrid > *', {
+        scrollTrigger: {
+          trigger: '#servicesGrid',
+          start: 'top 85%',
+          toggleActions: 'play none none reverse',
+        },
+        opacity: 0,
+        y: 30,
+        stagger: 0.15,
+        duration: 0.6,
+        ease: 'power2.out',
+      });
+
+      // Compteur animé des stats
+      gsap.utils.toArray('.stat-counter').forEach(function (el) {
+        var target = parseInt(el.getAttribute('data-target'), 10);
+        gsap.fromTo(el,
+          { innerHTML: 0 },
+          {
+            innerHTML: target,
+            scrollTrigger: {
+              trigger: el,
+              start: 'top 85%',
+              toggleActions: 'play none none reverse',
+            },
+            duration: 1.2,
+            snap: { innerHTML: 1 },
+            ease: 'power2.out',
+          }
+        );
+      });
+
+    });
+
+    // Menu mobile
+    (function () {
+      var btn = document.getElementById('menuBtn');
+      var menu = document.getElementById('mobileMenu');
+      var open = false;
+      btn.addEventListener('click', function () {
+        open = !open;
+        btn.setAttribute('aria-expanded', open);
+        menu.classList.toggle('hidden');
+      });
+    })();
+
+    // Formulaire de contact (démo)
+    (function () {
+      var form = document.getElementById('contactForm');
+      var msg = document.getElementById('formMsg');
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        msg.classList.remove('hidden');
+        msg.textContent = 'Merci ! Votre demande a été envoyée. Nous vous rappelons sous 24h.';
+        form.reset();
+        setTimeout(function () { msg.classList.add('hidden'); }, 6000);
+      });
+    })();
+
+    // Intégration du composant React TestimonialGlobe dans la section #temoignages.
+    // Ce bloc est une placeholder : le montage réel se fait après build Vite/React.
+    // Voir INTEGRATION.md pour la procédure complète.
+    (function () {
+      var root = document.getElementById('testimonial-globe-root');
+      if (!root) return;
+      root.innerHTML = '<div class="flex items-center justify-center h-full text-garage-muted text-sm">Composant React TestimonialGlobe en attente de montage (build Vite requis).</div>';
+    })();
+  </script>
+</body>
+</html>

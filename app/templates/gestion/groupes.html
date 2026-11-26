@@ -1,0 +1,259 @@
+{% extends "gestion/base_dashboard.html" %}
+
+{% block dash_title %}Groupes — {{ societe.nom }}{% endblock %}
+
+{% block content %}
+    <div class="ui-page-head">
+        <div>
+            <h1>Groupes</h1>
+            <p>Les groupes de discussion dont vous faites partie{% if est_proprietaire %}, et ceux de toute l'équipe{% endif %}.</p>
+        </div>
+        {% if peut_creer %}
+        <button type="button" class="btn-primary" data-gr-nouveau>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Nouveau groupe
+        </button>
+        {% endif %}
+    </div>
+
+    <div class="gr-barre">
+        <label class="gr-recherche">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="search" id="gr-q" placeholder="Rechercher un groupe ou un membre…" autocomplete="off" />
+        </label>
+        {% if not peut_creer %}<span class="gr-note">La création de groupes est réservée aux comptes autorisés (Rôles &amp; Permissions).</span>{% endif %}
+    </div>
+
+    {% with liste=mes_groupes titre="Mes groupes" %}{% include "gestion/snippets/groupes_grille.html" %}{% endwith %}
+    {% if autres_groupes %}
+        {% with liste=autres_groupes titre="Autres groupes de l'équipe" %}{% include "gestion/snippets/groupes_grille.html" %}{% endwith %}
+    {% endif %}
+    {% if not cartes %}
+        <div class="gr-vide panel">
+            <b>Aucun groupe pour l'instant.</b>
+            <p>{% if peut_creer %}Créez un groupe pour échanger avec une équipe, un service ou un projet.{% else %}Vous apparaîtrez ici dès qu'on vous ajoutera à un groupe.{% endif %}</p>
+        </div>
+    {% endif %}
+
+    <style>
+        #dash .gr-barre { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem; margin: .2rem 0 1rem; }
+        #dash .gr-recherche { position: relative; display: flex; align-items: center; flex: 1 1 280px; max-width: 420px; }
+        #dash .gr-recherche svg { position: absolute; left: .8rem; color: var(--ui-faint); z-index: 1; pointer-events: none; }
+        #dash .gr-recherche input { width: 100%; height: 40px; padding: 0 .9rem 0 2.3rem !important; border-radius: 12px; border: 1px solid var(--ui-border); background: var(--ui-card); color: var(--ui-text); }
+        #dash .gr-note { font-size: .78rem; color: var(--ui-muted); }
+        #dash .gr-section-titre { font-size: .82rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ui-muted); margin: 1.2rem 0 .6rem; display: flex; gap: .5rem; align-items: center; }
+        #dash .gr-section-titre small { color: var(--accent); }
+        #dash .gr-grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 1rem; }
+        #dash .gr-carte { background: var(--ui-card); border: 1px solid var(--ui-border); border-radius: 18px; padding: 1rem 1.05rem; display: flex; flex-direction: column; gap: .75rem; box-shadow: var(--ui-shadow); }
+        #dash .gr-carte[hidden] { display: none; }
+        #dash .gr-tete { display: flex; gap: .75rem; align-items: center; }
+        #dash .gr-logo { width: 46px; height: 46px; border-radius: 14px; flex: none; display: grid; place-items: center; font-weight: 800; color: #fff; overflow: hidden; }
+        #dash .gr-logo img { width: 100%; height: 100%; object-fit: cover; }
+        #dash .gr-tete b { font-size: .98rem; color: var(--ui-text); display: block; }
+        #dash .gr-tete small { font-size: .74rem; color: var(--ui-muted); }
+        #dash .gr-role { margin-left: auto; font-size: .68rem; font-weight: 700; padding: .2rem .55rem; border-radius: 999px; background: var(--ui-card-2); color: var(--ui-muted); white-space: nowrap; }
+        #dash .gr-role.admin { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+        #dash .gr-desc { font-size: .83rem; color: var(--ui-muted); margin: 0; }
+        #dash .gr-membres { display: flex; flex-wrap: wrap; gap: .3rem; }
+        #dash .gr-membre { display: inline-flex; align-items: center; gap: .35rem; font-size: .74rem; padding: 2px 8px 2px 2px; border-radius: 999px; background: var(--ui-card-2); color: var(--ui-text); }
+        #dash .gr-membre i { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; font-style: normal; font-size: .6rem; font-weight: 700; color: #fff; }
+        #dash .gr-membre.admin { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent); }
+        #dash .gr-membre em { font-style: normal; color: var(--accent); font-weight: 700; }
+        #dash .gr-meta { font-size: .72rem; color: var(--ui-faint); }
+        #dash .gr-actions { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: auto; }
+        #dash .gr-actions a, #dash .gr-actions button { height: 34px; padding: 0 .8rem; border-radius: 10px; font-size: .78rem; font-weight: 600; display: inline-flex; align-items: center; gap: .35rem; cursor: pointer; text-decoration: none; border: 1px solid var(--ui-border); background: var(--ui-card); color: var(--ui-text); }
+        #dash .gr-actions .principal { background: var(--accent); border-color: var(--accent); color: #fff; }
+        #dash .gr-actions .danger { color: #dc2626; border-color: color-mix(in srgb, #dc2626 35%, transparent); }
+        #dash .gr-vide { padding: 2rem; text-align: center; color: var(--ui-muted); }
+        #dash .gr-vide b { color: var(--ui-text); }
+        .gr-admins { display: flex; flex-direction: column; gap: .3rem; max-height: 200px; overflow: auto; }
+        .gr-admins label { display: flex; align-items: center; gap: .5rem; font-size: .83rem; padding: .35rem .5rem; border-radius: 9px; background: var(--ui-card-2); }
+        .gr-logo-ligne { display: flex; align-items: center; gap: .8rem; }
+        .gr-logo-ligne .gr-logo-apercu { width: 52px; height: 52px; border-radius: 15px; display: grid; place-items: center; overflow: hidden; background: var(--accent); color: #fff; font-weight: 800; }
+        .gr-logo-ligne .gr-logo-apercu img { width: 100%; height: 100%; object-fit: cover; }
+        .gr-membres-liste { display: flex; flex-direction: column; gap: .25rem; max-height: 260px; overflow: auto; margin-top: .4rem; }
+        .gr-membres-liste label { display: flex; align-items: center; gap: .55rem; padding: .4rem .5rem; border-radius: 10px; cursor: pointer; font-size: .84rem; }
+        .gr-membres-liste label:hover { background: var(--ui-card-2); }
+        .gr-membres-liste label[hidden] { display: none; }
+        .gr-membres-liste small { color: var(--ui-muted); font-size: .72rem; }
+        .gr-sous-titre { font-size: .78rem; font-weight: 700; color: var(--ui-muted); margin: 1rem 0 .3rem; }
+        .gr-filtre { width: 100%; height: 36px; border-radius: 10px; border: 1px solid var(--ui-border); padding: 0 .7rem; background: var(--ui-card); color: var(--ui-text); }
+    </style>
+{% endblock content %}
+
+{% block drawer %}
+    <div class="drawer-head">
+        <div>
+            <h2 id="gr-titre-tiroir">Nouveau groupe</h2>
+            <p class="drawer-sub" id="gr-sous-tiroir">Nom, membres et administrateurs du groupe.</p>
+        </div>
+        <button class="drawer-close" data-drawer-close aria-label="Fermer">×</button>
+    </div>
+    <div class="drawer-body">
+        <form id="gr-form" novalidate>
+            {% csrf_token %}
+            <input type="hidden" id="gr-pk" />
+            <div class="gr-logo-ligne">
+                <span class="gr-logo-apercu" id="gr-logo-apercu">G</span>
+                <label class="btn-ghost" style="cursor:pointer">Choisir un logo
+                    <input type="file" id="gr-logo" accept="image/*" hidden />
+                </label>
+            </div>
+            <div class="fgrid" style="margin-top:.8rem">
+                <div class="ffield fspan-2">
+                    <label for="gr-titre">Nom du groupe <span class="req">*</span></label>
+                    <input type="text" id="gr-titre" maxlength="120" required />
+                </div>
+                <div class="ffield fspan-2">
+                    <label for="gr-desc">Description</label>
+                    <input type="text" id="gr-desc" maxlength="255" placeholder="Ex : équipe commerciale, projet X…" />
+                </div>
+            </div>
+            <p class="gr-sous-titre">Membres <span id="gr-nb"></span></p>
+            <input type="search" class="gr-filtre" id="gr-membres-q" placeholder="Rechercher un employé…" autocomplete="off" />
+            <div class="gr-membres-liste" id="gr-membres">
+                {% for e in employes_js %}
+                <label data-nom="{{ e.nom|lower }} {{ e.fonction|lower }}"><input type="checkbox" value="{{ e.pk }}" /> <span>{{ e.nom }}<br/><small>{{ e.fonction|default:"Employé" }}</small></span></label>
+                {% empty %}<p class="gr-note">Aucun employé : ajoutez d'abord des employés.</p>{% endfor %}
+            </div>
+            <p class="gr-sous-titre">Administrateurs du groupe</p>
+            <p class="gr-note" style="margin:0 0 .4rem">Ils peuvent modifier le groupe, gérer ses membres et le supprimer.</p>
+            <div class="gr-admins" id="gr-admins"></div>
+            <div class="factions">
+                <button type="button" class="btn-ghost" data-drawer-close>Annuler</button>
+                <button type="submit" class="btn-primary" id="gr-enregistrer">Créer le groupe</button>
+            </div>
+        </form>
+    </div>
+{% endblock drawer %}
+
+{% block extra_js %}
+    {{ cartes|json_script:"gr-cartes" }}
+    {{ employes_js|json_script:"gr-employes" }}
+    <script>
+    (function () {
+        "use strict";
+        var CARTES = JSON.parse(document.getElementById("gr-cartes").textContent);
+        var EMP = JSON.parse(document.getElementById("gr-employes").textContent);
+        var MOI = {{ moi_pk|default:"null" }};
+        var URL = { creer: "{{ url_creer }}", config: "{{ url_config }}", suppr: "{{ url_supprimer }}", quitter: "{{ url_quitter }}" };
+        function csrf() { return document.querySelector("#gr-form [name=csrfmiddlewaretoken]").value; }
+        function toast(t, m) { if (window.showToast) window.showToast(t, m); }
+        function couleur(n) { var h = 0; for (var i = 0; i < n.length; i++) h = (h * 31 + n.charCodeAt(i)) % 360; return "hsl(" + h + " 60% 46%)"; }
+        function init(n) { return String(n || "?").split(/\s+/).filter(Boolean).slice(0, 2).map(function (x) { return x[0]; }).join("").toUpperCase(); }
+        function url(modele, pk) { return modele.replace("/0/", "/" + pk + "/"); }
+
+        document.querySelectorAll("[data-av]").forEach(function (a) { var n = a.getAttribute("data-av"); a.style.background = couleur(n); if (!a.querySelector("img")) a.textContent = init(n); });
+
+        // Recherche dans les groupes (titre, description, membres)
+        var q = document.getElementById("gr-q");
+        q.addEventListener("input", function () {
+            var mots = q.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
+            document.querySelectorAll(".gr-carte").forEach(function (c) {
+                var t = c.getAttribute("data-recherche");
+                c.hidden = !mots.every(function (m) { return t.indexOf(m) !== -1; });
+            });
+        });
+
+        /* ---------- Tiroir création / modification ---------- */
+        var form = document.getElementById("gr-form"), pk = document.getElementById("gr-pk"), titre = document.getElementById("gr-titre"),
+            desc = document.getElementById("gr-desc"), logo = document.getElementById("gr-logo"), apercu = document.getElementById("gr-logo-apercu"),
+            liste = document.getElementById("gr-membres"), admins = document.getElementById("gr-admins"), nb = document.getElementById("gr-nb");
+        var adminsChoisis = {};
+        function membresCoches() { return Array.prototype.map.call(liste.querySelectorAll("input:checked"), function (c) { return +c.value; }); }
+        function rendreAdmins() {
+            var ids = membresCoches();
+            nb.textContent = ids.length ? "(" + ids.length + ")" : "";
+            admins.innerHTML = ids.length ? ids.map(function (id) {
+                var e = EMP.filter(function (x) { return x.pk === id; })[0] || { nom: "?" };
+                var verrou = id === MOI && !pk.value;  // le créateur administre son nouveau groupe
+                return '<label><input type="checkbox" value="' + id + '"' + (adminsChoisis[id] || verrou ? " checked" : "") + (verrou ? " disabled" : "") + " /> " + e.nom + (verrou ? " <small>(vous)</small>" : "") + "</label>";
+            }).join("") : '<p class="gr-note">Cochez d\'abord des membres.</p>';
+        }
+        liste.addEventListener("change", rendreAdmins);
+        admins.addEventListener("change", function (e) { if (e.target.value) adminsChoisis[e.target.value] = e.target.checked; });
+        document.getElementById("gr-membres-q").addEventListener("input", function () {
+            var v = this.value.toLowerCase().trim();
+            liste.querySelectorAll("label").forEach(function (l) { l.hidden = v && l.getAttribute("data-nom").indexOf(v) === -1; });
+        });
+        titre.addEventListener("input", function () { if (!apercu.querySelector("img")) apercu.textContent = init(titre.value || "G"); });
+        logo.addEventListener("change", function () {
+            var f = logo.files && logo.files[0];
+            if (f && f.type.indexOf("image/") === 0) apercu.innerHTML = '<img src="' + URL_obj(f) + '" alt="" />';
+        });
+        function URL_obj(f) { return window.URL.createObjectURL(f); }
+
+        function ouvrir(carte) {
+            form.reset(); logo.value = ""; adminsChoisis = {};
+            pk.value = carte ? carte.pk : "";
+            titre.value = carte ? carte.titre : "";
+            desc.value = carte ? carte.description : "";
+            apercu.innerHTML = carte && carte.logo_url ? '<img src="' + carte.logo_url + '" alt="" />' : init(titre.value || "G");
+            var ids = carte ? carte.membres.map(function (m) { return m.pk; }) : (MOI ? [MOI] : []);
+            if (carte) carte.membres.forEach(function (m) { if (m.admin) adminsChoisis[m.pk] = true; });
+            liste.querySelectorAll("input").forEach(function (c) { c.checked = ids.indexOf(+c.value) !== -1; });
+            rendreAdmins();
+            document.getElementById("gr-titre-tiroir").textContent = carte ? "Modifier « " + carte.titre + " »" : "Nouveau groupe";
+            document.getElementById("gr-enregistrer").textContent = carte ? "Enregistrer" : "Créer le groupe";
+            window.openDrawer();
+            setTimeout(function () { titre.focus(); }, 80);
+        }
+        var nouveau = document.querySelector("[data-gr-nouveau]");
+        if (nouveau) nouveau.addEventListener("click", function () { ouvrir(null); });
+
+        function envoyerConfig(id, membres, adminsIds) {
+            var fd = new FormData();
+            fd.append("titre", titre.value.trim());
+            fd.append("description", desc.value.trim());
+            membres.forEach(function (m) { fd.append("membres", m); });
+            fd.append("admins_envoyes", "1");
+            adminsIds.forEach(function (a) { fd.append("admins", a); });
+            if (logo.files && logo.files[0]) fd.append("logo", logo.files[0]);
+            return fetch(url(URL.config, id), { method: "POST", headers: { "X-CSRFToken": csrf() }, body: fd })
+                .then(function (r) { return r.json(); });
+        }
+        form.addEventListener("submit", function (e) {
+            e.preventDefault();
+            var membres = membresCoches();
+            if (!titre.value.trim()) { toast("error", "Donnez un nom au groupe."); titre.focus(); return; }
+            if (!membres.length) { toast("error", "Ajoutez au moins un membre."); return; }
+            var adminsIds = membres.filter(function (m) { return adminsChoisis[m] || (m === MOI && !pk.value); });
+            var promesse;
+            if (pk.value) {
+                promesse = envoyerConfig(pk.value, membres, adminsIds);
+            } else {
+                promesse = fetch(URL.creer, {
+                    method: "POST", headers: { "X-CSRFToken": csrf(), "Content-Type": "application/json" },
+                    body: JSON.stringify({ titre: titre.value.trim(), description: desc.value.trim(), membres: membres, admins: adminsIds })
+                }).then(function (r) { return r.json(); }).then(function (d) {
+                    if (d && d.groupe && logo.files && logo.files[0]) return envoyerConfig(d.groupe.pk, membres, adminsIds);
+                    return d;
+                });
+            }
+            promesse.then(function (d) {
+                if (d && d.groupe) { toast("success", pk.value ? "Groupe mis à jour." : "Groupe créé."); location.reload(); }
+                else toast("error", (d && d.error) || "Enregistrement impossible.");
+            }).catch(function () { toast("error", "Enregistrement impossible."); });
+        });
+
+        /* ---------- Actions des cartes ---------- */
+        document.addEventListener("click", function (e) {
+            var b = e.target.closest("[data-gr-action]");
+            if (!b) return;
+            var carte = CARTES.filter(function (c) { return c.pk === +b.getAttribute("data-pk"); })[0];
+            var action = b.getAttribute("data-gr-action");
+            if (action === "modifier") { ouvrir(carte); return; }
+            var question = action === "supprimer"
+                ? "Supprimer le groupe « " + carte.titre + " » ? Ses messages et fichiers seront effacés."
+                : "Quitter le groupe « " + carte.titre + " » ?";
+            if (!confirm(question)) return;
+            fetch(url(action === "supprimer" ? URL.suppr : URL.quitter, carte.pk), { method: "POST", headers: { "X-CSRFToken": csrf() } })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (d && d.ok) { toast("success", action === "supprimer" ? "Groupe supprimé." : "Vous avez quitté le groupe."); location.reload(); }
+                    else toast("error", (d && d.error) || "Action impossible.");
+                });
+        });
+    })();
+    </script>
+{% endblock extra_js %}

@@ -1,62 +1,27 @@
-<style>
-    .sub-tabs {
-        display: flex;
-        gap: 0.4rem;
-        margin: 0.4rem 0 1rem;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .sub-tab {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.45rem;
-        padding: 0.42rem 1rem;
-        border-radius: 9999px;
-        font-size: 0.86rem;
-        font-weight: 600;
-        color: #475569;
-        background: #f1f5f9;
-        border: 1px solid #e2e8f0;
-        text-decoration: none;
-        transition: all 0.15s ease;
-    }
-    .sub-tab:hover {
-        color: var(--accent);
-        border-color: var(--accent);
-    }
-    .sub-tab.active {
-        color: #fff;
-        background: var(--accent);
-        border-color: var(--accent);
-    }
-    .sub-tab-badge {
-        background: rgba(255, 255, 255, 0.25);
-        border-radius: 9999px;
-        padding: 0 0.45rem;
-        font-size: 0.75rem;
-    }
-    .sub-tab:not(.active) .sub-tab-badge {
-        background: #e2e8f0;
-        color: #475569;
-    }
-</style>
-
-<div class="sub-tabs">
-    <a class="sub-tab{% if onglet_employes == 'liste' %} active{% endif %}"
-        href="{% url 'gestion:employes' %}">
-        Employés
-    </a>
+{% comment %}
+Onglets de l'espace Employés (composant d'onglets soulignés .ui-tabs).
+L'onglet actif est déduit de la page courante (nom de la route) ; le paramètre
+`onglet_employes` ("liste" | "taches" | "activite") reste accepté pour forcer.
+{% endcomment %}
+{% with route=request.resolver_match.url_name %}
+{% with courant=onglet_employes|default:route %}
+<div class="ui-tabs" role="tablist" aria-label="Espace employés" style="margin:0.2rem 0 1.1rem">
+    <a class="ui-tab{% if courant == 'liste' or courant == 'employes' %} is-active{% endif %}" role="tab"
+        aria-selected="{% if courant == 'liste' or courant == 'employes' %}true{% else %}false{% endif %}"
+        {% if courant == 'liste' or courant == 'employes' %}aria-current="page"{% endif %}
+        href="{% url 'gestion:employes' %}">Employés</a>
     {% if 'taches' in modules_autorises %}
-    <a class="sub-tab{% if onglet_employes == 'taches' %} active{% endif %}"
-        href="{% url 'gestion:taches' %}">
-        Tâches
-        <span class="sub-tab-badge">{{ nav_counts.taches }}</span>
-    </a>
+    <a class="ui-tab{% if courant == 'taches' %} is-active{% endif %}" role="tab"
+        aria-selected="{% if courant == 'taches' %}true{% else %}false{% endif %}"
+        {% if courant == 'taches' %}aria-current="page"{% endif %}
+        href="{% url 'gestion:taches' %}">Tâches <span class="ui-tab-count">{{ nav_counts.taches }}</span></a>
     {% endif %}
     {% if est_createur %}
-    <a class="sub-tab{% if onglet_employes == 'activite' %} active{% endif %}"
-        href="{% url 'gestion:employes_activite' %}">
-        Activité
-    </a>
+    <a class="ui-tab{% if courant == 'activite' or courant == 'employes_activite' %} is-active{% endif %}" role="tab"
+        aria-selected="{% if courant == 'activite' or courant == 'employes_activite' %}true{% else %}false{% endif %}"
+        {% if courant == 'activite' or courant == 'employes_activite' %}aria-current="page"{% endif %}
+        href="{% url 'gestion:employes_activite' %}">Activité</a>
     {% endif %}
 </div>
+{% endwith %}
+{% endwith %}

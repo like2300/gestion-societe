@@ -2,11 +2,18 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
-from django.views.generic import RedirectView
+
+from gestion import backoffice
+from gestion.urls_public import backoffice_urls, vitrine
 
 urlpatterns = [
-    # Racine : le tableau de bord (redirige selon la connexion)
-    path("", RedirectView.as_view(pattern_name="gestion:dashboard"), name="home"),
+    # Racine : site vitrine public (présentation, tarifs, inscription) + paiement par lien
+    *vitrine,
+    # Back-office de l'équipe SaaS (abonnements, paiements, sociétés)
+    path("backoffice/", include(backoffice_urls)),
+    # /admin/ : tableau de bord de l'équipe (ventes, demandes d'offre, activations) ;
+    # les données brutes restent accessibles dans l'admin Django (/admin/gestion/…)
+    path("admin/", backoffice.index, name="admin_tableau"),
     path("admin/", admin.site.urls),
     # Allauth : /accounts/login/, /accounts/signup/, /accounts/logout/,
     # /accounts/password/reset/...

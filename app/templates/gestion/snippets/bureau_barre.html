@@ -1,0 +1,78 @@
+{% comment %}Barre supérieure commune des éditeurs (Tableur, Documents, Présentations).{% endcomment %}
+<header class="bx-barre" style="--c: {{ app_conf.couleur }}">
+    <a href="{{ liste_url }}" class="bx-retour" title="Retour aux fichiers" aria-label="Retour aux fichiers">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    </a>
+    <span class="bx-app-ico bx-i-{{ app }}">{% include "gestion/snippets/bureau_icone.html" with cle=app %}</span>
+    <div class="bx-titre-zone">
+        <input type="text" class="bx-titre" id="bx-titre" value="{{ fichier.titre }}" maxlength="200" aria-label="Titre du fichier" spellcheck="false" />
+        <span class="bx-etat" id="bx-etat" data-etat="ok">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            <span>Enregistré {{ fichier.updated_at|date:"H:i" }}</span>
+        </span>
+    </div>
+    <div class="bx-collab" id="bx-collab-zone">
+        <div class="bx-presents" id="bx-presents" aria-label="Personnes dans ce fichier"></div>
+        <button type="button" class="bx-btn bx-partager" id="bx-partager" title="Inviter des partenaires à modifier ce fichier">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+            <span>Partager</span><b class="bx-partager-nb" id="bx-partager-nb" hidden></b>
+        </button>
+    </div>
+    <div class="bx-barre-actions">
+        {% if app == "slides" %}
+            <button type="button" class="bx-btn principal" id="bx-presenter" title="Présenter en plein écran (F5)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Présenter
+            </button>
+            <a class="bx-btn" href="{{ export_url }}?format=pdf&voir=1" target="_blank" rel="noopener" data-bx-export>PDF</a>
+            <a class="bx-btn" href="{{ export_url }}?format=pptx" data-bx-export>PowerPoint</a>
+        {% elif app == "docs" %}
+            <a class="bx-btn" href="{{ export_url }}?format=pdf&voir=1" target="_blank" rel="noopener" data-bx-export>PDF</a>
+            <a class="bx-btn principal" href="{{ export_url }}?format=docx" data-bx-export>Word</a>
+        {% else %}
+            <a class="bx-btn" href="{{ export_url }}?format=csv" data-bx-export>CSV</a>
+            <a class="bx-btn principal" href="{{ export_url }}?format=xlsx" data-bx-export>Excel</a>
+        {% endif %}
+    </div>
+</header>
+
+{# Bandeau de conflit : un collaborateur a enregistré pendant que vous modifiiez #}
+<div class="bx-conflit" id="bx-conflit" role="alert" hidden>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+    <span id="bx-conflit-txt">Un partenaire a modifié ce fichier pendant que vous écriviez.</span>
+    <button type="button" class="bx-btn" id="bx-conflit-charger">Charger sa version</button>
+    <button type="button" class="bx-btn principal" id="bx-conflit-garder">Garder la mienne</button>
+</div>
+
+{# Fenêtre de partage #}
+<div class="bx-modal" id="bx-partage" hidden>
+    <div class="bx-modal-fond" data-bx-fermer></div>
+    <div class="bx-modal-boite" role="dialog" aria-modal="true" aria-labelledby="bx-partage-titre">
+        <div class="bx-modal-tete">
+            <div>
+                <h2 id="bx-partage-titre">Partager « <span id="bx-partage-nom">{{ fichier.titre }}</span> »</h2>
+                <p>Les partenaires modifient le fichier avec vous : leurs changements apparaissent en quelques secondes.</p>
+            </div>
+            <button type="button" class="drawer-close" data-bx-fermer aria-label="Fermer">×</button>
+        </div>
+        <label class="bx-prive">
+            <input type="checkbox" id="bx-prive" />
+            <span class="bx-prive-sw"></span>
+            <span><b>Fichier privé</b><small>Visible seulement par vous, les partenaires et l'administration.</small></span>
+        </label>
+        <div class="bx-part-zone">
+            <span class="bx-part-titre">Partenaires</span>
+            <div class="bx-part-champ">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                <input type="text" id="bx-part-q" autocomplete="off" placeholder="Ajouter un employé par son nom…" />
+                <ul class="sal-sugg bx-part-liste" id="bx-part-liste" hidden></ul>
+            </div>
+            <ul class="bx-part-membres" id="bx-part-membres"></ul>
+        </div>
+        <p class="bx-partage-info" id="bx-partage-info" hidden></p>
+        <div class="bx-modal-pied">
+            <button type="button" class="btn-ghost" data-bx-fermer>Annuler</button>
+            <button type="button" class="btn-primary" id="bx-partage-ok">Enregistrer le partage</button>
+        </div>
+    </div>
+</div>
+{{ collab|json_script:"bx-collab" }}

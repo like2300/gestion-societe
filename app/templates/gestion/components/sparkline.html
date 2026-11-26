@@ -1,0 +1,11 @@
+{# Mini-courbe rendue par la balise {% sparkline %} (gestion/templatetags/ui.py). #}
+<svg class="ui-spark" viewBox="0 0 {{ width }} {{ height }}" preserveAspectRatio="none" aria-hidden="true">
+    <defs>
+        <linearGradient id="spk-{{ uid }}" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" style="stop-color: {{ color }}; stop-opacity: 0.9" />
+            <stop offset="1" style="stop-color: {{ color }}; stop-opacity: 0" />
+        </linearGradient>
+    </defs>
+    <path class="area" d="{{ area }}" fill="url(#spk-{{ uid }})" />
+    <path d="{{ line }}" fill="none" style="stroke: {{ color }}" stroke-width="2" stroke-linecap="round" vector-effect="non-scaling-stroke" />
+</svg>

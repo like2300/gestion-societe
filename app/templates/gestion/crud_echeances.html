@@ -1,6 +1,10 @@
 {% extends "gestion/crud_generic.html" %}
 
 {% block prelude %}
+    {% if not lecture_seule %}
+        {% url 'gestion:echeances_a_encaisser' as apayer_url %}
+        {% include "gestion/components/apayer_panel.html" with url=apayer_url titre="Échéances à encaisser" phrase="{n} échéance(s) à encaisser pour {mois} (retards inclus)." phrase_vide="Aucune échéance à encaisser pour {mois}." vide="Tout est encaissé pour ce mois." bouton="Encaisser" hint="" lbl_nb="Échéances" lbl_total="Reste à encaisser" lbl_autre="Mois antérieurs" %}
+    {% endif %}
     {% if centre %}
         <style>
             .ech-centre { padding: 0; }
@@ -198,13 +202,7 @@
                 </span>
             </div>
 
-            <div class="ech-stats" role="status">
-                <span class="ech-stat">Suivi : <b>{{ centre_counts.total }}</b></span>
-                <span class="ech-stat urgence">En retard : <b>{{ centre_counts.en_retard }}</b></span>
-                <span class="ech-stat jour">Aujourd'hui : <b>{{ centre_counts.aujourdhui }}</b></span>
-                <span class="ech-stat proche">J-1 à J-7 : <b>{{ centre_counts.bientot }}</b></span>
-                <span class="ech-stat loin">Au-delà : <b>{{ centre_counts.apres }}</b></span>
-            </div>
+            {# Statistiques : cartes en haut de page (components/stat_row.html) #}
 
             <div class="ech-tools">
                 <button type="button" class="ech-filtre is-active" data-filtre="toutes"
@@ -217,14 +215,17 @@
                         {{ g.groupe }} <span class="n">{{ g.items|length }}</span>
                     </button>
                 {% endfor %}
-                <div class="ech-recherche">
+                <div class="ech-recherche sal-search">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="11" cy="11" r="8" />
                         <path d="m21 21-4.3-4.3" />
                     </svg>
-                    <input type="text" id="ech-recherche" placeholder="Rechercher une échéance…"
-                        aria-label="Rechercher une échéance" />
+                    <input type="search" id="ech-recherche" placeholder="Rechercher un client, un projet, un salaire…"
+                        autocomplete="off" aria-label="Rechercher une échéance" role="combobox"
+                        aria-autocomplete="list" aria-expanded="false" aria-controls="ech-sugg" />
+                    <kbd class="sal-kbd" aria-hidden="true">/</kbd>
+                    <ul class="sal-sugg" id="ech-sugg" role="listbox" hidden></ul>
                 </div>
             </div>
 
@@ -304,6 +305,14 @@
 {% endblock prelude %}
 
 {% block row_actions %}
+    <form method="post" action="{% url 'gestion:facture_depuis_echeance' item.pk %}" class="fac-depuis">
+        {% csrf_token %}
+        <button type="submit" class="act" aria-label="Facturer cette échéance"
+            title="Créer (ou ouvrir) la facture de cette échéance">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+                stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>
+        </button>
+    </form>
     {% if not item.paye %}
         <form method="post" action="{% url 'gestion:echeance_payer' item.pk %}" class="payer-form">
             {% csrf_token %}
@@ -377,52 +386,144 @@
                     "KPay a refusé l'initiation : " + params.get("kpay_erreur"));
             }
 
-            /* Filtres du centre d'échéances : horizon + recherche. */
+            /* Centre d'échéances : horizon + recherche instantanée (sans accents) + suggestions. */
             var filtres = document.querySelectorAll(".ech-filtre");
-            var lignes = document.querySelectorAll(".ech-row");
+            var lignes = Array.prototype.slice.call(document.querySelectorAll(".ech-row"));
             var groupes = document.querySelectorAll(".ech-groupe");
             var recherche = document.getElementById("ech-recherche");
+            var sugg = document.getElementById("ech-sugg");
             var vide = document.getElementById("ech-vide");
             var filtreActif = "toutes";
+            if (!recherche) return;
+
+            function norm(t) { return String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""); }
+            function esc(t) {
+                return String(t == null ? "" : t).replace(/[&<>"']/g, function (c) {
+                    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+                });
+            }
+            function mots() { return norm(recherche.value).trim().split(/\s+/).filter(Boolean); }
+            function surligne(texte, m) {
+                var t = String(texte || ""), n = norm(t), out = "", pos = 0, marques = [];
+                m.forEach(function (w) { var i = n.indexOf(w); if (i !== -1) marques.push([i, i + w.length]); });
+                marques.sort(function (x, y) { return x[0] - y[0]; }).forEach(function (k) {
+                    if (k[0] < pos) return;
+                    out += esc(t.slice(pos, k[0])) + "<mark>" + esc(t.slice(k[0], k[1])) + "</mark>"; pos = k[1];
+                });
+                return out + esc(t.slice(pos));
+            }
+            var INDEX = lignes.map(function (r) {
+                var txt = function (sel) { var el = r.querySelector(sel); return el ? el.textContent.trim() : ""; };
+                r.__q = norm(r.textContent + " " + (r.closest(".ech-groupe") || {}).getAttribute("data-groupe"));
+                return {
+                    row: r, libelle: txt(".ech-libelle"), element: txt(".ech-element"), type: txt(".ech-type"),
+                    date: txt(".ech-jour"), montant: txt(".ech-montant"), statut: txt(".ech-statut"),
+                    groupe: r.closest(".ech-groupe").getAttribute("data-groupe")
+                };
+            });
 
             function appliquer() {
-                var terme = (recherche.value || "").trim().toLowerCase();
-                var visibles = 0;
-                for (var i = 0; i < lignes.length; i++) {
-                    var ligne = lignes[i];
+                var m = mots(), visibles = 0;
+                lignes.forEach(function (ligne) {
                     var groupeOk = filtreActif === "toutes" ||
                         ligne.closest(".ech-groupe").getAttribute("data-groupe") === filtreActif;
-                    var searchOk = !terme ||
-                        ligne.textContent.toLowerCase().indexOf(terme) !== -1;
-                    var ok = groupeOk && searchOk;
+                    var ok = groupeOk && m.every(function (w) { return ligne.__q.indexOf(w) !== -1; });
                     ligne.style.display = ok ? "" : "none";
                     if (ok) visibles++;
-                }
-                var groupesVisibles = 0;
-                for (var j = 0; j < groupes.length; j++) {
-                    var rows = groupes[j].querySelectorAll(".ech-row");
-                    var any = false;
-                    for (var k = 0; k < rows.length; k++) {
-                        if (rows[k].style.display !== "none") { any = true; break; }
-                    }
-                    groupes[j].style.display = any ? "" : "none";
-                    if (any) groupesVisibles++;
-                }
-                vide.hidden = groupesVisibles > 0;
+                });
+                groupes.forEach(function (g) {
+                    var any = Array.prototype.some.call(g.querySelectorAll(".ech-row"), function (r) { return r.style.display !== "none"; });
+                    g.style.display = any ? "" : "none";
+                });
+                vide.hidden = visibles > 0;
             }
 
-            if (recherche) {
-                for (var f = 0; f < filtres.length; f++) {
-                    filtres[f].addEventListener("click", function () {
-                        filtreActif = this.getAttribute("data-filtre");
-                        for (var x = 0; x < filtres.length; x++) {
-                            filtres[x].classList.toggle("is-active", filtres[x] === this);
-                        }
-                        appliquer();
+            var options = [], actif = -1;
+            function fermer() { sugg.hidden = true; actif = -1; recherche.setAttribute("aria-expanded", "false"); }
+            function rendreSugg() {
+                var m = mots();
+                options = [];
+                var html = "";
+                function groupe(titre, items) {
+                    if (!items.length) return;
+                    html += '<li class="sal-sugg-groupe" role="presentation">' + titre + "</li>";
+                    items.forEach(function (o) {
+                        var i = options.length; options.push(o);
+                        html += '<li class="sal-sugg-opt" role="option" id="ech-opt-' + i + '" data-idx="' + i + '">' + o.html + "</li>";
                     });
                 }
-                recherche.addEventListener("input", appliquer);
+                var vus = {};
+                var elems = INDEX.filter(function (x) {
+                    var q = norm(x.libelle + " " + x.element + " " + x.type);
+                    var cle = x.libelle + "|" + x.element;
+                    if (vus[cle] || !m.every(function (w) { return q.indexOf(w) !== -1; })) return false;
+                    vus[cle] = 1; return true;
+                });
+                if (!m.length) elems = elems.filter(function (x) { return /retard|aujourd/i.test(x.groupe); });
+                var A = window.UiAvatar;
+                groupe(m.length ? "Échéances" : "À traiter en priorité", elems.slice(0, 6).map(function (x) {
+                    return {
+                        valeur: x.libelle,
+                        html: '<span class="sal-av" style="background:' + (A ? A.couleur(x.libelle) : "var(--accent)") + '">' + esc(A ? A.initiales(x.libelle) : "•") + "</span>" +
+                            '<span class="sal-sugg-txt"><b>' + surligne(x.libelle, m) + "</b><small>" + esc(x.type) +
+                            (x.element ? " · " + surligne(x.element, m) : "") + " · " + esc(x.date) + "</small></span>" +
+                            '<span class="sal-sugg-tag ' + (/retard/i.test(x.groupe) ? "att" : "ok") + '">' + esc(x.montant || x.groupe) + "</span>"
+                    };
+                }));
+                if (m.length) {
+                    var types = {};
+                    INDEX.forEach(function (x) { if (x.type && m.every(function (w) { return norm(x.type).indexOf(w) !== -1; })) types[x.type] = (types[x.type] || 0) + 1; });
+                    groupe("Types", Object.keys(types).map(function (k) {
+                        return {
+                            valeur: k,
+                            html: '<span class="sal-sugg-ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82Z"/><path d="M7 7h.01"/></svg></span>' +
+                                '<span class="sal-sugg-txt"><b>' + surligne(k, m) + "</b><small>" + types[k] + " échéance(s)</small></span>"
+                        };
+                    }));
+                }
+                if (!options.length) html = m.length ? '<li class="sal-sugg-vide">Aucune suggestion pour « ' + esc(recherche.value) + " »</li>" : "";
+                sugg.innerHTML = html;
+                sugg.hidden = !html;
+                recherche.setAttribute("aria-expanded", html ? "true" : "false");
+                actif = -1;
             }
+            function choisir(i) {
+                var o = options[i]; if (!o) return;
+                recherche.value = o.valeur; appliquer(); fermer(); recherche.focus();
+            }
+            function surbrillance(i) {
+                var opts = sugg.querySelectorAll(".sal-sugg-opt");
+                if (!opts.length) return;
+                actif = (i + opts.length) % opts.length;
+                opts.forEach(function (o, k) { o.classList.toggle("on", k === actif); });
+                recherche.setAttribute("aria-activedescendant", "ech-opt-" + actif);
+                opts[actif].scrollIntoView({ block: "nearest" });
+            }
+            filtres.forEach(function (f) {
+                f.addEventListener("click", function () {
+                    filtreActif = this.getAttribute("data-filtre");
+                    filtres.forEach(function (x) { x.classList.toggle("is-active", x === f); });
+                    appliquer();
+                });
+            });
+            recherche.addEventListener("input", function () { appliquer(); rendreSugg(); });
+            recherche.addEventListener("focus", rendreSugg);
+            recherche.addEventListener("keydown", function (e) {
+                if (e.key === "ArrowDown") { e.preventDefault(); if (sugg.hidden) rendreSugg(); surbrillance(actif + 1); }
+                else if (e.key === "ArrowUp") { e.preventDefault(); surbrillance(actif - 1); }
+                else if (e.key === "Enter") { e.preventDefault(); if (actif >= 0) choisir(actif); else fermer(); }
+                else if (e.key === "Escape") { if (!sugg.hidden) fermer(); else { recherche.value = ""; appliquer(); } }
+            });
+            sugg.addEventListener("mousedown", function (e) {
+                var li = e.target.closest(".sal-sugg-opt");
+                if (li) { e.preventDefault(); choisir(+li.getAttribute("data-idx")); }
+            });
+            document.addEventListener("click", function (e) { if (!e.target.closest(".ech-recherche")) fermer(); });
+            document.addEventListener("keydown", function (e) {
+                if (e.key === "/" && !/input|textarea|select/i.test((document.activeElement || {}).tagName || "")) {
+                    e.preventDefault(); recherche.focus();
+                }
+            });
         })();
     </script>
 {% endblock extra_js %}

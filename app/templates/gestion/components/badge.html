@@ -1,0 +1,3 @@
+{% comment %}Badge. Usage : {% include "gestion/components/badge.html" with text="Actif" kind="success" %}
+kind : success | warning | danger | neutral (défaut : couleur principale){% endcomment %}
+<span class="ui-badge {{ kind }}">{{ text }}</span>

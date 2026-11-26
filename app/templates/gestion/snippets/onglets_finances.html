@@ -1,0 +1,14 @@
+{% comment %}
+Onglets de l'espace Finances (vue d'ensemble, paiements, échéances, dépenses,
+salaires, contrats). Données : `finances_onglets` (views._espace_finances).
+{% endcomment %}
+{% if finances_onglets|length > 1 %}
+<nav class="ui-tabs fin-onglets" role="tablist" aria-label="Espace finances" style="margin:0.2rem 0 1.1rem">
+    {% for o in finances_onglets %}
+    <a class="ui-tab{% if o.actif %} is-active{% endif %}" role="tab"
+        aria-selected="{% if o.actif %}true{% else %}false{% endif %}"
+        {% if o.actif %}aria-current="page"{% endif %}
+        href="{{ o.url }}">{{ o.label }}{% if o.count is not None %} <span class="ui-tab-count">{{ o.count }}</span>{% endif %}</a>
+    {% endfor %}
+</nav>
+{% endif %}

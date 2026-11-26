@@ -1,0 +1,205 @@
+{% extends "backoffice/base.html" %}
+{% block titre %}Forfaits &amp; Tarifs{% endblock %}
+
+{% block style %}
+    .forfaits-grille {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+        gap: 18px;
+        margin-bottom: 18px;
+    }
+    .forfait-carte {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+    .forfait-haut {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+    }
+    .forfait-haut h3 {
+        margin: 0;
+        font-size: 1.2rem;
+        color: var(--encre);
+    }
+    .forfait-prix-badge {
+        font-size: 1.55rem;
+        font-weight: 700;
+        color: var(--encre);
+        letter-spacing: -0.02em;
+        line-height: 1.1;
+    }
+    .champs {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px 12px;
+    }
+    @media (max-width: 540px) {
+        .forfaits-grille { grid-template-columns: 1fr; }
+        .champs { grid-template-columns: 1fr; }
+    }
+    .champ {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--texte);
+    }
+    .champ.plein { grid-column: 1 / -1; }
+    .champ input[type="text"],
+    .champ input[type="number"],
+    .champ select,
+    .champ textarea {
+        width: 100%;
+        border: 1px solid var(--trait);
+        background: var(--cadre);
+        border-radius: 14px;
+        padding: 0.6rem 0.85rem;
+        font: inherit;
+        font-weight: 500;
+        color: var(--encre);
+    }
+    .champ textarea { min-height: 68px; resize: vertical; }
+    .champ input:focus,
+    .champ select:focus,
+    .champ textarea:focus {
+        outline: 2px solid var(--citron);
+        border-color: var(--foret);
+        background: #ffffff;
+    }
+    .case-actif {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.86rem;
+        font-weight: 600;
+        color: var(--encre);
+        cursor: pointer;
+    }
+    .case-actif input {
+        width: 17px;
+        height: 17px;
+        accent-color: var(--foret);
+    }
+    .forfait-pied {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+        padding-top: 6px;
+        border-top: 1px solid var(--trait);
+    }
+{% endblock %}
+
+{% block contenu %}
+<div class="page-titre">
+    <h2>Forfaits &amp; tarifs du programme</h2>
+    <p>Modifiez directement les prix, devises, durées et descriptions affichés sur la page d'accueil et lors du réabonnement.</p>
+</div>
+
+<section class="forfaits-grille">
+    {% for f in forfaits %}
+    <article class="carte forfait-carte">
+        <div class="forfait-haut">
+            <div>
+                <h3>{{ f.nom }}</h3>
+                <span class="sous">{{ f.nb_actifs }} société{{ f.nb_actifs|pluralize }} active{{ f.nb_actifs|pluralize }}</span>
+            </div>
+            <div style="text-align:right">
+                <div class="forfait-prix-badge">{{ f.prix_affiche }}</div>
+                <span class="etat {% if f.actif %}ACTIF{% else %}AUCUN{% endif %}">{% if f.actif %}Visible sur le site{% else %}Masqué{% endif %}</span>
+            </div>
+        </div>
+
+        <form method="post" action="{% url 'backoffice:forfait_modifier' f.pk %}" style="display:flex;flex-direction:column;gap:12px;margin:0">
+            {% csrf_token %}
+            <div class="champs">
+                <label class="champ">
+                    Nom du forfait
+                    <input type="text" name="nom" value="{{ f.nom }}" maxlength="100" required />
+                </label>
+                <label class="champ">
+                    Prix
+                    <input type="number" name="prix" value="{{ f.prix|stringformat:'0.2f' }}" step="0.01" min="0" required />
+                </label>
+                <label class="champ">
+                    Devise
+                    <select name="devise">
+                        {% for d in devises %}
+                            <option value="{{ d }}" {% if f.devise == d %}selected{% endif %}>{{ d }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label class="champ">
+                    Durée (jours)
+                    <input type="number" name="duree_jours" value="{{ f.duree_jours }}" min="1" required />
+                </label>
+                <label class="champ plein">
+                    Description (affichée sur la carte tarif)
+                    <textarea name="description" rows="2">{{ f.description|default:"" }}</textarea>
+                </label>
+            </div>
+            <div class="forfait-pied">
+                <label class="case-actif">
+                    <input type="checkbox" name="actif" {% if f.actif %}checked{% endif %} />
+                    Afficher sur le site public
+                </label>
+                <button type="submit" class="btn clair">Enregistrer le tarif</button>
+            </div>
+        </form>
+    </article>
+    {% empty %}
+    <div class="carte"><p class="vide">Aucun forfait enregistré.</p></div>
+    {% endfor %}
+</section>
+
+<section class="carte">
+    <div class="carte-tete">
+        <h2>
+            <span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+            Ajouter un nouveau forfait
+        </h2>
+        <span class="sous">Apparaît immédiatement dans la section Tarifs si « Afficher » est coché</span>
+    </div>
+    <form method="post" action="{% url 'backoffice:forfait_creer' %}" style="margin:0">
+        {% csrf_token %}
+        <div class="champs" style="grid-template-columns:repeat(auto-fit, minmax(180px, 1fr))">
+            <label class="champ">
+                Nom du forfait
+                <input type="text" name="nom" placeholder="Ex : Entreprise" maxlength="100" required />
+            </label>
+            <label class="champ">
+                Prix
+                <input type="number" name="prix" value="0" step="0.01" min="0" required />
+            </label>
+            <label class="champ">
+                Devise
+                <select name="devise">
+                    {% for d in devises %}
+                        <option value="{{ d }}">{{ d }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label class="champ">
+                Durée (jours)
+                <input type="number" name="duree_jours" value="30" min="1" required />
+            </label>
+            <label class="champ plein">
+                Description
+                <input type="text" name="description" placeholder="Ex : Support prioritaire, équipes illimitées" />
+            </label>
+        </div>
+        <div class="forfait-pied" style="margin-top:12px">
+            <label class="case-actif">
+                <input type="checkbox" name="actif" checked />
+                Afficher sur le site public
+            </label>
+            <button type="submit" class="btn sombre">Créer le forfait</button>
+        </div>
+    </form>
+</section>
+{% endblock %}

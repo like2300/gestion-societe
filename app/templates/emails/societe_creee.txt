@@ -1,0 +1,16 @@
+Bienvenue{% if prenom %} {{ prenom }}{% endif %} !
+
+Votre société « {{ societe.nom }} » a bien été créée.
+
+Forfait : {{ forfait.nom }}
+Montant : {% if gratuit %}Gratuit{% else %}{{ forfait.prix_affiche }} / {{ forfait.duree_jours }} jours{% endif %}
+Statut  : {% if gratuit %}actif jusqu'au {{ abonnement.date_fin|date:"d/m/Y" }}{% else %}en attente de paiement{% endif %}
+{% if gratuit %}
+Accédez à votre espace : {{ app }}
+{% else %}
+Payez votre abonnement ici (Mobile Money ou virement) :
+{{ lien }}
+
+Votre accès complet est activé dès la confirmation du paiement.
+{% endif %}
+— Archi

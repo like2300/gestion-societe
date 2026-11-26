@@ -27,9 +27,27 @@ DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() in ("true", "1", "yes")
 
 ALLOWED_HOSTS = [
     h.strip()
-    for h in os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+    for h in os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,vicarious-cucullately-davian.ngrok-free.dev").split(",")
     if h.strip()
 ]
+
+# Origines HTTPS autorisées pour les formulaires POST (CSRF) — ex. le tunnel ngrok.
+# Surchargeable : DJANGO_CSRF_TRUSTED_ORIGINS="https://a.exemple.com,https://b.exemple.com"
+CSRF_TRUSTED_ORIGINS = [
+    o.strip()
+    for o in os.getenv(
+        "DJANGO_CSRF_TRUSTED_ORIGINS",
+        "https://vicarious-cucullately-davian.ngrok-free.dev,https://*.ngrok-free.dev,https://*.ngrok-free.app",
+    ).split(",")
+    if o.strip()
+]
+if DEBUG:
+    # En dev, accepter n'importe quel sous-domaine ngrok dans ALLOWED_HOSTS (l'URL change à chaque lancement)
+    ALLOWED_HOSTS += [".ngrok-free.dev", ".ngrok-free.app"]
+
+# ngrok termine le HTTPS puis transmet en HTTP : faire confiance à son en-tête pour que
+# request.is_secure() et les liens générés (e-mails, paiement) soient bien en https.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 
 # Application definition
@@ -64,6 +82,9 @@ MIDDLEWARE = [
     "allauth.account.middleware.AccountMiddleware",
     # Traçage de la présence des employés (temps passé sur la plateforme).
     "gestion.middleware.PresenceActiviteMiddleware",
+    # Première connexion : changement du mot de passe par défaut obligatoire.
+    "gestion.middleware.MotDePasseInitialMiddleware",
+    "gestion.middleware.AbonnementRestreintMiddleware",
 ]
 
 # Custom user model (user_admin table).
@@ -83,8 +104,21 @@ ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
 ACCOUNT_EMAIL_VERIFICATION = "optional"
 ACCOUNT_LOGOUT_ON_GET = True
 
-# Formulaire d'inscription personnalisé : choix « Administrateur / Employé ».
+# Formulaire d'inscription : réservé aux administrateurs d'entreprise.
 ACCOUNT_FORMS = {"signup": "gestion.forms.SignupFormPro"}
+
+# Mot de passe par défaut des comptes employés créés par l'administrateur.
+# L'employé doit le remplacer à sa première connexion (fenêtre modale).
+# À définir dans .env (EMPLOYE_MOT_DE_PASSE_DEFAUT) pour ne pas garder la valeur d'exemple.
+EMPLOYE_MOT_DE_PASSE_DEFAUT = os.getenv("EMPLOYE_MOT_DE_PASSE_DEFAUT", "Employe@2026")
+
+# Modules désactivés (masqués du menu, accès redirigé vers le tableau de bord).
+# Pour réactiver : MODULES_DESACTIVES= (vide) dans .env, ou retirer la clé.
+MODULES_DESACTIVES = [
+    m.strip()
+    for m in os.getenv("MODULES_DESACTIVES", "reunions,connecteurs").split(",")
+    if m.strip()
+]
 
 # --- Connexion sociale : Google --------------------------------------------
 # Identifiants lus dans .env (pas besoin de créer une SocialApp en base).
@@ -135,6 +169,8 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "gestion.context_processors.media_prefix",
                 "gestion.context_processors.notifications",
+                "gestion.context_processors.abonnement_alerte",
+                "gestion.context_processors.mdp_initial",
             ],
         },
     },
@@ -193,6 +229,10 @@ STATIC_ROOT = BASE_DIR / "static"
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# Corps de requête max (sauvegarde auto des Tableurs / Documents / Présentations
+# contenant des images) : aligné sur bureau.TAILLE_MAX (8 Mo) + marge.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
+
 # Pièces jointes de la messagerie : stockées hors de MEDIA_ROOT pour n'être
 # jamais servies via MEDIA_URL ; téléchargées uniquement via la vue protégée
 # `gestion:chat_fichier` (réservée à la société propriétaire du message).
@@ -203,6 +243,20 @@ CHAT_MEDIA_ROOT = os.getenv("CHAT_MEDIA_ROOT", BASE_DIR / "chat_media")
 # via la vue protégée `gestion:tache_livrable_fichier` (déposant, attributaire
 # ou propriétaire de la société).
 TACHE_MEDIA_ROOT = os.getenv("TACHE_MEDIA_ROOT", BASE_DIR / "tache_media")
+
+# Documents confidentiels (société, clients, employés) : stockage privé hors de
+# MEDIA_ROOT, téléchargés uniquement via la vue protégée `gestion:document_fichier`.
+PRIVATE_MEDIA_ROOT = os.getenv("PRIVATE_MEDIA_ROOT", BASE_DIR / "private_media")
+
+# --- Abonnements : prix en dollars, encaissés en monnaie locale -------------
+# Le Mobile Money (KPay) encaisse dans la monnaie de l'opérateur : 1 USD = X unités.
+# Taux indicatifs à tenir à jour ; surchargeables par TAUX_USD (JSON) dans .env,
+# ex. TAUX_USD={"XOF": 610, "XAF": 610}.
+TAUX_USD = {"XOF": 605, "XAF": 605, "CDF": 2850, "KES": 129, "RWF": 1430, "UGX": 3700, "ZMW": 27, "SLE": 23}
+try:
+    TAUX_USD.update(__import__("json").loads(os.getenv("TAUX_USD", "{}") or "{}"))
+except ValueError:
+    pass
 
 # --- Connecteurs : chiffrement des identifiants au repos -------------------
 # Clé Fernet optionnelle. Si absente, une clé stable est dérivée de

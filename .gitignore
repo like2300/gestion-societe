@@ -10,6 +10,7 @@ __pycache__/
 # --- Environnements virtuels ---
 venv/
 .venv/
+.venv_linux/
 env/
 ENV/
 env312/
@@ -29,6 +30,7 @@ db.sqlite3
 media/
 chat_media/
 tache_media/
+private_media/
 
 # --- Collectstatic (STATIC_ROOT = app/static) ---
 # NB : app/gestions/static/ (sources) reste versionné.
@@ -63,3 +65,10 @@ htmlcov/
 # --- Documents personnels (dossiers de candidature, non poussés) ---
 app/instruction/*.pdf
 instruction/*.pdf
+
+# --- Fichiers locaux des outils d'assistance (non versionnés) ---
+.agents/
+.claude/
+.mcp.json
+skills-lock.json
+Claude outputs/

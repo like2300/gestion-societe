@@ -1,0 +1,7 @@
+{# Champ de formulaire du profil (libellé, saisie, erreurs, aide). Usage : include with field=form.nom span=True #}
+<div class="ffield pf-field{% if span %} pf-span{% endif %}" data-ffield-name="{{ field.name }}">
+    <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span class="req"> *</span>{% endif %}</label>
+    {{ field }}
+    {% if field.errors %}<ul class="errors">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>{% endif %}
+    {% if field.help_text %}<p class="pf-help">{{ field.help_text }}</p>{% endif %}
+</div>

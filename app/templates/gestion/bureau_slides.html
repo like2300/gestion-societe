@@ -1,0 +1,82 @@
+{% extends "gestion/base_dashboard.html" %}
+{% load static %}
+
+{% block dash_title %}{{ fichier.titre }} — Présentations{% endblock %}
+
+{% block content %}
+    <link rel="stylesheet" href="{% static 'gestion/bureau.css' %}?v={{ UI_VERSION }}" />
+    <div class="bx-editeur bx-ed-slides">
+        {% include "gestion/snippets/bureau_barre.html" %}
+
+        <div class="bx-outils" role="toolbar" aria-label="Diapositives">
+            <button type="button" class="txt" id="sl-ajouter" title="Nouvelle diapositive (Ctrl+M)">
+                <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Diapositive
+            </button>
+            <button type="button" id="sl-dupliquer" title="Dupliquer la diapositive"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button>
+            <button type="button" id="sl-monter" title="Monter"><svg viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg></button>
+            <button type="button" id="sl-descendre" title="Descendre"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+            <button type="button" id="sl-supprimer" title="Supprimer la diapositive"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6"/></svg></button>
+            <span class="bx-sep"></span>
+            <span class="bx-lib">Mise en page</span>
+            <div class="bx-seg" id="sl-layouts" role="radiogroup" aria-label="Mise en page">
+                <button type="button" data-layout="titre" title="Diapositive de titre">Titre</button>
+                <button type="button" data-layout="contenu" title="Titre et liste à puces">Contenu</button>
+                <button type="button" data-layout="deux" title="Deux colonnes">2 colonnes</button>
+                <button type="button" data-layout="section" title="Intercalaire de section">Section</button>
+                <button type="button" data-layout="citation" title="Citation">Citation</button>
+            </div>
+            <span class="bx-sep"></span>
+            <span class="bx-lib">Thème</span>
+            <div class="bx-themes" id="sl-themes" role="radiogroup" aria-label="Thème">
+                <button type="button" data-theme="accent" class="th-accent" title="Couleur de la société"></button>
+                <button type="button" data-theme="clair" class="th-clair" title="Clair"></button>
+                <button type="button" data-theme="sombre" class="th-sombre" title="Sombre"></button>
+                <button type="button" data-theme="minuit" class="th-minuit" title="Minuit"></button>
+                <button type="button" data-theme="corail" class="th-corail" title="Corail"></button>
+            </div>
+            <span class="bx-sep"></span>
+            <button type="button" class="txt" id="sl-image" title="Ajouter une image (ou glissez / collez-la sur la diapositive)">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>Image
+            </button>
+            <input type="file" id="sl-img-fichier" accept="image/png,image/jpeg,image/webp,image/gif" hidden />
+            <span id="sl-img-options" class="bx-img-options" hidden>
+                <div class="bx-seg" id="sl-img-pos" role="radiogroup" aria-label="Position de l'image">
+                    <button type="button" data-pos="droite" title="Image à droite du texte">À droite</button>
+                    <button type="button" data-pos="centre" title="Image sous le titre">Centrée</button>
+                    <button type="button" data-pos="fond" title="Image en arrière-plan">Fond</button>
+                </div>
+                <button type="button" id="sl-img-retirer" title="Retirer l'image"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+            </span>
+        </div>
+
+        <div class="bx-slides-zone">
+            <aside class="bx-vignettes" id="sl-vignettes" aria-label="Diapositives"></aside>
+            <section class="bx-scene">
+                <div class="bx-slide-cadre">
+                    <div class="bx-slide grand" id="sl-scene"></div>
+                </div>
+                <label class="bx-notes">
+                    <span>Notes de l'orateur</span>
+                    <textarea id="sl-notes" rows="3" placeholder="Ajoutez des notes pour la présentation…"></textarea>
+                </label>
+            </section>
+        </div>
+    </div>
+
+    <div class="bx-projection" id="sl-projection" hidden>
+        <div class="bx-slide projection" id="sl-proj-slide"></div>
+        <div class="bx-proj-barre">
+            <button type="button" id="sl-prec" aria-label="Précédente">‹</button>
+            <span id="sl-compteur"></span>
+            <button type="button" id="sl-suiv" aria-label="Suivante">›</button>
+            <button type="button" id="sl-quitter" aria-label="Quitter">Quitter (Échap)</button>
+        </div>
+    </div>
+{% endblock content %}
+
+{% block extra_js %}
+    {{ contenu_json|json_script:"bx-contenu" }}
+    <script>window.BX_SAUVER = "{{ sauver_url }}"; window.BX_SOCIETE = "{{ societe.nom|escapejs }}";</script>
+    <script src="{% static 'gestion/bureau-commun.js' %}?v={{ UI_VERSION }}"></script>
+    <script src="{% static 'gestion/bureau-slides.js' %}?v={{ UI_VERSION }}"></script>
+{% endblock extra_js %}

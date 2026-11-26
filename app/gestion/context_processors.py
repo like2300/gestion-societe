@@ -1,9 +1,37 @@
+import os
+
 from django.conf import settings
+
+_UI_DIR = os.path.join(os.path.dirname(__file__), "static", "gestion")
+
+
+def _ui_version():
+    """Version des fichiers ui.* (date de modification) : force le navigateur
+    à recharger le CSS/JS après chaque mise à jour, sans Ctrl+F5."""
+    try:
+        return str(int(max(
+            os.path.getmtime(os.path.join(_UI_DIR, nom))
+            for nom in ("ui.css", "gfield.css", "ui.js", "ui-table.js", "ui-forms.js", "logout-confirm.js", "wa-picker.js", "taches.css", "taches-board.js", "apayer.js", "bureau.css", "bureau-commun.js", "bureau-sheets.js", "bureau-slides.js", "planning.css", "planning.js", "rappels.js")
+        )))
+    except OSError:
+        return "1"
 
 
 def media_prefix(request):
-    """Fournit MEDIA_PREFIX pour toutes les pages (préfixe médias absolu)."""
-    return {"MEDIA_PREFIX": settings.MEDIA_URL}
+    """Fournit MEDIA_PREFIX (préfixe médias) et UI_VERSION à toutes les pages."""
+    from django.utils.functional import SimpleLazyObject
+
+    def _partages():
+        # Applications où l'utilisateur est invité comme partenaire (Tableur / Documents / Présentations)
+        user = getattr(request, "user", None)
+        if user is None or not user.is_authenticated:
+            return set()
+        from .models import FichierBureau
+
+        codes = FichierBureau.objects.filter(partenaires__compte=user).values_list("type_fichier", flat=True).distinct()
+        return {{"SHEET": "sheets", "DOC": "docs", "SLIDES": "slides"}.get(c) for c in codes}
+
+    return {"MEDIA_PREFIX": settings.MEDIA_URL, "UI_VERSION": _ui_version(), "BUREAU_PARTAGES": SimpleLazyObject(_partages)}
 
 
 def notifications(request):
@@ -32,4 +60,37 @@ def notifications(request):
         "notif_maintenant": structure["maintenant"],
         "notif_filtres": structure.get("filtres", {}),
         "notif_son": getattr(user, "notif_son_actif", True),
+        # Journal partagé : seul le propriétaire peut en supprimer des entrées
+        "notif_peut_supprimer": services.est_createur(user, societe),
     }
+
+
+def mdp_initial(request):
+    """Indique si l'utilisateur doit définir son mot de passe (première connexion)."""
+    user = getattr(request, "user", None)
+    if user is None or not user.is_authenticated:
+        return {}
+    doit = bool(getattr(user, "doit_changer_mdp", False))
+    contexte = {"doit_changer_mdp": doit}
+    if doit:
+        contexte["mdp_defaut"] = getattr(settings, "EMPLOYE_MOT_DE_PASSE_DEFAUT", "")
+    return contexte
+
+
+def abonnement_alerte(request):
+    """Pop-up de réabonnement : uniquement pour le CRÉATEUR de la société, quand
+    l'abonnement se termine dans 7 jours ou moins, ou a expiré / été suspendu.
+    Ajoute au passage la notification correspondante dans la cloche (sans doublon)."""
+    user = getattr(request, "user", None)
+    if user is None or not user.is_authenticated or not request.path.startswith("/gestion/"):
+        return {}
+    from . import abonnements, services
+
+    societe = services.societe_pour_notifications(user)
+    if societe is None or not services.est_createur(user, societe):
+        return {}
+    e = abonnements.etat(societe)
+    if not e or e["niveau"] not in ("bientot", "expire", "suspendu"):
+        return {}
+    abonnements.notifier_fin(societe, e)
+    return {"abo_alerte": e}

@@ -1,0 +1,163 @@
+{% extends "gestion/base_dashboard.html" %}
+{% load static %}
+
+{% block dash_title %}{{ app_conf.nom }} — {{ societe.nom }}{% endblock %}
+
+{% block content %}
+    <link rel="stylesheet" href="{% static 'gestion/bureau.css' %}?v={{ UI_VERSION }}" />
+
+    <div class="page-head">
+        <div>
+            <h1>{{ app_conf.nom }}</h1>
+            <p class="sub">{{ fichiers|length }} fichier{{ fichiers|length|pluralize }} · enregistrement automatique · {% if partage_seul %}partagés avec vous{% else %}partage avec vos partenaires{% endif %}</p>
+        </div>
+    </div>
+
+    {% include "gestion/components/apps_dossiers.html" %}
+
+    {% if not partage_seul %}
+    <section class="bx-nouveaux" aria-label="Créer">
+        <h2 class="bx-h2">Créer</h2>
+        <div class="bx-modeles">
+            <form method="post" action="{% url 'gestion:bureau_creer' app %}">{% csrf_token %}
+                <button type="submit" class="bx-modele vide" style="--c: {{ app_conf.couleur }}">
+                    <span class="bx-modele-vis"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+                    <span class="bx-modele-nom">{{ app_conf.nouveau }}</span>
+                    <small>Vierge</small>
+                </button>
+            </form>
+            {% if app == "sheets" %}
+            <form method="post" action="{% url 'gestion:bureau_creer' app %}">{% csrf_token %}
+                <input type="hidden" name="modele" value="budget" /><input type="hidden" name="titre" value="Budget mensuel" />
+                <button type="submit" class="bx-modele" style="--c: {{ app_conf.couleur }}">
+                    <span class="bx-modele-vis bx-mini-sheet"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                    <span class="bx-modele-nom">Budget mensuel</span>
+                    <small>Prévu / réalisé / écart avec totaux</small>
+                </button>
+            </form>
+            {% elif app == "docs" %}
+            <form method="post" action="{% url 'gestion:bureau_creer' app %}">{% csrf_token %}
+                <input type="hidden" name="modele" value="compte_rendu" /><input type="hidden" name="titre" value="Compte rendu de réunion" />
+                <button type="submit" class="bx-modele" style="--c: {{ app_conf.couleur }}">
+                    <span class="bx-modele-vis bx-mini-doc"><b></b><i></i><i></i><i class="c"></i><i></i><i class="c"></i></span>
+                    <span class="bx-modele-nom">Compte rendu</span>
+                    <small>Ordre du jour, décisions, actions</small>
+                </button>
+            </form>
+            {% else %}
+            <form method="post" action="{% url 'gestion:bureau_creer' app %}">{% csrf_token %}
+                <input type="hidden" name="titre" value="Présentation de {{ societe.nom }}" />
+                <button type="submit" class="bx-modele" style="--c: {{ app_conf.couleur }}">
+                    <span class="bx-modele-vis bx-mini-slide"><b></b><i></i></span>
+                    <span class="bx-modele-nom">Présentation société</span>
+                    <small>Titre + points clés</small>
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </section>
+    {% else %}
+    <p class="bx-partage-info" style="margin-bottom:1rem">Vous voyez ici les fichiers que vos collègues ont partagés avec vous.</p>
+    {% endif %}
+
+    <section class="bx-fichiers" aria-label="Fichiers">
+        <div class="bx-fichiers-tete">
+            <h2 class="bx-h2">Fichiers récents</h2>
+            <label class="bx-recherche">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                <input type="search" id="bx-q" placeholder="Rechercher un fichier…" autocomplete="off" aria-label="Rechercher un fichier" />
+            </label>
+        </div>
+        {% if fichiers %}
+        <div class="bx-grille" id="bx-grille">
+            {% for f in fichiers %}
+            <article class="bx-carte" data-titre="{{ f.titre|lower }} {{ f.apercu|lower }}">
+                <a href="{{ f.url }}" class="bx-vignette bx-v-{{ app }}" aria-label="Ouvrir {{ f.titre }}">
+                    {% if app == "slides" %}
+                        {% with s=f.slides.0 %}
+                        <span class="bx-slide th-{{ f.theme }}">{% if s.image %}<img class="sl-img img-{{ s.image_pos|default:'droite' }}" src="{{ s.image }}" alt="" loading="lazy" />{% endif %}<span class="sl-in l-titre{% if s.image %} avec-img img-{{ s.image_pos|default:'droite' }}{% endif %}"><span class="t-h1">{{ s.titre|default:"Sans titre" }}</span><span class="t-sous">{{ s.texte|truncatechars:60 }}</span></span></span>
+                        {% endwith %}
+                    {% elif app == "docs" %}
+                        <span class="bx-page"><span>{{ f.apercu|default:"Document vide"|truncatechars:220 }}</span></span>
+                    {% else %}
+                        <span class="bx-feuille">{% for i in "123456789012345678901234" %}<i></i>{% endfor %}<em>{{ f.apercu|default:"Classeur vide"|truncatechars:70 }}</em></span>
+                    {% endif %}
+                </a>
+                <div class="bx-carte-pied">
+                    <span class="bx-app-ico mini bx-i-{{ app }}">{% include "gestion/snippets/bureau_icone.html" with cle=app %}</span>
+                    <div class="bx-carte-txt">
+                        <a href="{{ f.url }}" class="bx-carte-titre">{{ f.titre }}</a>
+                        {% if f.prive or f.nb_partenaires %}<span class="bx-partage-tag">{% if f.prive %}<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Privé{% endif %}{% if f.nb_partenaires %}{% if f.prive %} · {% endif %}{{ f.nb_partenaires }} partenaire{{ f.nb_partenaires|pluralize }}{% endif %}</span>{% endif %}
+                        <small>Modifié {{ f.maj|date:"d/m/Y à H:i" }}{% if f.auteur %} · {{ f.auteur.prenom|default:f.auteur.email }}{% endif %}</small>
+                    </div>
+                    <form method="post" action="{% url 'gestion:bureau_action' app f.pk %}" class="bx-fav">{% csrf_token %}
+                        <input type="hidden" name="action" value="favori" />
+                        <button type="submit" class="{% if f.favori %}on{% endif %}" title="{% if f.favori %}Retirer des favoris{% else %}Ajouter aux favoris{% endif %}" aria-label="Favori">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="{% if f.favori %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>
+                        </button>
+                    </form>
+                    <div class="bx-menu">
+                        <button type="button" class="bx-menu-btn" data-bx-menu aria-label="Actions" title="Actions">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+                        </button>
+                        <div class="bx-menu-liste" hidden>
+                            <a href="{{ f.url }}">Ouvrir</a>
+                            <form method="post" action="{% url 'gestion:bureau_action' app f.pk %}" data-bx-renommer="{{ f.titre }}">{% csrf_token %}
+                                <input type="hidden" name="action" value="renommer" /><input type="hidden" name="titre" />
+                                <button type="submit">Renommer</button></form>
+                            <form method="post" action="{% url 'gestion:bureau_action' app f.pk %}">{% csrf_token %}
+                                <input type="hidden" name="action" value="dupliquer" /><button type="submit">Dupliquer</button></form>
+                            {% for ext in app_conf.ext %}
+                                <a href="{% url 'gestion:bureau_exporter' app f.pk %}?format={{ ext }}">Télécharger .{{ ext }}</a>
+                            {% endfor %}
+                            <form method="post" action="{% url 'gestion:bureau_action' app f.pk %}" data-bx-confirmer="Supprimer « {{ f.titre }} » ? Cette action est définitive.">{% csrf_token %}
+                                <input type="hidden" name="action" value="supprimer" /><button type="submit" class="danger">Supprimer</button></form>
+                        </div>
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        <p class="bx-vide-recherche" id="bx-vide" hidden>Aucun fichier ne correspond à cette recherche.</p>
+        {% else %}
+        <div class="bx-vide">
+            <span class="bx-app-ico grand bx-i-{{ app }}">{% include "gestion/snippets/bureau_icone.html" with cle=app %}</span>
+            <p>Aucun fichier pour le moment.<br />Créez {{ app_conf.singulier }} avec les modèles ci-dessus.</p>
+        </div>
+        {% endif %}
+    </section>
+{% endblock content %}
+
+{% block extra_js %}
+<script>
+(function () {
+    function norm(t) { return String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""); }
+    var q = document.getElementById("bx-q"), cartes = document.querySelectorAll(".bx-carte"), vide = document.getElementById("bx-vide");
+    cartes.forEach(function (c) { c.__q = norm(c.getAttribute("data-titre")); });
+    if (q) q.addEventListener("input", function () {
+        var m = norm(q.value).trim().split(/\s+/).filter(Boolean), n = 0;
+        cartes.forEach(function (c) { var ok = m.every(function (w) { return c.__q.indexOf(w) !== -1; }); c.hidden = !ok; if (ok) n++; });
+        if (vide) vide.hidden = n > 0;
+    });
+    document.addEventListener("click", function (e) {
+        var b = e.target.closest("[data-bx-menu]");
+        document.querySelectorAll(".bx-menu-liste").forEach(function (l) { if (!b || l !== b.nextElementSibling) l.hidden = true; });
+        if (b) { var l = b.nextElementSibling; l.hidden = !l.hidden; }
+    });
+    document.querySelectorAll("[data-bx-renommer]").forEach(function (f) {
+        f.addEventListener("submit", function (e) {
+            var t = prompt("Nouveau nom :", f.getAttribute("data-bx-renommer"));
+            if (!t || !t.trim()) { e.preventDefault(); return; }
+            f.querySelector("[name=titre]").value = t.trim();
+        });
+    });
+    document.querySelectorAll("[data-bx-confirmer]").forEach(function (f) {
+        f.addEventListener("submit", function (e) { if (!confirm(f.getAttribute("data-bx-confirmer"))) e.preventDefault(); });
+    });
+    var ok = new URLSearchParams(location.search).get("ok");
+    if (ok === "refus" && window.showToast) window.showToast("error", "Seul le créateur du fichier ou l'administration peut le supprimer.");
+    var M = { supprimer: "Fichier supprimé.", renommer: "Fichier renommé.", favori: "Favoris mis à jour." };
+    if (ok && M[ok] && window.showToast) window.showToast("success", M[ok]);
+})();
+</script>
+{% endblock extra_js %}

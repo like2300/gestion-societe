@@ -2,8 +2,10 @@ import os
 
 from allauth.account.forms import SignupForm as AllauthSignupForm
 from django import forms
+from django.urls import reverse_lazy
 from django.utils import timezone
 
+from . import geographie
 from .models import (
     COULEUR_SOCIETE_CHOICES,
     Client,
@@ -22,6 +24,7 @@ from .models import (
     ProspectionClient,
     Reunion,
     Role,
+    SOURCE_CLIENT_CHOICES,
     Societe,
     SocieteDocument,
     TypeContrat,
@@ -30,53 +33,64 @@ from .models import (
     UserAdmin,
 )
 
-TYPE_COMPTE_CHOICES = [
-    ("ADMIN", "Administrateur d'entreprise"),
-    ("EMPLOYE", "Employé"),
-]
+# ---------------------------------------------------------------------------
+# Sélecteur enrichi (composant réutilisable, rendu par static/gestion/search-select.js)
+# Chaque <option> peut porter : data-sub (2e ligne), data-meta (étiquette à droite),
+# data-color (pastille), data-parent (valeur du champ parent, cf. data-depends-on sur
+# le <select>) et data-fill (JSON {nom_du_champ: valeur} pré-rempli au choix).
+# ---------------------------------------------------------------------------
+
+class RichSelect(forms.Select):
+    def __init__(self, *args, options_attrs=None, **kwargs):
+        self.options_attrs = options_attrs
+        super().__init__(*args, **kwargs)
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex=subindex, attrs=attrs)
+        if self.options_attrs and value not in ("", None):
+            cible = getattr(value, "instance", None)
+            extra = self.options_attrs(cible if cible is not None else value) or {}
+            for cle, val in extra.items():
+                if val in (None, ""):
+                    continue
+                if cle == "fill":
+                    import json
+                    val = json.dumps(val)
+                option["attrs"]["data-" + cle] = str(val)
+        return option
+
+
+def enrichir(form, nom, options_attrs=None, **attrs):
+    """Transforme le champ « nom » en sélecteur enrichi (recherche + suggestions contextuelles)."""
+    champ = form.fields[nom]
+    widget_attrs = {"data-searchable": "", **{k.replace("_", "-"): v for k, v in attrs.items()}}
+    champ.widget = RichSelect(attrs=widget_attrs, options_attrs=options_attrs)
+    if hasattr(champ, "queryset"):
+        champ.queryset = champ.queryset  # recopie les choix dans le nouveau widget
+    else:
+        champ.choices = champ.choices
+
+
+def _fcfa(v):
+    try:
+        return f"{int(round(float(v or 0))):,} FCFA".replace(",", " ")
+    except (TypeError, ValueError):
+        return ""
+
+
+COULEURS_STATUT_PAIEMENT = {"CONFIRME": "#10b981", "EN_ATTENTE": "#f59e0b", "ANNULE": "#e11d48"}
 
 
 class SignupFormPro(AllauthSignupForm):
-    """Formulaire d'inscription avec choix du type de compte.
+    """Formulaire d'inscription : seuls les administrateurs d'entreprise
+    s'inscrivent eux-mêmes.
 
-    - « Administrateur d'entreprise » : comportement habituel, la personne
-      crée ensuite sa société.
-    - « Employé » : la personne rejoint une société existante de la
-      plateforme. Si son email correspond déjà à une fiche employé, une
-      invitation est créée ; sinon elle demande à rejoindre une société depuis
-      la page « rejoindre une société ». Un employé ne peut pas créer de
-      société.
+    Les comptes employés ne se créent plus ici : c'est l'administrateur de la
+    société qui crée la fiche employé (le compte de connexion est alors généré
+    avec un mot de passe par défaut, à personnaliser à la première connexion).
     """
 
-    type_compte = forms.ChoiceField(
-        label="Je m'inscris en tant que",
-        choices=TYPE_COMPTE_CHOICES,
-        initial="ADMIN",
-        widget=forms.Select,
-    )
-
-    field_order = ["type_compte", "email", "password1", "password2"]
-
-    def save(self, request):
-        user = super().save(request)
-        if self.cleaned_data.get("type_compte") != "EMPLOYE":
-            return user
-        if user.role_admin != "EMPLOYE":
-            user.role_admin = "EMPLOYE"
-            user.save(update_fields=["role_admin"])
-        for employe in Employe.objects.filter(
-            email__iexact=user.email, compte__isnull=True
-        ):
-            DemandeAdhesion.objects.get_or_create(
-                user=user,
-                societe=employe.societe,
-                defaults={
-                    "employe": employe,
-                    "statut": "EN_ATTENTE",
-                    "origine": "INVITATION",
-                },
-            )
-        return user
+    field_order = ["email", "password1", "password2"]
 
 
 class SocieteConfigForm(forms.ModelForm):
@@ -109,6 +123,10 @@ class SocieteConfigForm(forms.ModelForm):
             "Cochez uniquement les modes que votre société utilise vraiment : "
             "ils seront proposés pour payer les salaires."
         )
+        # Champs « style Google » : libellé flottant (placeholder vide requis par le CSS).
+        for nom in ("nom", "pays", "slogan"):
+            self.fields[nom].widget.attrs.update({"placeholder": " ", "class": "gf-input", "autocomplete": "off"})
+        self.fields["logo"].widget.attrs.update({"accept": "image/*", "class": "dz-input"})
 
     def clean_logo(self):
         logo = self.cleaned_data.get("logo")
@@ -222,6 +240,23 @@ class UserProfilForm(forms.ModelForm):
         return photo
 
 
+class EmployeChoiceField(forms.ModelChoiceField):
+    """Choix d'un employé avec un libellé « Prénom Nom · Fonction »."""
+
+    def label_from_instance(self, obj):
+        label = f"{obj.prenom} {obj.nom}".strip()
+        if obj.fonction_id:
+            label = f"{label} · {obj.fonction.nom}"
+        return label
+
+
+class FonctionChoiceField(forms.ModelChoiceField):
+    """Choix d'une fonction avec un libellé simple (sans le groupe société)."""
+
+    def label_from_instance(self, obj):
+        return obj.nom
+
+
 class EmployeForm(forms.ModelForm):
     """Création / modification d'un employé dans le dashboard."""
 
@@ -229,6 +264,11 @@ class EmployeForm(forms.ModelForm):
         required=False,
         label="Photo de profil",
         help_text="Images : PNG, JPG, JPEG, WEBP, GIF, SVG.",
+    )
+    document = forms.FileField(
+        required=False,
+        label="Document de l'employé",
+        help_text="Facultatif : ajoute un document (PDF, image…).",
     )
     contrat_type = forms.ModelChoiceField(
         queryset=TypeContrat.objects.all(),
@@ -251,6 +291,26 @@ class EmployeForm(forms.ModelForm):
         label="Salaire contractuel",
         widget=forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
     )
+    contrat_lieu_travail = forms.CharField(
+        required=False, max_length=255, label="Lieu de travail",
+        help_text="Par défaut : adresse de la société.",
+    )
+    contrat_heures_hebdo = forms.IntegerField(
+        required=False, min_value=1, max_value=80, initial=40, label="Heures par semaine",
+    )
+    contrat_periode_essai = forms.IntegerField(
+        required=False, min_value=0, max_value=365, label="Période d'essai (jours)",
+        help_text="Vide : valeur usuelle selon le type de contrat.",
+    )
+    contrat_missions = forms.CharField(
+        required=False, label="Missions principales",
+        widget=forms.Textarea(attrs={"rows": 3, "placeholder": "Une mission par ligne"}),
+    )
+    fonction = FonctionChoiceField(
+        queryset=Fonction.objects.none(),
+        required=False,
+        label="Fonction",
+    )
 
     class Meta:
         model = Employe
@@ -258,7 +318,10 @@ class EmployeForm(forms.ModelForm):
             "nom",
             "prenom",
             "date_naissance",
+            "lieu_naissance",
             "nationalite",
+            "numero_piece_identite",
+            "adresse",
             "telephone_1",
             "telephone_2",
             "email",
@@ -274,11 +337,69 @@ class EmployeForm(forms.ModelForm):
             "salaire": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
         }
 
+    ALLOWED_DOC_EXTS = {
+        ".pdf",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".webp",
+        ".gif",
+        ".doc",
+        ".docx",
+        ".odt",
+        ".xls",
+        ".xlsx",
+        ".ods",
+        ".txt",
+    }
+
     def __init__(self, *args, societe=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["email"].required = False
+        self.fields["fonction"].empty_label = "— Aucune fonction —"
+        self.fields["fonction"].widget.attrs["data-create-url"] = reverse_lazy(
+            "gestion:fonction_creer"
+        )
+        self.fields["fonction"].widget.attrs["data-create-label"] = "Créer une fonction"
+        self.fields["fonction"].widget.attrs["data-create-title"] = "Nouvelle fonction"
+        self.fields["fonction"].widget.attrs["data-create-subtitle"] = (
+            "La fonction sera ajoutée à la liste des fonctions."
+        )
         if societe:
-            self.fields["fonction"].queryset = Fonction.objects.filter(societe=societe)
+            self.fields["fonction"].queryset = Fonction.objects.filter(
+                societe=societe
+            ).order_by("nom")
+        self.fields["contrat_type"].empty_label = "— Type de contrat —"
+        self.fields["contrat_type"].help_text = "Le contrat de travail est généré automatiquement (CDI par défaut)."
+        # En modification : pré-remplit la section contrat avec le contrat en cours
+        contrat = self.instance.contrats.filter(statut="ACTIF").first() if self.instance.pk else None
+        if contrat and not self.is_bound:
+            self.initial.update({
+                "contrat_type": contrat.type_contrat_id, "contrat_date_debut": contrat.date_debut,
+                "contrat_date_fin": contrat.date_fin, "contrat_salaire": contrat.salaire_contractuel,
+                "contrat_lieu_travail": contrat.lieu_travail, "contrat_heures_hebdo": contrat.heures_hebdo,
+                "contrat_periode_essai": contrat.periode_essai_jours, "contrat_missions": contrat.missions,
+            })
+
+    def clean(self):
+        donnees = super().clean()
+        t = donnees.get("contrat_type")
+        if t and t.code in ("CDD", "STAGE") and not donnees.get("contrat_date_fin"):
+            self.add_error("contrat_date_fin", "Indiquez la date de fin pour un CDD ou un stage.")
+        debut, fin = donnees.get("contrat_date_debut"), donnees.get("contrat_date_fin")
+        if debut and fin and fin < debut:
+            self.add_error("contrat_date_fin", "La fin du contrat doit suivre son début.")
+        return donnees
+
+    def clean_document(self):
+        document = self.cleaned_data.get("document")
+        if document:
+            ext = os.path.splitext(document.name)[1].lower()
+            if ext not in self.ALLOWED_DOC_EXTS:
+                raise forms.ValidationError(
+                    "Format de document non autorisé (PDF, image ou document bureautique)."
+                )
+        return document
 
 
 class ClientForm(forms.ModelForm):
@@ -294,11 +415,21 @@ class ClientForm(forms.ModelForm):
         label="Document du client (PDF)",
         help_text="Facultatif : crée un document client.",
     )
-    responsable = forms.ModelChoiceField(
+    responsable = EmployeChoiceField(
         queryset=Employe.objects.none(),
         required=False,
         label="Responsable du client",
         help_text="Employé en charge du suivi de ce client.",
+    )
+    source = forms.ChoiceField(
+        required=False,
+        label="Source du client",
+        choices=[("", "— Choisir une source —")] + list(SOURCE_CLIENT_CHOICES),
+    )
+    pays = forms.ChoiceField(
+        required=False,
+        label="Pays",
+        help_text="Le client apparaît sur la carte du monde (Globe) d'après son pays et sa ville.",
     )
 
     ALLOWED_LOGO_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}
@@ -326,11 +457,47 @@ class ClientForm(forms.ModelForm):
 
     def __init__(self, *args, societe=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["type_client"].queryset = TypeClient.objects.all().order_by("nom")
+        self.fields["type_client"].empty_label = "— Choisir un type —"
+        self.fields["type_client"].widget.attrs["data-create-url"] = reverse_lazy(
+            "gestion:type_client_creer"
+        )
+        self.fields["type_client"].widget.attrs["data-create-label"] = "Créer un type de client"
+        self.fields["type_client"].widget.attrs["data-create-title"] = "Nouveau type de client"
         if societe:
-            self.fields["responsable"].queryset = Employe.objects.filter(
-                societe=societe
-            ).order_by("nom", "prenom")
+            self.fields["responsable"].queryset = (
+                Employe.objects.filter(societe=societe)
+                .select_related("fonction")
+                .order_by("nom", "prenom")
+            )
             self.fields["responsable"].empty_label = "— Aucun employé —"
+        # Pays : liste déroulante (noms reconnus par la carte du monde) ;
+        # par défaut le pays de la société pour un nouveau client.
+        actuel = (self.data.get(self.add_prefix("pays")) if self.is_bound else None) or (
+            self.instance.pays if self.instance and self.instance.pk else ""
+        )
+        if actuel and geographie.est_connu(actuel):
+            actuel_aff = geographie.nom_fr(actuel)
+        else:
+            actuel_aff = actuel or ""
+        self.fields["pays"].choices = geographie.choix_pays(actuel_aff)
+        if self.instance and self.instance.pk:
+            self.initial["pays"] = actuel_aff
+        elif societe and getattr(societe, "pays", ""):
+            self.initial["pays"] = geographie.nom_fr(societe.pays)
+        self.fields["pays"].widget.attrs["data-searchable"] = ""
+        self.fields["pays"].widget.attrs["data-pays-defaut"] = (
+            geographie.nom_fr(societe.pays) if societe and getattr(societe, "pays", "") else ""
+        )
+        self.fields["ville"].widget.attrs.update({
+            "list": "villes-connues",
+            "autocomplete": "off",
+            "placeholder": "Ex. Brazzaville",
+        })
+        self.fields["ville"].help_text = "Les villes proposées sont placées précisément sur la carte."
+
+    def clean_pays(self):
+        return (self.cleaned_data.get("pays") or "").strip()
 
     def clean_logo(self):
         logo = self.cleaned_data.get("logo")
@@ -472,6 +639,13 @@ class ReunionForm(forms.ModelForm):
         return instance
 
 
+class ClientChoiceField(forms.ModelChoiceField):
+    """Choix d'un client avec un libellé simple (nom seul)."""
+
+    def label_from_instance(self, obj):
+        return obj.nom
+
+
 class ProjetForm(forms.ModelForm):
     """Création / modification d'un projet dans le dashboard.
 
@@ -480,7 +654,11 @@ class ProjetForm(forms.ModelForm):
     remplacée à chaque modification.
     """
 
-    responsable = forms.ModelChoiceField(
+    client = ClientChoiceField(
+        queryset=Client.objects.none(),
+        label="Client",
+    )
+    responsable = EmployeChoiceField(
         queryset=Employe.objects.none(),
         required=False,
         label="Responsable",
@@ -507,13 +685,15 @@ class ProjetForm(forms.ModelForm):
 
     def __init__(self, *args, societe=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["client"].empty_label = "— Choisir un client —"
+        self.fields["responsable"].empty_label = "— Aucun employé —"
         if societe:
-            self.fields["client"].queryset = Client.objects.filter(societe=societe)
-            self.fields["client"].empty_label = "— Choisir un client —"
+            self.fields["client"].queryset = Client.objects.filter(
+                societe=societe
+            ).order_by("nom")
             self.fields["responsable"].queryset = Employe.objects.filter(
                 societe=societe
-            ).order_by("nom", "prenom")
-            self.fields["responsable"].empty_label = "— Aucun employé —"
+            ).select_related("fonction").order_by("nom", "prenom")
         if self.instance and self.instance.pk:
             chef = self.instance.chefs.filter(principal=True).first()
             if chef is not None:
@@ -729,20 +909,63 @@ class PaiementForm(forms.ModelForm):
             "statut",
         ]
         widgets = {
-            "date_paiement": forms.DateInput(attrs={"type": "date"}),
+            "date_paiement": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
             "montant": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
+        }
+        labels = {
+            "echeance": "Échéance", "montant": "Montant (FCFA)", "date_paiement": "Date du paiement",
+            "mode_paiement": "Mode de paiement", "reference": "Référence",
         }
 
     def __init__(self, *args, societe=None, **kwargs):
         super().__init__(*args, **kwargs)
+        from django.db.models import Q, Sum
+
         self.fields["echeance"].required = False
         self.fields["reference"].required = False
-        self.fields["mode_paiement"].queryset = ModePaiement.objects.all()
+        self.fields["mode_paiement"].queryset = ModePaiement.objects.filter(actif=True)
         if societe:
-            self.fields["projet"].queryset = ProjetClient.objects.filter(societe=societe)
-            self.fields["echeance"].queryset = EcheancePaiement.objects.filter(
-                projet__societe=societe
+            projets = (ProjetClient.objects.filter(societe=societe).select_related("client")
+                       .annotate(encaisse=Sum("paiements__montant", filter=Q(paiements__statut="CONFIRME"))))
+            self.fields["projet"].queryset = projets
+            self.fields["echeance"].queryset = (
+                EcheancePaiement.objects.filter(projet__societe=societe).select_related("projet")
+                .annotate(encaisse=Sum("paiements__montant", filter=Q(paiements__statut="CONFIRME")))
+                .order_by("projet__nom", "numero_echeance")
             )
+        else:
+            self.fields["projet"].queryset = ProjetClient.objects.none()
+            self.fields["echeance"].queryset = EcheancePaiement.objects.none()
+
+        def projet_attrs(p):
+            reste = float(p.budget or 0) - float(getattr(p, "encaisse", 0) or 0)
+            return {
+                "sub": f"{p.client.nom if p.client_id else 'Sans client'} · budget {_fcfa(p.budget)}",
+                "meta": f"Reste {_fcfa(reste)}" if reste > 0 else "Soldé",
+            }
+
+        def echeance_attrs(e):
+            du = float(e.montant_prevu or 0)
+            reste = max(du - float(getattr(e, "encaisse", 0) or 0), 0)
+            return {
+                "sub": f"Prévue le {e.date_prevue:%d/%m/%Y} · {e.get_statut_display()}",
+                "meta": _fcfa(reste) if reste else "Payée",
+                "parent": e.projet_id,
+                "color": {"RETARD": "#e11d48", "PARTIELLE": "#f59e0b", "PAYEE": "#10b981"}.get(e.statut, "#3b82f6"),
+                "fill": {"montant": f"{reste:.0f}"} if reste else None,
+            }
+
+        enrichir(self, "projet", projet_attrs)
+        enrichir(self, "echeance", echeance_attrs, data_depends_on="projet",
+                 data_depends_label="Choisissez d'abord un projet")
+        self.fields["projet"].label_from_instance = lambda p: p.nom
+        self.fields["echeance"].label_from_instance = lambda e: f"Échéance n° {e.numero_echeance} — {e.projet.nom}"
+        self.fields["echeance"].empty_label = "Paiement libre (sans échéance)"
+        enrichir(self, "mode_paiement", lambda m: {"sub": m.code})
+        enrichir(self, "statut", lambda v: {"color": COULEURS_STATUT_PAIEMENT.get(str(v))})
+        if not self.instance.pk:
+            self.initial.setdefault("statut", "CONFIRME")
+            self.initial.setdefault("date_paiement", timezone.localdate())
 
 
 class RoleForm(forms.ModelForm):
@@ -797,3 +1020,6 @@ class SocieteDocumentForm(forms.ModelForm):
         self.fields["numero_document"].required = False
         self.fields["date_emission"].required = False
         self.fields["date_expiration"].required = False
+        # En modification, garder le fichier existant si aucun nouveau n'est choisi
+        if self.instance.pk:
+            self.fields["fichier"].required = False

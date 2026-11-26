@@ -1,0 +1,48 @@
+{% extends "gestion/base_dashboard.html" %}
+{% load static %}
+
+{% block dash_title %}{{ fichier.titre }} — Tableur{% endblock %}
+
+{% block content %}
+    <link rel="stylesheet" href="{% static 'gestion/bureau.css' %}?v={{ UI_VERSION }}" />
+    <link rel="stylesheet" href="{% static 'gestion/vendor/univer/univer-office.css' %}?v=univer-1.1.0-c4" />
+    <div class="bx-editeur bx-ed-univer">
+        {% include "gestion/snippets/bureau_barre.html" %}
+        <div class="bx-univer" id="bx-univer">
+            <div class="bx-chargement" id="bx-chargement">
+                <span class="bx-app-ico bx-i-sheets">{% include "gestion/snippets/bureau_icone.html" with cle="sheets" %}</span>
+                <span>Chargement de l'éditeur…</span>
+            </div>
+        </div>
+    </div>
+{% endblock content %}
+
+{% block extra_js %}
+    {{ contenu_json|json_script:"bx-contenu" }}
+    <script src="{% static 'gestion/bureau-commun.js' %}?v={{ UI_VERSION }}"></script>
+    <script src="{% static 'gestion/vendor/univer/univer-office.js' %}?v=univer-1.1.0-c4"></script>
+    <script>
+    (function () {
+        "use strict";
+        var donnees = JSON.parse(document.getElementById("bx-contenu").textContent || "{}");
+        var racine = document.documentElement;
+        var ed = UniverOffice.tableur({
+            container: document.getElementById("bx-univer"),
+            donnees: donnees,
+            sombre: racine.getAttribute("data-theme") === "dark",
+            surModif: function () { Bureau.modifie(); }
+        });
+        window.BX_EDITEUR = ed;
+        var ch = document.getElementById("bx-chargement");
+        if (ch) ch.remove();
+        Bureau.init({
+            url: "{{ sauver_url }}",
+            lire: function () { return { univer: ed.lire() }; },
+            appliquer: function (c) { ed.remplacer(c && c.univer ? c.univer : c); }
+        });
+        // Suit le mode clair / sombre de l'application
+        new MutationObserver(function () { ed.sombre(racine.getAttribute("data-theme") === "dark"); })
+            .observe(racine, { attributes: true, attributeFilter: ["data-theme"] });
+    })();
+    </script>
+{% endblock extra_js %}

@@ -13,6 +13,46 @@
             display: inline-flex; align-items: center; justify-content: center;
             text-transform: uppercase;
         }
+        .ffield-note { margin: -0.35rem 0 0.9rem; }
+        .btn-link-mini {
+            background: none; border: none; color: var(--accent);
+            font-weight: 600; cursor: pointer; padding: 0; font-size: 0.83rem;
+        }
+        .btn-link-mini:hover { text-decoration: underline; }
+        .quick-modal {
+            position: fixed; inset: 0; z-index: 70;
+            display: flex; align-items: center; justify-content: center;
+            padding: 1rem;
+        }
+        .quick-modal[hidden] { display: none; }
+        .quick-modal-overlay {
+            position: absolute; inset: 0;
+            background: rgba(15, 23, 42, 0.55);
+        }
+        .quick-modal-box {
+            position: relative; background: #ffffff; border-radius: 14px;
+            width: min(480px, 100%); max-height: calc(100vh - 2rem);
+            overflow-y: auto; padding: 1.2rem;
+            box-shadow: 0 24px 60px -18px rgba(15, 23, 42, 0.45);
+        }
+        .quick-modal-head {
+            display: flex; align-items: flex-start; justify-content: space-between;
+            gap: 0.8rem; margin-bottom: 0.9rem;
+        }
+        .quick-modal-head h3 { margin: 0; font-size: 1.05rem; }
+        .quick-errors {
+            background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca;
+            border-radius: 8px; padding: 0.6rem 0.8rem; font-size: 0.82rem;
+            margin-bottom: 0.9rem;
+        }
+        .quick-errors ul { margin: 0.25rem 0 0 1.1rem; padding: 0; }
+        @media (prefers-color-scheme: dark) {
+            .quick-modal-box { background: #0f172a; }
+            .quick-modal-box .drawer-head { border-bottom-color: #334155; }
+            .quick-errors {
+                background: #450a0a; color: #fca5a5; border-color: #7f1d1d;
+            }
+        }
     </style>
     <div class="page-head">
         <div>
@@ -29,6 +69,10 @@
             </button>
         </div>
     </div>
+
+    {% include "gestion/components/espace_dossiers.html" %}
+    {% include "gestion/components/stat_row.html" with cartes=stats_cartes %}
+
 
     <div class="panel">
         {% if items %}
@@ -104,6 +148,36 @@
             </div>
         {% endif %}
     </div>
+
+    <div class="quick-modal" id="quick-client-modal" hidden>
+        <div class="quick-modal-overlay" data-quick-close></div>
+        <div class="quick-modal-box" role="dialog" aria-modal="true" aria-labelledby="quick-modal-title">
+            <div class="quick-modal-head">
+                <div>
+                    <h3 id="quick-modal-title">Nouveau client</h3>
+                    <p class="drawer-sub">Créez le client puis continuez votre projet.</p>
+                </div>
+                <button type="button" class="drawer-close" data-quick-close aria-label="Fermer">×</button>
+            </div>
+            <form method="post" id="quick-client-form" action="{% url 'gestion:client_creer_mini' %}" novalidate>
+                {% csrf_token %}
+                <div class="fgrid">
+                    {% include "gestion/snippets/drawer_field.html" with field=mini_client_form.nom span=True %}
+                    {% include "gestion/snippets/drawer_field.html" with field=mini_client_form.type_client %}
+                    {% include "gestion/snippets/drawer_field.html" with field=mini_client_form.source %}
+                    {% include "gestion/snippets/drawer_field.html" with field=mini_client_form.responsable %}
+                    {% include "gestion/snippets/drawer_field.html" with field=mini_client_form.telephone_1 %}
+                    {% include "gestion/snippets/drawer_field.html" with field=mini_client_form.email span=True %}
+                    {% include "gestion/snippets/drawer_field.html" with field=mini_client_form.statut %}
+                </div>
+                <div class="quick-errors" id="quick-client-errors" hidden></div>
+                <div class="factions">
+                    <button type="button" class="btn-ghost" data-quick-close>Annuler</button>
+                    <button type="submit" class="btn-primary" id="quick-client-submit">Enregistrer le client</button>
+                </div>
+            </form>
+        </div>
+    </div>
 {% endblock content %}
 
 {% block drawer %}
@@ -125,6 +199,11 @@
             <div class="fgrid">
                 {% include "gestion/snippets/drawer_field.html" with field=form.nom span=True %}
                 {% include "gestion/snippets/drawer_field.html" with field=form.client %}
+                <div class="ffield-note">
+                    <button type="button" class="btn-link-mini" id="btn-creer-client">
+                        N'est pas listé ? Créer un client…
+                    </button>
+                </div>
                 {% include "gestion/snippets/drawer_field.html" with field=form.responsable %}
                 {% include "gestion/snippets/drawer_field.html" with field=form.statut %}
                 {% include "gestion/snippets/drawer_field.html" with field=form.date_debut %}
@@ -167,6 +246,25 @@
             var title = document.getElementById("drawer-title");
             var sub = document.getElementById("drawer-sub");
 
+            var idClientEl = document.getElementById("id_client");
+            var pendingClientDone = null;
+            function openQuickFromSearch(term, done) {
+                var nomField = document.getElementById("mini_nom");
+                if (nomField) nomField.value = term || "";
+                pendingClientDone = done;
+                ouvrirQuick();
+            }
+            idClientEl.__msAddHandler = openQuickFromSearch;
+            idClientEl.__msAddLabel = "Créer un client…";
+            var msClient = window.SearchSelect && window.SearchSelect.enhance(idClientEl);
+            var msResp = window.SearchSelect &&
+                window.SearchSelect.enhance(document.getElementById("id_responsable"));
+
+            function refreshSelects() {
+                if (msClient) msClient.refresh();
+                if (msResp) msResp.refresh();
+            }
+
             function bind(sel, fn) {
                 var els = document.querySelectorAll(sel);
                 for (var i = 0; i < els.length; i++) els[i].addEventListener("click", fn);
@@ -189,6 +287,7 @@
                 form.reset();
                 objId.value = "";
                 setItem({});
+                refreshSelects();
                 title.textContent = "Ajouter un projet";
                 sub.textContent = "Renseignez les informations ci-dessous.";
                 showPanel("form");
@@ -200,6 +299,7 @@
                 form.reset();
                 objId.value = item.pk;
                 setItem(item);
+                refreshSelects();
                 title.textContent = "Modifier : " + item.nom;
                 sub.textContent = "Ajustez les informations puis enregistrez.";
                 showPanel("form");
@@ -219,6 +319,7 @@
                     title.textContent = "Modifier le projet";
                     sub.textContent = "Corrigez les erreurs puis enregistrez.";
                 }
+                refreshSelects();
                 showPanel("form");
                 window.openDrawer();
             }
@@ -229,6 +330,105 @@
             } else if (params.get("deleted")) {
                 window.showToast && window.showToast("success", "Projet supprimé.");
             }
+
+            var quickModal = document.getElementById("quick-client-modal");
+            var quickForm = document.getElementById("quick-client-form");
+            var quickErrors = document.getElementById("quick-client-errors");
+            var quickSubmit = document.getElementById("quick-client-submit");
+            var msQuickType = window.SearchSelect &&
+                window.SearchSelect.enhance(document.getElementById("mini_type_client"));
+            var msQuickSource = window.SearchSelect &&
+                window.SearchSelect.enhance(document.getElementById("mini_source"));
+            var msQuickResp = window.SearchSelect &&
+                window.SearchSelect.enhance(document.getElementById("mini_responsable"));
+
+            function refreshQuickSelects() {
+                if (msQuickType) msQuickType.refresh();
+                if (msQuickSource) msQuickSource.refresh();
+                if (msQuickResp) msQuickResp.refresh();
+            }
+
+            function ouvrirQuick() {
+                quickErrors.hidden = true;
+                quickModal.hidden = false;
+                refreshQuickSelects();
+            }
+
+            function fermerQuick() {
+                quickModal.hidden = true;
+            }
+
+            document.getElementById("btn-creer-client").addEventListener("click", ouvrirQuick);
+            bind("[data-quick-close]", fermerQuick);
+            quickModal.addEventListener("click", function (ev) {
+                if (ev.target.classList.contains("quick-modal-overlay")) fermerQuick();
+            });
+
+            function afficherQuickErreurs(errors) {
+                quickErrors.innerHTML = "";
+                var ul = document.createElement("ul");
+                Object.keys(errors || {}).forEach(function (k) {
+                    var arr = errors[k] || [];
+                    for (var i = 0; i < arr.length; i++) {
+                        var li = document.createElement("li");
+                        li.textContent = arr[i].message;
+                        ul.appendChild(li);
+                    }
+                });
+                if (!ul.children.length) {
+                    var li2 = document.createElement("li");
+                    li2.textContent = "Impossible d'enregistrer le client.";
+                    ul.appendChild(li2);
+                }
+                quickErrors.appendChild(ul);
+                quickErrors.hidden = false;
+            }
+
+            quickForm.addEventListener("submit", function (ev) {
+                ev.preventDefault();
+                if (quickSubmit.disabled) return;
+                quickSubmit.disabled = true;
+                quickErrors.hidden = true;
+                fetch(quickForm.action, {
+                    method: "POST",
+                    body: new FormData(quickForm),
+                    credentials: "same-origin",
+                    headers: { "X-Requested-With": "XMLHttpRequest" }
+                })
+                    .then(function (r) {
+                        return r.json().then(function (data) { return { ok: r.ok, data: data }; });
+                    })
+                    .then(function (res) {
+                        if (res.ok && res.data.ok) {
+                            var sel = document.getElementById("id_client");
+                            var opt = document.createElement("option");
+                            opt.value = String(res.data.pk);
+                            opt.textContent = res.data.nom;
+                            sel.appendChild(opt);
+                            sel.value = String(res.data.pk);
+                            if (msClient) msClient.refresh();
+                            quickForm.reset();
+                            refreshQuickSelects();
+                            fermerQuick();
+                            window.showToast && window.showToast(
+                                "success", "Client « " + res.data.nom + " » créé."
+                            );
+                            if (pendingClientDone) {
+                                var d = pendingClientDone;
+                                pendingClientDone = null;
+                                d();
+                            }
+                        } else {
+                            afficherQuickErreurs(res.data.errors);
+                        }
+                    })
+                    .catch(function () {
+                        afficherQuickErreurs({
+                            __all__: [{ message: "Erreur réseau. Réessayez." }]
+                        });
+                    })
+                    .finally(function () { quickSubmit.disabled = false; });
+            });
         })();
     </script>
 {% endblock extra_js %}

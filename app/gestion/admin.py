@@ -320,7 +320,8 @@ class PaiementClientAdmin(admin.ModelAdmin):
 @admin.register(Forfait)
 class ForfaitAdmin(admin.ModelAdmin):
     list_display = ("nom", "prix", "devise", "duree_jours", "actif")
-    list_filter = ("actif",)
+    list_editable = ("prix", "devise", "duree_jours", "actif")
+    list_filter = ("actif", "devise")
     search_fields = ("nom",)
 
 
@@ -415,3 +416,123 @@ class IaMessageAdmin(admin.ModelAdmin):
 
 # Tables de liaison simples, enregistrement direct
 admin.site.register(UserAdminLangue)
+
+
+from .models import Facture, LigneFacture  # noqa: E402
+
+
+class LigneFactureInline(admin.TabularInline):
+    model = LigneFacture
+    extra = 0
+
+
+@admin.register(Facture)
+class FactureAdmin(admin.ModelAdmin):
+    list_display = ("numero", "societe", "client_nom", "date_emission", "statut", "total_ttc")
+    list_filter = ("statut", "societe")
+    search_fields = ("numero", "client_nom", "objet")
+    inlines = [LigneFactureInline]
+
+
+from .models import FichierBureau  # noqa: E402
+
+
+@admin.register(FichierBureau)
+class FichierBureauAdmin(admin.ModelAdmin):
+    list_display = ("titre", "type_fichier", "societe", "updated_at")
+    list_filter = ("type_fichier", "societe")
+    search_fields = ("titre",)
+
+
+from .models import EvenementAgenda  # noqa: E402
+
+
+@admin.register(EvenementAgenda)
+class EvenementAgendaAdmin(admin.ModelAdmin):
+    list_display = ("titre", "type_evenement", "debut", "fin", "societe", "organisateur")
+    list_filter = ("type_evenement", "societe")
+    search_fields = ("titre", "lieu", "description")
+    filter_horizontal = ("participants",)
+    date_hierarchy = "debut"
+
+
+# ---------------------------------------------------------------------------
+# Données utiles au support (les messages privés, documents confidentiels et
+# identifiants des connecteurs restent volontairement hors de l'admin).
+# ---------------------------------------------------------------------------
+from .models import (  # noqa: E402
+    ActivitePlateforme,
+    DemandeAdhesion,
+    EquipeGroupe,
+    EquipeGroupeMembre,
+    ModeleContrat,
+    ProspectionClient,
+    Tache,
+)
+
+
+@admin.register(Tache)
+class TacheAdmin(admin.ModelAdmin):
+    list_display = ("titre", "societe", "assignee", "priorite", "statut", "progres", "echeance")
+    list_filter = ("statut", "priorite", "societe")
+    search_fields = ("titre", "description")
+    date_hierarchy = "echeance"
+    raw_id_fields = ("assignee", "cree_par", "projet")
+
+
+@admin.register(ProspectionClient)
+class ProspectionClientAdmin(admin.ModelAdmin):
+    list_display = ("nom", "societe", "contact", "statut", "budget_estime", "date_prospection")
+    list_filter = ("statut", "societe")
+    search_fields = ("nom", "contact", "email")
+
+
+@admin.register(DemandeAdhesion)
+class DemandeAdhesionAdmin(admin.ModelAdmin):
+    list_display = ("user", "societe", "employe", "origine", "statut", "created_at")
+    list_filter = ("statut", "origine", "societe")
+    search_fields = ("user__email",)
+    raw_id_fields = ("user", "employe")
+
+
+@admin.register(ModeleContrat)
+class ModeleContratAdmin(admin.ModelAdmin):
+    list_display = ("nom", "societe", "type_contrat", "actif", "updated_at")
+    list_filter = ("actif", "type_contrat", "societe")
+    search_fields = ("nom",)
+
+
+class EquipeGroupeMembreInline(admin.TabularInline):
+    model = EquipeGroupeMembre
+    extra = 0
+    raw_id_fields = ("employe",)
+
+
+@admin.register(EquipeGroupe)
+class EquipeGroupeAdmin(admin.ModelAdmin):
+    list_display = ("titre", "societe", "cree_par", "created_at")
+    list_filter = ("societe",)
+    search_fields = ("titre",)
+    inlines = [EquipeGroupeMembreInline]
+    exclude = ("logo",)
+
+
+@admin.register(ActivitePlateforme)
+class ActivitePlateformeAdmin(admin.ModelAdmin):
+    """Journal d'activité : consultation seule (traçabilité)."""
+
+    list_display = ("created_at", "societe", "utilisateur", "action", "module", "libelle")
+    list_filter = ("action", "module", "societe")
+    search_fields = ("libelle", "detail")
+    date_hierarchy = "created_at"
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+# L'administration de la plateforme (tableau de bord /admin/ et données détaillées)
+# est réservée aux superadmins : un compte « staff » simple n'y a pas accès.
+admin.site.has_permission = lambda request: bool(request.user.is_active and request.user.is_superuser)
