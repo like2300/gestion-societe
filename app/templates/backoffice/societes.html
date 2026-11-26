@@ -1,7 +1,39 @@
 {% extends "backoffice/base.html" %}
 {% block titre %}Sociétés{% endblock %}
+{% block style %}
+.modal[hidden] { display: none; }
+.modal { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; }
+.modal-fond { position: absolute; inset: 0; background: rgba(12, 24, 18, .55); }
+.modal-carte { position: relative; width: min(560px, 100%); background: #fff; border-radius: 22px; padding: 24px; box-shadow: 0 24px 70px rgba(12, 24, 18, .2); }
+.modal-carte h3 { margin: 0 0 6px; font-size: 1.15rem; color: var(--encre); }
+.modal-carte p { margin: 0 0 14px; color: var(--doux); font-size: .88rem; line-height: 1.5; }
+.modal-carte input { width: 100%; height: 42px; border: 1px solid var(--trait); border-radius: 12px; padding: 0 12px; font: inherit; font-size: .82rem; color: var(--encre); background: #fafaf8; }
+.modal-actions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: 16px; }
+.modal-carte .indice { margin: 10px 0 0; font-size: .78rem; color: var(--foret); }
+{% endblock %}
 {% block contenu %}
-<div class="page-titre"><h2>Sociétés</h2><p>Toutes les sociétés clientes et leur abonnement.</p></div>
+<div class="page-titre"><h2>Sociétés</h2><p>Sociétés en attente de validation et sociétés clientes.</p></div>
+
+<div class="carte tableau" style="margin-bottom: 18px;">
+    <div style="padding: 14px 16px 0;">
+        <h3 style="margin: 0; font-size: 1rem; color: var(--encre);">En attente de validation</h3>
+        <p style="margin: .2rem 0 0; color: var(--doux); font-size: .84rem;">Générez un lien d’activation valable 1 heure. Le lien est lié à votre compte.</p>
+    </div>
+    <table>
+        <thead><tr><th>Société</th><th>Forfait demandé</th><th>Demandée le</th><th style="text-align:right">Activation</th></tr></thead>
+        <tbody>
+        {% for a in en_attente %}
+            <tr>
+                <td><b>{{ a.societe.nom }}</b><small>{{ a.societe.createur.email }}</small></td>
+                <td><span class="etat EN_ATTENTE">{{ a.forfait.nom }}</span>{% if a.ancien_forfait %}<small>Changement depuis {{ a.ancien_forfait.nom }}</small>{% endif %}</td>
+                <td>{{ a.created_at|date:"d/m/Y H:i" }}</td>
+                <td><div class="actions"><button type="button" class="b ok" data-lien-activation data-url="{% url 'backoffice:lien_activation' a.pk %}" data-nom="{{ a.societe.nom }}">Générer le lien</button></div></td>
+            </tr>
+        {% empty %}<tr><td colspan="4" class="vide">Aucune société en attente de validation.</td></tr>{% endfor %}
+        </tbody>
+    </table>
+</div>
+
 <div class="filtres"><form method="get" style="margin-left:0"><input type="search" name="q" value="{{ q }}" placeholder="Rechercher une société ou un e-mail…" /></form></div>
 <div class="carte tableau">
     <table>
@@ -19,4 +51,67 @@
         </tbody>
     </table>
 </div>
+
+<div class="modal" id="modale-activation" hidden>
+    <div class="modal-fond" data-fermer-modale></div>
+    <div class="modal-carte" role="dialog" aria-modal="true" aria-labelledby="titre-modale">
+        <h3 id="titre-modale">Activer « <span id="nom-societe"></span> »</h3>
+        <p>Copiez ce lien et ouvrez-le dans un navigateur connecté à votre compte. Il expire à <b id="expiration-lien"></b>.</p>
+        <input id="lien-activation" type="text" readonly aria-label="Lien d’activation" />
+        <p class="indice" id="copie-statut">Seul votre compte peut utiliser ce lien.</p>
+        <div class="modal-actions">
+            <button type="button" class="b" data-fermer-modale>Fermer</button>
+            <button type="button" class="b ok" id="copier-lien">Copier le lien</button>
+        </div>
+    </div>
+</div>
+
+{% csrf_token %}
+<script>
+(function () {
+    var modale = document.getElementById("modale-activation");
+    var champ = document.getElementById("lien-activation");
+    var statut = document.getElementById("copie-statut");
+    var jetonCSRF = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+
+    function ouvrir() { modale.hidden = false; champ.focus(); champ.select(); }
+    function fermer() { modale.hidden = true; statut.textContent = "Seul votre compte peut utiliser ce lien."; }
+
+    document.querySelectorAll("[data-fermer-modale]").forEach(function (el) {
+        el.addEventListener("click", fermer);
+    });
+    document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && !modale.hidden) fermer();
+    });
+
+    document.querySelectorAll("[data-lien-activation]").forEach(function (bouton) {
+        bouton.addEventListener("click", function () {
+            bouton.disabled = true;
+            fetch(bouton.dataset.url, {
+                method: "POST",
+                headers: {"X-CSRFToken": jetonCSRF, "X-Requested-With": "XMLHttpRequest"}
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                champ.value = data.lien;
+                document.getElementById("nom-societe").textContent = data.societe;
+                document.getElementById("expiration-lien").textContent = data.expire;
+                bouton.disabled = false;
+                ouvrir();
+            })
+            .catch(function () {
+                bouton.disabled = false;
+                statut.textContent = "Génération impossible. Réessayez.";
+                ouvrir();
+            });
+        });
+    });
+
+    document.getElementById("copier-lien").addEventListener("click", function () {
+        champ.select();
+        var copie = document.execCommand("copy");
+        statut.textContent = copie ? "Lien copié." : "Sélectionnez le lien et copiez-le.";
+    });
+})();
+</script>
 {% endblock %}

@@ -13,16 +13,21 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.contrib import messages
+from django.core import signing
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.contrib.auth.views import redirect_to_login
 from django.db.models import Count, Q
-from django.http import HttpResponseForbidden
+from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 
 from . import abonnements
 from .models import AbonnementSociete, Forfait, PaiementAbonnement, Societe
+
+SEL_LIEN_ACTIVATION = "activation-societe"
+DUREE_LIEN_ACTIVATION = 3600  # secondes
 
 
 def equipe_saas(vue):
@@ -194,7 +199,47 @@ def liste_societes(request):
     for s in qs[:300]:
         abo = abonnements.courant(s)
         lignes.append({"s": s, "abo": abo, "employes": s.employes.count()})
-    return render(request, "backoffice/societes.html", {"section": "societes", "lignes": lignes, "q": q})
+    return render(request, "backoffice/societes.html", {
+        "section": "societes",
+        "lignes": lignes,
+        "q": q,
+        "en_attente": abonnements.demandes_en_attente(),
+    })
+
+
+@equipe_saas
+@require_POST
+def lien_activation_societe(request, pk):
+    """Crée un lien signé valable 1 h, lié au compte de l'administrateur connecté."""
+    abo = get_object_or_404(abonnements.demandes_en_attente(), pk=pk)
+    jeton = signing.dumps({"abo": abo.pk, "admin": request.user.pk}, salt=SEL_LIEN_ACTIVATION)
+    chemin = reverse("backoffice:activer_societe", args=[jeton])
+    return JsonResponse({
+        "lien": request.build_absolute_uri(chemin),
+        "societe": abo.societe.nom,
+        "expire": (timezone.now() + timedelta(seconds=DUREE_LIEN_ACTIVATION)).strftime("%H:%M"),
+    })
+
+
+@require_GET
+def activer_societe(request, jeton):
+    """Active une société après connexion du compte qui a généré le lien."""
+    if not request.user.is_authenticated:
+        return redirect_to_login(request.get_full_path())
+    try:
+        donnees = signing.loads(jeton, salt=SEL_LIEN_ACTIVATION, max_age=DUREE_LIEN_ACTIVATION)
+    except signing.BadSignature:
+        messages.error(request, "Lien d'activation invalide ou expiré.")
+        return redirect("backoffice:societes")
+    if not request.user.is_superuser or donnees.get("admin") != request.user.pk:
+        return HttpResponseForbidden("Ce lien est réservé au compte qui l'a généré.")
+    abo = get_object_or_404(AbonnementSociete, pk=donnees.get("abo"))
+    if abo.statut != "EN_ATTENTE":
+        messages.info(request, f"{abo.societe.nom} : la demande n'est plus en attente.")
+    else:
+        abonnements.activer(abo, request=request)
+        messages.success(request, f"{abo.societe.nom} activée. Abonnement {abo.forfait.nom} actif.")
+    return redirect("backoffice:societes")
 
 
 DEVISES_FORFAIT = ("USD", "XOF", "XAF", "EUR")
