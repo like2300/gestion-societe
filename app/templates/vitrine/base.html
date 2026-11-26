@@ -185,20 +185,29 @@
             background: #ffffff;
             padding: 0.85rem 16px 1.15rem;
         }
-        .nav-mobile.ouvert { display: block; }
-        .nav-mobile a {
+        .nav-mobile.ouvert {
             display: block;
-            padding: 0.6rem 0;
+            max-height: calc(100vh - 70px);
+            overflow-y: auto;
+        }
+        .nav-mobile a:not(.btn) {
+            display: block;
+            padding: 0.7rem 0;
             text-decoration: none;
             font-weight: 500;
             color: var(--texte);
             border-bottom: 1px solid var(--fond);
         }
         .nav-mobile-actions {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
             gap: 0.6rem;
             margin-top: 0.85rem;
-            flex-wrap: wrap;
+        }
+        .nav-mobile .btn {
+            display: flex;
+            width: 100%;
+            border-bottom: 0;
         }
 
         /* Boutons */
@@ -226,6 +235,14 @@
             background: var(--bleu-f);
             transform: translateY(-1px);
         }
+        /* Dans le menu mobile, le texte du bouton bleu reste blanc. */
+        .nav-mobile .btn-plein,
+        .nav-mobile .btn-plein:hover,
+        .nav-mobile .btn-plein:focus-visible {
+            color: #ffffff;
+            background: var(--bleu);
+        }
+        .nav-mobile .btn-plein:hover { background: var(--bleu-f); }
         .btn-ligne {
             border-color: var(--trait);
             color: var(--encre);
@@ -320,10 +337,10 @@
             <a href="{% url 'vitrine' %}#avis">Avis</a>
             <div class="nav-mobile-actions">
                 {% if user.is_authenticated %}
-                    <a class="btn btn-plein" style="width:100%" href="{% url 'gestion:post_login_redirect' %}">Accéder à mon espace</a>
+                    <a class="btn btn-plein" href="{% url 'gestion:post_login_redirect' %}">Accéder à mon espace</a>
                 {% else %}
-                    <a class="btn btn-ligne" style="flex:1" href="{% url 'account_login' %}">Se connecter</a>
-                    <a class="btn btn-plein" style="flex:1" href="{% url 'vitrine' %}#tarifs">Démarrer</a>
+                    <a class="btn btn-ligne" href="{% url 'account_login' %}">Se connecter</a>
+                    <a class="btn btn-plein" href="{% url 'vitrine' %}#tarifs">Démarrer</a>
                 {% endif %}
             </div>
         </div>
