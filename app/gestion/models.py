@@ -2804,3 +2804,63 @@ class ModeleContrat(models.Model):
 
     def __str__(self):
         return self.nom
+
+
+# ---------------------------------------------------------------------------
+# Vitrine : images modifiables et avis clients
+# ---------------------------------------------------------------------------
+
+IMAGES_VITRINE = (
+    ("hero_fond", "Fond du bandeau d'accueil"),
+    ("macbook", "Cadre MacBook des captures"),
+    ("dashboard", "Capture — tableau de bord"),
+    ("collaboration", "Capture — collaboration"),
+    ("finances", "Capture — finances"),
+    ("planning", "Capture — planning"),
+    ("bureau", "Capture — bureautique"),
+    ("assistant_ia", "Capture — assistant IA"),
+)
+
+
+class ImageSite(models.Model):
+    """Image de la vitrine remplaçable depuis l'administration."""
+
+    code = models.CharField(max_length=40, choices=IMAGES_VITRINE, unique=True)
+    titre = models.CharField(max_length=120, blank=True)
+    image = models.ImageField(upload_to="vitrine/", blank=True)
+    alt = models.CharField(max_length=200, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "image_site"
+        verbose_name = "image du site"
+        verbose_name_plural = "images du site"
+        ordering = ["code"]
+
+    def __str__(self):
+        return self.get_code_display() or self.code
+
+
+class Avis(models.Model):
+    """Témoignage client affiché sur la page d'accueil publique."""
+
+    NOTE_CHOICES = [(i, f"{i} étoile{'s' if i > 1 else ''}") for i in range(1, 6)]
+
+    nom = models.CharField(max_length=120)
+    fonction = models.CharField(max_length=120, blank=True)
+    societe = models.CharField(max_length=120, blank=True)
+    message = models.TextField()
+    note = models.PositiveSmallIntegerField(choices=NOTE_CHOICES, default=5)
+    photo = models.ImageField(upload_to="vitrine/avis/", blank=True)
+    actif = models.BooleanField(default=True)
+    ordre = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "avis"
+        verbose_name = "avis client"
+        verbose_name_plural = "avis clients"
+        ordering = ["ordre", "-created_at", "pk"]
+
+    def __str__(self):
+        return f"{self.nom} — {self.note}/5"

@@ -262,6 +262,7 @@
                 <a href="{% url 'vitrine' %}#collection">Interfaces</a>
                 <a href="{% url 'vitrine' %}#tarifs">Tarifs</a>
                 <a href="{% url 'vitrine' %}#faq">Questions</a>
+                <a href="{% url 'vitrine' %}#avis">Avis</a>
             </nav>
             <div class="nav-actions">
                 {% if user.is_authenticated %}
@@ -280,6 +281,7 @@
             <a href="{% url 'vitrine' %}#collaboration">Collaboration</a>
             <a href="{% url 'vitrine' %}#tarifs">Tarifs</a>
             <a href="{% url 'vitrine' %}#faq">Questions</a>
+            <a href="{% url 'vitrine' %}#avis">Avis</a>
             <div class="nav-mobile-actions">
                 {% if user.is_authenticated %}
                     <a class="btn btn-plein" style="width:100%" href="{% url 'gestion:post_login_redirect' %}">Accéder à mon espace</a>

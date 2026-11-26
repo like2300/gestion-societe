@@ -226,7 +226,7 @@ UNFOLD = {
 STATIC_ROOT = BASE_DIR / "static"
 
 # User-uploaded files (photos, logos, documents, justificatifs...)
-MEDIA_URL = "media/"
+MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 # Corps de requête max (sauvegarde auto des Tableurs / Documents / Présentations

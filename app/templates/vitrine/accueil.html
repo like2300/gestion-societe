@@ -7,7 +7,7 @@
         position: relative;
         background-color: var(--encre);
         /* Fond repris de la page de connexion (body des templates d'authentification) */
-        background-image: url("{% static 'vitrine/hero-login-bg.jpg' %}");
+        background-image: url("{{ images.hero_fond }}");
         background-size: cover;
         background-position: center;
         background-repeat: no-repeat;
@@ -550,7 +550,7 @@
 {% block contenu %}
     <section class="hero-ent" aria-roledescription="carousel" aria-label="Présentation de la plateforme">
         <div class="hero-bg" aria-hidden="true">
-            <img src="{% static 'vitrine/captures/dashboard.png' %}" alt="" id="hero-bg-img" />
+            <img src="{{ images.dashboard }}" alt="" id="hero-bg-img" />
         </div>
         <div class="hero-voile" aria-hidden="true"></div>
 
@@ -574,7 +574,7 @@
 
             <div class="slider-scene" id="hero-slider">
                 <!-- Slide 1 : Pilotage global -->
-                <article class="slide actif" role="tabpanel" aria-label="Pilotage global" data-bg="{% static 'vitrine/captures/dashboard.png' %}">
+                <article class="slide actif" role="tabpanel" aria-label="Pilotage global" data-bg="{{ images.dashboard }}">
                     <div class="slide-texte">
                         <span class="slide-kicker"><i></i>Archi, plateforme de gestion unifiée</span>
                         <h1>Pilotez toute votre entreprise depuis un espace unique.</h1>
@@ -594,8 +594,8 @@
                         </ul>
                     </div>
                     <div class="mockup-laptop">
-                        <img class="mockup-capture" src="{% static 'vitrine/captures/dashboard.png' %}" alt="Capture d'écran réelle du tableau de bord Archi" />
-                        <img class="mockup-contour" src="{% static 'vitrine/macbook-air-m5-transparent.png' %}" alt="" aria-hidden="true" />
+                        <img class="mockup-capture" src="{{ images.dashboard }}" alt="Capture d'écran réelle du tableau de bord Archi" />
+                        <img class="mockup-contour" src="{{ images.macbook }}" alt="" aria-hidden="true" />
                     </div>
                     <div class="capture-legende">
                         <span><strong>Tableau de bord</strong> — Indicateurs, tâches, groupes et activité</span>
@@ -604,7 +604,7 @@
                 </article>
 
                 <!-- Slide 2 : Collaboration d'équipe -->
-                <article class="slide" role="tabpanel" aria-label="Collaboration d'équipe" data-bg="{% static 'vitrine/captures/collaboration.png' %}">
+                <article class="slide" role="tabpanel" aria-label="Collaboration d'équipe" data-bg="{{ images.collaboration }}">
                     <div class="slide-texte">
                         <span class="slide-kicker"><i></i>Collaboration inter-équipes</span>
                         <h2>Travaillez en équipe avec des rôles et des accès maîtrisés.</h2>
@@ -624,8 +624,8 @@
                         </ul>
                     </div>
                     <div class="mockup-laptop">
-                        <img class="mockup-capture" src="{% static 'vitrine/captures/collaboration.png' %}" alt="Capture d'écran réelle des groupes collaboratifs et discussions d'équipe" />
-                        <img class="mockup-contour" src="{% static 'vitrine/macbook-air-m5-transparent.png' %}" alt="" aria-hidden="true" />
+                        <img class="mockup-capture" src="{{ images.collaboration }}" alt="Capture d'écran réelle des groupes collaboratifs et discussions d'équipe" />
+                        <img class="mockup-contour" src="{{ images.macbook }}" alt="" aria-hidden="true" />
                     </div>
                     <div class="capture-legende">
                         <span><strong>Groupes d'équipe</strong> — Salons par service et gestion des membres</span>
@@ -634,7 +634,7 @@
                 </article>
 
                 <!-- Slide 3 : Finances & Facturation -->
-                <article class="slide" role="tabpanel" aria-label="Finances et factures" data-bg="{% static 'vitrine/captures/finances.png' %}">
+                <article class="slide" role="tabpanel" aria-label="Finances et factures" data-bg="{{ images.finances }}">
                     <div class="slide-texte">
                         <span class="slide-kicker"><i></i>Trésorerie &amp; facturation</span>
                         <h2>Suivez chaque facture, salaire et dépense avec précision.</h2>
@@ -654,8 +654,8 @@
                         </ul>
                     </div>
                     <div class="mockup-laptop">
-                        <img class="mockup-capture" src="{% static 'vitrine/captures/finances.png' %}" alt="Capture d'écran réelle du module Finances, factures, salaires et exports" />
-                        <img class="mockup-contour" src="{% static 'vitrine/macbook-air-m5-transparent.png' %}" alt="" aria-hidden="true" />
+                        <img class="mockup-capture" src="{{ images.finances }}" alt="Capture d'écran réelle du module Finances, factures, salaires et exports" />
+                        <img class="mockup-contour" src="{{ images.macbook }}" alt="" aria-hidden="true" />
                     </div>
                     <div class="capture-legende">
                         <span><strong>Finances &amp; trésorerie</strong> — Paiements, factures, salaires et exports</span>
@@ -664,7 +664,7 @@
                 </article>
 
                 <!-- Slide 4 : Planning & Bureautique -->
-                <article class="slide" role="tabpanel" aria-label="Planning et bureautique intégrée" data-bg="{% static 'vitrine/captures/planning.png' %}">
+                <article class="slide" role="tabpanel" aria-label="Planning et bureautique intégrée" data-bg="{{ images.planning }}">
                     <div class="slide-texte">
                         <span class="slide-kicker"><i></i>Applications intégrées &amp; agenda</span>
                         <h2>Organisez vos agendas, tableurs et présentations sans outil externe.</h2>
@@ -684,8 +684,8 @@
                         </ul>
                     </div>
                     <div class="mockup-laptop">
-                        <img class="mockup-capture" src="{% static 'vitrine/captures/planning.png' %}" alt="Capture d'écran réelle du Planning partagé et des applications bureautiques intégrées" />
-                        <img class="mockup-contour" src="{% static 'vitrine/macbook-air-m5-transparent.png' %}" alt="" aria-hidden="true" />
+                        <img class="mockup-capture" src="{{ images.planning }}" alt="Capture d'écran réelle du Planning partagé et des applications bureautiques intégrées" />
+                        <img class="mockup-contour" src="{{ images.macbook }}" alt="" aria-hidden="true" />
                     </div>
                     <div class="capture-legende">
                         <span><strong>Planning &amp; Applications</strong> — Agenda partagé et suite bureautique</span>
@@ -746,14 +746,14 @@
                             </div>
                         </div>
                         <div class="reveal-item group relative h-[26rem] overflow-hidden rounded-3xl bg-[#0b1426] p-3" style="transition-delay: 200ms;">
-                            <img src="{% static 'vitrine/captures/collaboration.png' %}" alt="Groupes de travail et messagerie dans Archi" loading="lazy" class="h-full w-full object-contain transition-transform duration-500 group-hover:scale-110" />
+                            <img src="{{ images.collaboration }}" alt="Groupes de travail et messagerie dans Archi" loading="lazy" class="h-full w-full object-contain transition-transform duration-500 group-hover:scale-110" />
                         </div>
                     </div>
 
                     <!-- Colonne 2 -->
                     <div class="flex flex-col gap-6">
                         <div class="reveal-item group relative h-[32rem] overflow-hidden rounded-3xl bg-[#0b1426] p-3" style="transition-delay: 300ms;">
-                            <img src="{% static 'vitrine/captures/planning.png' %}" alt="Planning partagé des équipes dans Archi" loading="lazy" class="h-full w-full object-contain transition-transform duration-500 group-hover:scale-110" />
+                            <img src="{{ images.planning }}" alt="Planning partagé des équipes dans Archi" loading="lazy" class="h-full w-full object-contain transition-transform duration-500 group-hover:scale-110" />
                         </div>
                         <div class="reveal-item flex min-h-[200px] flex-1 flex-col justify-between rounded-3xl bg-gradient-to-br from-[#FFD685] to-[#FFC247] p-8 transition-transform duration-300 hover:scale-[1.02]" style="transition-delay: 400ms;">
                             <h3 class="max-w-[170px] text-xl font-bold text-gray-900">Des accès adaptés à chaque poste</h3>
@@ -781,7 +781,7 @@
                             </div>
                         </div>
                         <div class="reveal-item group relative h-[26rem] overflow-hidden rounded-3xl bg-[#0b1426] p-3" style="transition-delay: 600ms;">
-                            <img src="{% static 'vitrine/captures/finances.png' %}" alt="Suivi des factures et de la trésorerie dans Archi" loading="lazy" class="h-full w-full object-contain transition-transform duration-500 group-hover:scale-110" />
+                            <img src="{{ images.finances }}" alt="Suivi des factures et de la trésorerie dans Archi" loading="lazy" class="h-full w-full object-contain transition-transform duration-500 group-hover:scale-110" />
                         </div>
                     </div>
 
@@ -862,8 +862,8 @@
                     </div>
                     <div class="relative z-10 mt-10 lg:mt-0 lg:w-[58%]">
                         <div class="mockup-laptop">
-                            <img class="mockup-capture" src="{% static 'vitrine/captures/dashboard.png' %}" alt="Tableau de bord — capture réelle de l'application Archi" loading="lazy" />
-                            <img class="mockup-contour" src="{% static 'vitrine/macbook-air-m5-transparent.png' %}" alt="" aria-hidden="true" />
+                            <img class="mockup-capture" src="{{ images.dashboard }}" alt="Tableau de bord — capture réelle de l'application Archi" loading="lazy" />
+                            <img class="mockup-contour" src="{{ images.macbook }}" alt="" aria-hidden="true" />
                         </div>
                     </div>
                 </div>
@@ -880,8 +880,8 @@
                     </div>
                     <div class="relative z-10 mt-10 lg:mt-0 lg:w-[58%]">
                         <div class="mockup-laptop">
-                            <img class="mockup-capture" src="{% static 'vitrine/captures/collaboration.png' %}" alt="Collaboration — capture réelle de l'application Archi" loading="lazy" />
-                            <img class="mockup-contour" src="{% static 'vitrine/macbook-air-m5-transparent.png' %}" alt="" aria-hidden="true" />
+                            <img class="mockup-capture" src="{{ images.collaboration }}" alt="Collaboration — capture réelle de l'application Archi" loading="lazy" />
+                            <img class="mockup-contour" src="{{ images.macbook }}" alt="" aria-hidden="true" />
                         </div>
                     </div>
                 </div>
@@ -898,8 +898,8 @@
                     </div>
                     <div class="relative z-10 mt-10 lg:mt-0 lg:w-[58%]">
                         <div class="mockup-laptop">
-                            <img class="mockup-capture" src="{% static 'vitrine/captures/finances.png' %}" alt="Finances — capture réelle de l'application Archi" loading="lazy" />
-                            <img class="mockup-contour" src="{% static 'vitrine/macbook-air-m5-transparent.png' %}" alt="" aria-hidden="true" />
+                            <img class="mockup-capture" src="{{ images.finances }}" alt="Finances — capture réelle de l'application Archi" loading="lazy" />
+                            <img class="mockup-contour" src="{{ images.macbook }}" alt="" aria-hidden="true" />
                         </div>
                     </div>
                 </div>
@@ -916,8 +916,8 @@
                     </div>
                     <div class="relative z-10 mt-10 lg:mt-0 lg:w-[58%]">
                         <div class="mockup-laptop">
-                            <img class="mockup-capture" src="{% static 'vitrine/captures/planning.png' %}" alt="Planning — capture réelle de l'application Archi" loading="lazy" />
-                            <img class="mockup-contour" src="{% static 'vitrine/macbook-air-m5-transparent.png' %}" alt="" aria-hidden="true" />
+                            <img class="mockup-capture" src="{{ images.planning }}" alt="Planning — capture réelle de l'application Archi" loading="lazy" />
+                            <img class="mockup-contour" src="{{ images.macbook }}" alt="" aria-hidden="true" />
                         </div>
                     </div>
                 </div>
@@ -934,8 +934,8 @@
                     </div>
                     <div class="relative z-10 mt-10 lg:mt-0 lg:w-[58%]">
                         <div class="mockup-laptop">
-                            <img class="mockup-capture" src="{% static 'vitrine/captures/bureau.png' %}" alt="Bureautique — capture réelle de l'application Archi" loading="lazy" />
-                            <img class="mockup-contour" src="{% static 'vitrine/macbook-air-m5-transparent.png' %}" alt="" aria-hidden="true" />
+                            <img class="mockup-capture" src="{{ images.bureau }}" alt="Bureautique — capture réelle de l'application Archi" loading="lazy" />
+                            <img class="mockup-contour" src="{{ images.macbook }}" alt="" aria-hidden="true" />
                         </div>
                     </div>
                 </div>
@@ -952,8 +952,8 @@
                     </div>
                     <div class="relative z-10 mt-10 lg:mt-0 lg:w-[58%]">
                         <div class="mockup-laptop">
-                            <img class="mockup-capture" src="{% static 'vitrine/captures/assistant_ia.png' %}" alt="Assistant IA — capture réelle de l'application Archi" loading="lazy" />
-                            <img class="mockup-contour" src="{% static 'vitrine/macbook-air-m5-transparent.png' %}" alt="" aria-hidden="true" />
+                            <img class="mockup-capture" src="{{ images.assistant_ia }}" alt="Assistant IA — capture réelle de l'application Archi" loading="lazy" />
+                            <img class="mockup-contour" src="{{ images.macbook }}" alt="" aria-hidden="true" />
                         </div>
                     </div>
                 </div>
@@ -1016,6 +1016,39 @@
             </div>
             <div class="faq">
                 {% for q, r in faq %}<details><summary>{{ q }}</summary><p>{{ r }}</p></details>{% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section class="bloc bloc-fond" id="avis">
+        <div class="conteneur">
+            <div class="titre-bloc centre">
+                <span class="sur">Avis clients</span>
+                <h2>Ce que disent les équipes qui utilisent Archi</h2>
+                <p>Des retours simples, recueillis auprès des sociétés qui pilotent leur activité dans Archi.</p>
+            </div>
+            <div class="mx-auto grid w-full max-w-6xl grid-cols-1 gap-6 py-4 md:grid-cols-3">
+                {% for avis in avis %}
+                <article class="reveal-item flex h-full flex-col rounded-3xl bg-white p-8 transition-transform duration-300 hover:scale-[1.02]">
+                    <div class="mb-5 flex items-center gap-1" aria-label="{{ avis.note }} étoiles sur 5">
+                        {% for etoile in "12345"|make_list %}<span style="color:{% if forloop.counter <= avis.note %}#fbbf24{% else %}#e7e5e4{% endif %}" class="text-lg leading-none" aria-hidden="true">★</span>{% endfor %}
+                    </div>
+                    <p class="mb-8 flex-1 text-sm leading-relaxed text-stone-600">« {{ avis.message }} »</p>
+                    <div class="flex items-center gap-3 border-t border-stone-100 pt-5">
+                        {% if avis.photo %}
+                            <img src="{{ avis.photo.url }}" alt="{{ avis.nom }}" loading="lazy" class="h-11 w-11 shrink-0 rounded-full object-cover" />
+                        {% else %}
+                            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-stone-100 text-sm font-bold text-stone-600">{{ avis.nom|first|upper }}</span>
+                        {% endif %}
+                        <div class="min-w-0">
+                            <div class="truncate text-sm font-semibold text-stone-900">{{ avis.nom }}</div>
+                            <div class="truncate text-xs text-stone-500">{% if avis.fonction %}{{ avis.fonction }}{% endif %}{% if avis.societe %}{% if avis.fonction %} · {% endif %}{{ avis.societe }}{% endif %}</div>
+                        </div>
+                    </div>
+                </article>
+                {% empty %}
+                <p class="col-span-full text-center text-sm text-stone-500">Les premiers avis seront publiés prochainement.</p>
+                {% endfor %}
             </div>
         </div>
     </section>

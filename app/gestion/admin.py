@@ -7,6 +7,7 @@ from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationFo
 
 from .models import (
     AbonnementSociete,
+    Avis,
     Client,
     ClientDocument,
     ContratEmploye,
@@ -23,6 +24,7 @@ from .models import (
     GroupeProjetMembre,
     IaConversation,
     IaMessage,
+    ImageSite,
     KpayOperation,
     Langue,
     MessageGroupe,
@@ -531,6 +533,25 @@ class ActivitePlateformeAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+
+@admin.register(ImageSite)
+class ImageSiteAdmin(admin.ModelAdmin):
+    """Remplacement des images de la vitrine."""
+
+    list_display = ("code", "titre", "image", "updated_at")
+    list_editable = ("titre",)
+    search_fields = ("code", "titre")
+
+
+@admin.register(Avis)
+class AvisAdmin(admin.ModelAdmin):
+    """Avis clients affichés sur la page d'accueil."""
+
+    list_display = ("nom", "societe", "note", "actif", "ordre", "created_at")
+    list_editable = ("actif", "ordre")
+    list_filter = ("actif", "note")
+    search_fields = ("nom", "societe", "message")
 
 
 # L'administration de la plateforme (tableau de bord /admin/ et données détaillées)

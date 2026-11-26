@@ -12,11 +12,12 @@ import time
 
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
+from django.templatetags.static import static
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 from . import abonnements, kpay, services
-from .models import AbonnementSociete, Forfait
+from .models import AbonnementSociete, Avis, Forfait, ImageSite
 
 SESSION_FORFAIT = "forfait_choisi"
 
@@ -47,6 +48,26 @@ FAQ = [
     ("Mes employés ont-ils un accès ?", "Oui : chaque employé reçoit son compte et ne voit que les modules que vous lui ouvrez."),
 ]
 
+IMAGES_VITRINE_DEFAUT = {
+    "hero_fond": "vitrine/hero-login-bg.jpg",
+    "macbook": "vitrine/macbook-air-m5-transparent.png",
+    "dashboard": "vitrine/captures/dashboard.png",
+    "collaboration": "vitrine/captures/collaboration.png",
+    "finances": "vitrine/captures/finances.png",
+    "planning": "vitrine/captures/planning.png",
+    "bureau": "vitrine/captures/bureau.png",
+    "assistant_ia": "vitrine/captures/assistant_ia.png",
+}
+
+
+def images_site():
+    """URL des images de la vitrine : fichier chargé dans l'admin ou image d'origine."""
+    objets = {i.code: i for i in ImageSite.objects.all()}
+    return {
+        code: (objets[code].image.url if code in objets and objets[code].image else static(defaut))
+        for code, defaut in IMAGES_VITRINE_DEFAUT.items()
+    }
+
 
 def accueil(request):
     forfaits = list(abonnements.forfaits_publics())
@@ -55,6 +76,8 @@ def accueil(request):
     return render(request, "vitrine/accueil.html", {
         "forfaits": forfaits, "populaire": populaire, "fonctionnalites": FONCTIONNALITES,
         "inclus": INCLUS, "faq": FAQ, "connecte": connecte,
+        "images": images_site(),
+        "avis": Avis.objects.filter(actif=True)[:12],
         "espace_url": reverse("gestion:post_login_redirect") if connecte else "",
     })
 
