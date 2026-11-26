@@ -139,10 +139,13 @@ def _bounce_inactive(request):
 def _url_sans_societe(user):
     """Destination d'un compte connecté qui n'a pas encore de société.
 
-    La première connexion mène toujours à la création de la société. Les
-    employés et les comptes avec une invitation en attente sont renvoyés vers
-    « rejoindre une société » par la vue de création.
+    Un compte invité rejoint sa société depuis la page d'invitation.
+    Les autres comptes créent leur société puis choisissent un abonnement.
     """
+    if DemandeAdhesion.objects.filter(
+        user=user, statut="EN_ATTENTE", origine="INVITATION"
+    ).exists() or services.est_compte_employe(user):
+        return "gestion:rejoindre_equipe"
     return "gestion:societe_create"
 
 
@@ -285,13 +288,14 @@ def societe_create(request):
             logo=_store_upload(data["logo"], "societes/logos", data["nom"]),
             createur=request.user,
         )
-        SocieteDocument.objects.create(
-            societe=societe,
-            type_document="PIECES_AUTHENTIQUES",
-            numero_document=data["nom"],
-            fichier=fichiers_prives.stocker(data["document"], "societes/documents", data["nom"]
-            ),
-        )
+        if data.get("document"):
+            SocieteDocument.objects.create(
+                societe=societe,
+                type_document="PIECES_AUTHENTIQUES",
+                numero_document=data["nom"],
+                fichier=fichiers_prives.stocker(data["document"], "societes/documents", data["nom"]
+                ),
+            )
         services.journaliser(
             societe, "CREATION", "societe", societe.nom, "Création de la société", request.user
         )
@@ -304,8 +308,15 @@ def societe_create(request):
             abo = abonnements.demarrer(societe, forfait_choisi, request)
             if abo is not None and forfait_choisi.prix:
                 return redirect("abonnement_payer", jeton=abo.jeton)
+        else:
+            abonnements.notifier_societe_creee(societe, request)
         return redirect("gestion:mon_abonnement")
-    return render(request, "gestion/societe_create.html", {"form": form})
+    pays_connus = [nom for valeur, nom in geographie.choix_pays() if valeur]
+    return render(
+        request,
+        "gestion/societe_create.html",
+        {"form": form, "pays_connus": pays_connus},
+    )
 
 
 @login_required
@@ -329,11 +340,10 @@ def post_login_redirect(request):
 
 @login_required
 def rejoindre_equipe(request):
-    """Écran « rejoindre une société » : invitations reçues et demandes envoyées.
+    """Invitations d'équipe reçues par un compte sans société.
 
-    Un compte sans société y accède : il peut accepter/refuser une invitation
-    ou demander à rejoindre une société existante de la plateforme. Un compte
-    « employé » ne peut jamais créer de société.
+    La sélection libre des sociétés est désactivée. Un compte non invité
+    crée sa société puis choisit un abonnement.
     """
     if services.societe_pour_utilisateur(request.user) is not None:
         return redirect("gestion:dashboard")
@@ -343,11 +353,9 @@ def rejoindre_equipe(request):
             user=request.user, statut="EN_ATTENTE", origine="INVITATION"
         ).select_related("societe", "employe")
     )
-    mes_demandes = list(
-        DemandeAdhesion.objects.filter(user=request.user, origine="DEMANDE")
-        .select_related("societe")
-        .order_by("-created_at")
-    )
+
+    if not invitations and not services.est_compte_employe(request.user):
+        return redirect("gestion:societe_create")
 
     if request.method == "POST":
         action = request.POST.get("action")
@@ -365,55 +373,11 @@ def rejoindre_equipe(request):
                 return redirect("gestion:rejoindre_equipe")
             return _accepter_invitation_adhesion(request, demande)
 
-        if action == "demander":
-            societe = Societe.objects.filter(
-                pk=request.POST.get("societe_id") or 0
-            ).first()
-            if societe is not None and not DemandeAdhesion.objects.filter(
-                user=request.user, societe=societe, statut="EN_ATTENTE"
-            ).exists():
-                demande, created = DemandeAdhesion.objects.get_or_create(
-                    user=request.user,
-                    societe=societe,
-                    defaults={"statut": "EN_ATTENTE", "origine": "DEMANDE"},
-                )
-                if not created:
-                    # Une demande refusée peut être renvoyée.
-                    demande.origine = "DEMANDE"
-                    demande.statut = "EN_ATTENTE"
-                    demande.save(update_fields=["origine", "statut", "updated_at"])
-            return redirect("gestion:rejoindre_equipe")
-
-        if action == "annuler":
-            demande = next(
-                (
-                    d
-                    for d in mes_demandes
-                    if str(d.pk) == demande_id and d.statut == "EN_ATTENTE"
-                ),
-                None,
-            )
-            if demande is not None:
-                demande.statut = "REFUSEE"
-                demande.save(update_fields=["statut", "updated_at"])
-            return redirect("gestion:rejoindre_equipe")
-
         return redirect("gestion:rejoindre_equipe")
-
-    deja_demande = {d.societe_id for d in mes_demandes if d.statut == "EN_ATTENTE"}
-    deja_invite = {d.societe_id for d in invitations}
-    societes = (
-        Societe.objects.exclude(pk__in=deja_demande)
-        .exclude(pk__in=deja_invite)
-        .order_by("nom")
-    )
 
     context = {
         "invitations": invitations,
-        "mes_demandes": mes_demandes,
-        "societes": societes,
         "est_compte_employe": services.est_compte_employe(request.user),
-        "peut_creer_societe": not services.est_compte_employe(request.user),
     }
     return render(request, "gestion/rejoindre_equipe.html", context)
 
@@ -1216,7 +1180,7 @@ def employes(request):
     ]
     ctx["est_createur"] = est_createur
     ctx["mdp_defaut_employe"] = (
-        getattr(settings, "EMPLOYE_MOT_DE_PASSE_DEFAUT", "") if est_createur else ""
+        services.mot_de_passe_defaut(societe) if est_createur else ""
     )
 
     ctx["module_reunions"] = services.module_actif("reunions")
@@ -1413,6 +1377,35 @@ def mdp_premiere_connexion(request):
     user.save(update_fields=["password", "doit_changer_mdp"])
     update_session_auth_hash(request, user)
     return JsonResponse({"ok": True})
+
+
+@login_required
+def validation_code_google(request):
+    """Première connexion Google : validation du code envoyé par e-mail.
+
+    La fenêtre de changement de mot de passe n'est pas utilisée ici. L'employé
+    saisit le code reçu par e-mail. Après validation, un simple clic sur Google
+    suffit pour les connexions suivantes.
+    """
+    user = request.user
+    if not getattr(user, "validation_google_requise", False):
+        return redirect("gestion:dashboard")
+
+    contexte = {"erreur": ""}
+    if request.method == "POST":
+        if request.POST.get("action") == "renvoyer":
+            services.generer_code_validation(user)
+            messages.success(
+                request, "Un nouveau code vient de vous être envoyé par e-mail."
+            )
+            return redirect("gestion:validation_code_google")
+
+        if services.valider_code_google(user, request.POST.get("code")):
+            messages.success(request, "Votre accès est validé.")
+            return redirect("gestion:dashboard")
+        contexte["erreur"] = "Code incorrect ou expiré."
+
+    return render(request, "gestion/validation_code_google.html", contexte)
 
 
 def presence_ping(request):
@@ -4387,6 +4380,9 @@ def societe_profil(request):
             societe.logo = _store_upload(
                 request.FILES["logo"], "societes/logos", societe.nom
             )
+        mot_de_passe = config_form.cleaned_data.get("mot_de_passe_defaut")
+        if mot_de_passe:
+            services.definir_mot_de_passe_defaut(societe, mot_de_passe)
         societe.save()
         config_form.save_m2m()  # modes de paiement cochés
         services.journaliser(

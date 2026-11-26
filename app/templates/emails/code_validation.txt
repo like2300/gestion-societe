@@ -1,0 +1,11 @@
+{% extends "emails/base.txt" %}
+{% block contenu %}Bonjour {{ employe.prenom }} {{ employe.nom }},
+
+Voici votre nouveau code de connexion à {{ email_nom_societe }} :
+
+{{ code }}
+
+Saisissez ce code à 6 chiffres pour valider votre première connexion avec Google.
+Il expire dans 24 heures.
+
+Si vous n'êtes pas à l'origine de cette demande, ignorez ce message.{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "emails/base.txt" %}
+{% block contenu %}Bonjour {{ employe.prenom }} {{ employe.nom }},
+
+{{ email_nom_societe }} vous donne accès à la plateforme.
+
+Adresse de connexion : {{ email }}
+Mot de passe par défaut : {{ mot_de_passe }}
+Code de première connexion : {{ code }}
+
+Connectez-vous ici : {{ login_url }}
+
+Première connexion avec Google :
+1. Cliquez sur le bouton Google.
+2. Saisissez le code à 6 chiffres ci-dessus.
+3. Le mot de passe par défaut n'est pas demandé.
+
+Première connexion avec l'e-mail et le mot de passe :
+1. Saisissez l'adresse et le mot de passe ci-dessus.
+2. Choisissez un mot de passe personnel. La fenêtre reste affichée tant que le changement n'est pas fait.
+
+Ce message contient des identifiants confidentiels. Ne le partagez pas.{% endblock %}

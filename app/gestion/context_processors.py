@@ -91,7 +91,10 @@ def mdp_initial(request):
     doit = bool(getattr(user, "doit_changer_mdp", False))
     contexte = {"doit_changer_mdp": doit}
     if doit:
-        contexte["mdp_defaut"] = getattr(settings, "EMPLOYE_MOT_DE_PASSE_DEFAUT", "")
+        from . import services
+
+        societe = services.societe_pour_utilisateur(user)
+        contexte["mdp_defaut"] = services.mot_de_passe_defaut(societe)
     return contexte
 
 

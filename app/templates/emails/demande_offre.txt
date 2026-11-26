@@ -1,4 +1,5 @@
-Demande bien reçue{% if prenom %}, {{ prenom }}{% endif %}.
+{% extends "emails/base.txt" %}
+{% block contenu %}Demande bien reçue{% if prenom %}, {{ prenom }}{% endif %}.
 
 Société : {{ societe.nom }}
 Changement d'offre : {{ ancien.nom }} → {{ forfait.nom }} ({{ forfait.prix_affiche }}{% if forfait.prix %} / {{ forfait.duree_jours }} jours{% endif %})
@@ -7,5 +8,4 @@ Notre équipe l'active rapidement ; vous recevrez un e-mail de confirmation.
 {% else %}
 Payez le nouveau forfait. L'activation est effectuée manuellement par notre équipe après vérification :
 {{ lien }}
-{% endif %}
-— Archi
+{% endif %}{% endblock %}

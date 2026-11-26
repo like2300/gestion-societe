@@ -197,6 +197,15 @@ class UserAdmin(AbstractBaseUser, PermissionsMixin):
     doit_changer_mdp = models.BooleanField(
         "doit changer son mot de passe", default=False
     )
+    code_validation = models.CharField(
+        "code de validation à 6 chiffres", max_length=6, blank=True, default=""
+    )
+    code_validation_envoye_le = models.DateTimeField(
+        "date d'envoi du code de validation", null=True, blank=True
+    )
+    validation_google_requise = models.BooleanField(
+        "validation du code requise à la première connexion Google", default=False
+    )
 
     objects = UserAdminManager()
 
@@ -317,6 +326,9 @@ class Societe(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    mot_de_passe_defaut_chiffre = models.TextField(
+        "mot de passe par défaut des employés (chiffré)", blank=True, default=""
+    )
 
     class Meta:
         db_table = "societe"

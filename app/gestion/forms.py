@@ -2,10 +2,11 @@ import os
 
 from allauth.account.forms import SignupForm as AllauthSignupForm
 from django import forms
+from django.contrib.auth.password_validation import validate_password
 from django.urls import reverse_lazy
 from django.utils import timezone
 
-from . import geographie
+from . import crypto, geographie
 from .models import (
     COULEUR_SOCIETE_CHOICES,
     Avis,
@@ -114,6 +115,22 @@ class SocieteConfigForm(forms.ModelForm):
         label="Logo de la société",
         help_text="Images : PNG, JPG, JPEG, WEBP, GIF, SVG. Laissez vide pour conserver l'actuel.",
     )
+    mot_de_passe_defaut = forms.CharField(
+        required=False,
+        label="Mot de passe par défaut des employés",
+        widget=forms.PasswordInput(
+            render_value=True,
+            attrs={
+                "placeholder": " ",
+                "class": "gf-input",
+                "autocomplete": "new-password",
+            },
+        ),
+        help_text=(
+            "Laissez vide pour conserver l'actuel. Ce mot de passe est envoyé "
+            "aux nouveaux employés avec un code de connexion à 6 chiffres."
+        ),
+    )
 
     ALLOWED_LOGO_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}
 
@@ -127,6 +144,9 @@ class SocieteConfigForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            secret = crypto.dechiffrer(self.instance.mot_de_passe_defaut_chiffre)
+            self.fields["mot_de_passe_defaut"].initial = secret.get("mdp", "") or ""
         self.fields["modes_paiement"].queryset = ModePaiement.objects.filter(
             actif=True
         )
@@ -151,12 +171,22 @@ class SocieteConfigForm(forms.ModelForm):
                 )
         return logo
 
+    def clean_mot_de_passe_defaut(self):
+        mot_de_passe = self.cleaned_data.get("mot_de_passe_defaut")
+        if mot_de_passe:
+            validate_password(mot_de_passe)
+        return mot_de_passe
+
 
 class SocieteCreationForm(forms.Form):
     """Étape de création de la première société : infos + logo + documents PDF."""
 
     nom = forms.CharField(label="Nom de la société", max_length=200)
-    pays = forms.CharField(label="Pays", max_length=100)
+    pays = forms.CharField(
+        label="Pays",
+        max_length=100,
+        help_text="Choisissez un pays dans la liste ou saisissez son nom.",
+    )
     slogan = forms.CharField(label="Slogan", required=False, max_length=255)
     couleur = forms.ChoiceField(
         label="Couleur du dashboard",
@@ -164,10 +194,17 @@ class SocieteCreationForm(forms.Form):
         initial="SKY",
     )
     logo = forms.FileField(label="Logo de la société")
-    document = forms.FileField(label="Documents de la société (PDF)")
+    document = forms.FileField(
+        label="Documents de la société (PDF)",
+        required=False,
+        help_text="Facultatif. PDF uniquement (RCCM, statuts, immatriculation…).",
+    )
 
     ALLOWED_LOGO_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}
     ALLOWED_DOC_EXTS = {".pdf"}
+
+    def clean_pays(self):
+        return geographie.nom_fr((self.cleaned_data.get("pays") or "").strip())
 
     def clean_logo(self):
         logo = self.cleaned_data.get("logo")

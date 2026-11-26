@@ -1,5 +1,7 @@
 """Helpers métier : paie, dépenses de salaires, échéances/paiements, synthèse financière."""
 
+import hmac
+import secrets
 from datetime import date, timedelta
 
 from django.conf import settings
@@ -31,6 +33,7 @@ from .models import (
     TypeDepense,
     UserAdmin,
 )
+from . import crypto
 from .perm import ALL_MODULE_KEYS, DEFAULT_EMPLOYE_PERMS
 
 
@@ -245,13 +248,84 @@ def lier_comptes_utilisateur(user):
         _relier_compte(employe, user)
 
 
+CODE_VALIDATION_DUREE = timedelta(hours=24)
+
+
+def mot_de_passe_defaut(societe):
+    """Retourne le mot de passe par défaut d'une société.
+
+    Le secret est stocké chiffré. Si la société n'en a pas encore, on en crée
+    un aussitôt. Ainsi chaque société a toujours son propre mot de passe.
+    """
+    if societe is None or not getattr(societe, "pk", None):
+        return ""
+    mdp = (crypto.dechiffrer(societe.mot_de_passe_defaut_chiffre) or {}).get("mdp", "")
+    if not mdp:
+        mdp = secrets.token_urlsafe(9)
+        societe.mot_de_passe_defaut_chiffre = crypto.chiffrer({"mdp": mdp})
+        societe.save(update_fields=["mot_de_passe_defaut_chiffre"])
+    return mdp
+
+
+def definir_mot_de_passe_defaut(societe, mot_de_passe):
+    """Enregistre le mot de passe par défaut choisi par le créateur."""
+    societe.mot_de_passe_defaut_chiffre = (
+        crypto.chiffrer({"mdp": mot_de_passe}) if mot_de_passe else ""
+    )
+    societe.save(update_fields=["mot_de_passe_defaut_chiffre"])
+
+
+def generer_code_validation(user, envoyer=True):
+    """Crée un code à 6 chiffres pour la première connexion Google."""
+    code = f"{secrets.randbelow(1000000):06d}"
+    user.code_validation = code
+    user.code_validation_envoye_le = timezone.now()
+    user.validation_google_requise = True
+    user.save(
+        update_fields=[
+            "code_validation",
+            "code_validation_envoye_le",
+            "validation_google_requise",
+        ]
+    )
+    if envoyer:
+        from . import emails
+
+        emails.envoyer_code_validation(user, code)
+    return code
+
+
+def valider_code_google(user, code_saisi):
+    """Valide le code de première connexion Google. Retourne True si OK."""
+    code = (getattr(user, "code_validation", "") or "").strip()
+    envoi = getattr(user, "code_validation_envoye_le", None)
+    saisi = (code_saisi or "").strip()
+    if not code or not envoi or not saisi:
+        return False
+    if timezone.now() - envoi > CODE_VALIDATION_DUREE:
+        return False
+    if not hmac.compare_digest(code, saisi):
+        return False
+    user.code_validation = ""
+    user.code_validation_envoye_le = None
+    user.validation_google_requise = False
+    user.save(
+        update_fields=[
+            "code_validation",
+            "code_validation_envoye_le",
+            "validation_google_requise",
+        ]
+    )
+    return True
+
+
 def assurer_compte_employe(employe):
     """Garantit qu'une fiche employé dispose d'un compte de connexion relié.
 
     - si un compte existe déjà avec cet email : on le relie ;
-    - sinon on crée un compte « Employé » avec le mot de passe par défaut
-      (``settings.EMPLOYE_MOT_DE_PASSE_DEFAUT``) ; à sa première connexion,
-      l'employé est invité à définir son propre mot de passe.
+    - sinon on crée un compte « Employé » avec le mot de passe propre à la
+      société, on génère un code à 6 chiffres et on envoie les identifiants
+      par e-mail.
 
     Retourne le compte relié, ou None si la création/le lien est impossible.
     """
@@ -267,6 +341,7 @@ def assurer_compte_employe(employe):
     if createur is not None and (createur.email or "").strip().lower() == email.lower():
         return None
     user = UserAdmin.objects.filter(email__iexact=email).first()
+    compte_cree = False
     if user is None:
         user = UserAdmin(
             email=email,
@@ -276,13 +351,14 @@ def assurer_compte_employe(employe):
             telephone_2=employe.telephone_2 or "",
             role_admin="EMPLOYE",
         )
-        mdp = getattr(settings, "EMPLOYE_MOT_DE_PASSE_DEFAUT", "") or ""
+        mdp = mot_de_passe_defaut(societe)
         if mdp:
             user.set_password(mdp)
             user.doit_changer_mdp = True
         else:
             user.set_unusable_password()
         user.save()
+        compte_cree = True
     else:
         if user.is_superuser or societe.createur_id == user.pk:
             return None
@@ -291,7 +367,13 @@ def assurer_compte_employe(employe):
             return None
         if user.societes_creees.exists():
             return None
-    return _relier_compte(employe, user)
+    user = _relier_compte(employe, user)
+    if compte_cree and user is not None:
+        from . import emails
+
+        code = generer_code_validation(user, envoyer=False)
+        emails.envoyer_compte_employe(employe, user, mdp, code)
+    return user
 
 
 def rattacher_conversations_employe(employe, user):

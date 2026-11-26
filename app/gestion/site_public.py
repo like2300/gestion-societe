@@ -104,8 +104,12 @@ def choisir_forfait(request, pk):
         messages.error(request, "Seul le propriétaire de la société peut changer d'offre.")
         return redirect("gestion:dashboard")
     # Société existante : demande de changement d'offre (en attente d'activation ou de paiement)
-    en_cours = societe.abonnements.filter(statut="EN_ATTENTE").first()
+    en_cours = (societe.abonnements.filter(statut="EN_ATTENTE")
+                .select_related("societe", "societe__createur", "forfait").first())
     if en_cours and en_cours.forfait_id == forfait.pk:
+        if not forfait.prix:
+            abonnements.notifier_activation_gratuite(en_cours, request)
+            messages.info(request, "Lien d'activation renvoyé par e-mail.")
         return redirect("abonnement_payer", jeton=en_cours.jeton) if forfait.prix else redirect("gestion:mon_abonnement")
     actif = societe.abonnements.filter(statut="ACTIF").select_related("forfait").first()
     if actif and actif.forfait_id == forfait.pk:
@@ -129,6 +133,13 @@ def forfait_en_session(request):
 @require_http_methods(["GET", "POST"])
 def payer(request, jeton):
     abo = get_object_or_404(AbonnementSociete.objects.select_related("societe", "forfait"), jeton=jeton)
+    if request.user.is_authenticated and not services.est_createur(request.user, abo.societe):
+        return render(
+            request,
+            "gestion/acces_restreint.html",
+            {"societe": abo.societe, "etat": abonnements.etat(abo.societe), "est_createur": False},
+            status=403,
+        )
     abonnements.courant(abo.societe)  # applique l'expiration éventuelle
     abo.refresh_from_db()
     paiement_kpay = abo.paiements.filter(statut="EN_ATTENTE").exclude(kpay_id="").order_by("-pk").first()

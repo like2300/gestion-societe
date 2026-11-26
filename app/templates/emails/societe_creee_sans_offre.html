@@ -1,0 +1,11 @@
+{% extends "emails/base.html" %}
+{% block contenu %}
+<div style="background:#2563eb;padding:16px 20px;border-radius:12px;color:#ffffff;font-size:18px;font-weight:700;margin-bottom:20px">Archi</div>
+<p style="margin:0 0 6px;font-size:13px;color:#64748b">Confirmation de création</p>
+<h1 style="margin:0 0 16px;font-size:22px">Félicitations{% if prenom %} {{ prenom }}{% endif %} !</h1>
+<p style="margin:0 0 14px;line-height:1.6">Votre société <b>{{ societe.nom }}</b> a bien été créée sur Archi.</p>
+<p style="margin:0 0 22px;line-height:1.6">Choisissez maintenant votre abonnement pour activer tous les modules de gestion.</p>
+<a href="{{ lien }}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 22px;border-radius:12px">Prendre un abonnement</a>
+<p style="margin:18px 0 0;line-height:1.6;font-size:13px;color:#64748b">Vous devez être connecté à votre compte Archi. Si vous ne l'êtes pas, la connexion vous sera demandée.</p>
+<p style="margin:14px 0 0;font-size:12px;color:#94a3b8">Vous recevez cet e-mail car vous venez de créer une société. Si ce n'est pas vous, ignorez-le.</p>
+{% endblock %}

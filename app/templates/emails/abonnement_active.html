@@ -1,17 +1,7 @@
-<!doctype html>
-<html lang="fr">
-<body style="margin:0;padding:0;background:#f4f6fb;font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#0f172a">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6fb;padding:32px 12px">
-    <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e9f2">
-        <tr><td style="background:#059669;padding:22px 28px;color:#ffffff;font-size:18px;font-weight:700">Paiement confirmé</td></tr>
-        <tr><td style="padding:28px">
-          <h1 style="margin:0 0 16px;font-size:22px">Merci{% if prenom %} {{ prenom }}{% endif %} !</h1>
-          <p style="margin:0 0 14px;line-height:1.6">L'abonnement <b>{{ abonnement.forfait.nom }}</b> de <b>{{ societe.nom }}</b> est actif jusqu'au <b>{{ abonnement.date_fin|date:"d/m/Y" }}</b>.</p>
-          {% if app %}<a href="{{ app }}" style="display:inline-block;background:#059669;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 22px;border-radius:12px">Accéder à mon espace</a>{% endif %}
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>
+{% extends "emails/base.html" %}
+{% block contenu %}
+<div style="background:#059669;padding:16px 20px;border-radius:12px;color:#ffffff;font-size:18px;font-weight:700;margin-bottom:20px">Paiement confirmé</div>
+<h1 style="margin:0 0 16px;font-size:22px">Merci{% if prenom %} {{ prenom }}{% endif %} !</h1>
+<p style="margin:0 0 14px;line-height:1.6">L'abonnement <b>{{ abonnement.forfait.nom }}</b> de <b>{{ societe.nom }}</b> est actif jusqu'au <b>{{ abonnement.date_fin|date:"d/m/Y" }}</b>.</p>
+{% if app %}<a href="{{ app }}" style="display:inline-block;background:#059669;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 22px;border-radius:12px">Accéder à mon espace</a>{% endif %}
+{% endblock %}

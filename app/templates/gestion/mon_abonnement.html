@@ -48,11 +48,7 @@
             <h3>{{ f.nom }}</h3>
             <p class="ab-prix">{{ f.prix_affiche }}{% if f.prix %} <small>/ mois</small>{% endif %}</p>
             <p class="ab-info">{{ f.description|default:"" }}</p>
-            {% if actif and actif.forfait_id == f.pk %}
-                <span class="ab-courante">Votre offre actuelle</span>
-            {% elif demande and demande.forfait_id == f.pk %}
-                <span class="ab-courante">Demande en cours</span>
-            {% elif peut_changer %}
+            {% if peut_changer %}
                 <a class="btn-primary" href="{% url 'choisir_forfait' f.pk %}" onclick="return confirm('Demander le passage au forfait {{ f.nom|escapejs }} ?')">Demander ce forfait</a>
             {% endif %}
         </article>

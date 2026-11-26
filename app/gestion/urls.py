@@ -19,6 +19,11 @@ urlpatterns = [
         views.mdp_premiere_connexion,
         name="mdp_premiere_connexion",
     ),
+    path(
+        "compte/valider-code-google/",
+        views.validation_code_google,
+        name="validation_code_google",
+    ),
     path("employes/", views.employes, name="employes"),
     path("employes/activite/", views.employes_activite, name="employes_activite"),
     path("employes/fonction-creer/", views.fonction_creer, name="fonction_creer"),

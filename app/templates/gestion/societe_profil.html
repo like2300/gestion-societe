@@ -258,6 +258,13 @@
                 </div>
             </section>
 
+            {# ----- Identifiants des employés ----- #}
+            <section class="cfg-sec">
+                <h3 class="cfg-titre"><span>5</span>Identifiants des employés</h3>
+                <p class="cfg-aide">Ce mot de passe est propre à votre société. Il est envoyé avec un code à 6 chiffres quand vous ajoutez un employé. Laissez vide pour conserver l'actuel.</p>
+                {% include "gestion/components/gfield.html" with field=config_form.mot_de_passe_defaut span=True %}
+            </section>
+
             <div class="cfg-actions">
                 <button type="button" class="btn-ghost" data-drawer-close>Annuler</button>
                 <button type="submit" class="btn-primary">Enregistrer</button>

@@ -1,0 +1,8 @@
+{% extends "emails/base.html" %}
+{% block contenu %}
+<h1 style="margin:0 0 12px;font-size:1.3rem;">Votre code de connexion</h1>
+<p style="margin:0 0 18px;color:#64748b;">Bonjour {{ employe.prenom }} {{ employe.nom }}, voici votre nouveau code pour {{ email_nom_societe }}.</p>
+<div style="padding:18px;border-radius:12px;background:#f8fafc;text-align:center;font-size:1.8rem;font-weight:700;letter-spacing:6px;">{{ code }}</div>
+<p style="margin:18px 0 0;color:#475569;">Saisissez ce code à 6 chiffres pour valider votre première connexion avec Google. Il expire dans 24 heures.</p>
+<p style="margin:18px 0 0;font-size:.82rem;color:#94a3b8;">Si vous n'êtes pas à l'origine de cette demande, ignorez ce message.</p>
+{% endblock %}

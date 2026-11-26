@@ -1,0 +1,11 @@
+{% extends "emails/base.txt" %}
+{% block contenu %}Félicitations{% if prenom %} {{ prenom }}{% endif %} !
+
+Votre société « {{ societe.nom }} » a bien été créée sur Archi.
+
+Choisissez maintenant votre abonnement pour activer tous les modules de gestion.
+
+Prendre un abonnement :
+{{ lien }}
+
+Vous devez être connecté à votre compte Archi. Si vous ne l'êtes pas, la connexion vous sera demandée.{% endblock %}

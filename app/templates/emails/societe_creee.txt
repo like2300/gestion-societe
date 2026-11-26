@@ -1,4 +1,5 @@
-Bienvenue{% if prenom %} {{ prenom }}{% endif %} !
+{% extends "emails/base.txt" %}
+{% block contenu %}Bienvenue{% if prenom %} {{ prenom }}{% endif %} !
 
 Votre société « {{ societe.nom }} » a bien été créée.
 
@@ -9,5 +10,5 @@ Statut  : en attente d'activation par notre équipe
 Payez votre abonnement ici (Mobile Money ou virement) :
 {{ lien }}
 {% endif %}
-Votre accès complet est activé après validation manuelle par notre équipe. Vous recevrez un e-mail de confirmation.
-— Archi
+{% if app %}Gérez votre abonnement : {{ app }}
+{% endif %}Votre accès complet est activé après validation manuelle par notre équipe. Vous recevrez un e-mail de confirmation.{% endblock %}

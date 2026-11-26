@@ -1,0 +1,6 @@
+{{ email_nom_societe }} — message envoyé via Archi
+{% if email_logo_societe %}Logo : {{ email_logo_societe }}
+{% endif %}
+{% block contenu %}{% endblock %}
+
+— L'équipe {{ email_nom_societe }} sur Archi

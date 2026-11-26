@@ -228,9 +228,15 @@ def lien_activation_societe(request, pk):
     })
 
 
+def _retour_activation(request):
+    """Renvoie le créateur vers son abonnement, l'admin vers le back-office."""
+    return redirect("gestion:mon_abonnement" if not request.user.is_superuser
+                    else "backoffice:societes")
+
+
 @require_GET
 def activer_societe(request, jeton):
-    """Active une société après connexion du compte qui a généré le lien."""
+    """Active une offre gratuite depuis le lien envoyé au créateur ou à l'admin."""
     if not request.user.is_authenticated:
         return redirect_to_login(request.get_full_path())
     try:
@@ -238,16 +244,26 @@ def activer_societe(request, jeton):
                                 max_age=abonnements.DUREE_LIEN_ACTIVATION)
     except signing.BadSignature:
         messages.error(request, "Lien d'activation invalide ou expiré.")
-        return redirect("backoffice:societes")
-    if not request.user.is_superuser or donnees.get("admin") != request.user.pk:
-        return HttpResponseForbidden("Ce lien est réservé au compte qui l'a généré.")
+        return _retour_activation(request)
     abo = get_object_or_404(AbonnementSociete, pk=donnees.get("abo"))
+    est_admin = (
+        request.user.is_superuser
+        and donnees.get("admin") == request.user.pk
+        and not donnees.get("createur")
+    )
+    est_createur = (
+        bool(donnees.get("createur"))
+        and abo.societe.createur_id == request.user.pk
+        and not abo.forfait.prix
+    )
+    if not (est_admin or est_createur):
+        return HttpResponseForbidden("Ce lien est réservé au compte qui l'a généré.")
     if abo.statut != "EN_ATTENTE":
         messages.info(request, f"{abo.societe.nom} : la demande n'est plus en attente.")
     else:
         abonnements.activer(abo, request=request)
         messages.success(request, f"{abo.societe.nom} activée. Abonnement {abo.forfait.nom} actif.")
-    return redirect("backoffice:societes")
+    return _retour_activation(request)
 
 
 @equipe_saas

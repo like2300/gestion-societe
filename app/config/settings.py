@@ -49,6 +49,14 @@ if DEBUG:
 # request.is_secure() et les liens générés (e-mails, paiement) soient bien en https.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
+# Sécurité HTTPS en production. Valeurs lues dans .env ; les défauts gardent le HTTP local utilisable.
+SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "False").lower() in ("true", "1", "yes")
+SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "False").lower() in ("true", "1", "yes")
+CSRF_COOKIE_SECURE = os.getenv("CSRF_COOKIE_SECURE", "False").lower() in ("true", "1", "yes")
+SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "0"))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = os.getenv("SECURE_HSTS_INCLUDE_SUBDOMAINS", "False").lower() in ("true", "1", "yes")
+SECURE_HSTS_PRELOAD = os.getenv("SECURE_HSTS_PRELOAD", "False").lower() in ("true", "1", "yes")
+
 
 # Application definition
 
@@ -107,9 +115,8 @@ ACCOUNT_LOGOUT_ON_GET = True
 # Formulaire d'inscription : réservé aux administrateurs d'entreprise.
 ACCOUNT_FORMS = {"signup": "gestion.forms.SignupFormPro"}
 
-# Mot de passe par défaut des comptes employés créés par l'administrateur.
-# L'employé doit le remplacer à sa première connexion (fenêtre modale).
-# À définir dans .env (EMPLOYE_MOT_DE_PASSE_DEFAUT) pour ne pas garder la valeur d'exemple.
+# Ancien mot de passe global des employés. Conservé pour compatibilité.
+# La valeur active est maintenant définie par société dans « Ma société ».
 EMPLOYE_MOT_DE_PASSE_DEFAUT = os.getenv("EMPLOYE_MOT_DE_PASSE_DEFAUT", "Employe@2026")
 
 # Modules désactivés (masqués du menu, accès redirigé vers le tableau de bord).
@@ -270,19 +277,21 @@ CONNECTEURS_ENCRYPTION_KEY = os.getenv("CONNECTEURS_ENCRYPTION_KEY", "")
 
 # --- Email / SMTP (confirmations allauth, réinitialisation...) ------------
 
+EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp-appsfortesting.alwaysdata.net")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() in ("true", "1", "yes")
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "20"))
+
 if os.getenv("EMAIL_CONSOLE", "True").lower() in ("true", "1", "yes"):
     # Dev : les emails s'affichent dans la console, aucun serveur SMTP requis
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 else:
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-    EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
-    EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
-    EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() in ("true", "1", "yes")
-    EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
-    EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 
-DEFAULT_FROM_EMAIL = os.getenv(
-    "DEFAULT_FROM_EMAIL", "Archi <no-reply@example.com>"
+DEFAULT_FROM_EMAIL = (
+    os.getenv("DEFAULT_FROM_EMAIL") or EMAIL_HOST_USER or "Archi <no-reply@example.com>"
 )
 
 # --- IA (Groq) ---

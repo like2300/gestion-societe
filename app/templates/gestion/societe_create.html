@@ -92,6 +92,10 @@
             display: block;
             animation: step-in 0.3s ease both;
         }
+        .steps.active.steps-champs {
+            display: grid;
+            gap: 12px;
+        }
         @keyframes step-in {
             from {
                 opacity: 0;
@@ -436,9 +440,12 @@
                 enctype="multipart/form-data" class="space-y-6" novalidate>
                 {% csrf_token %}
 
-                <section class="steps active" data-section="1">
+                <section class="steps active steps-champs" data-section="1">
                     {% include "account/snippets/field.html" with field=form.nom %}
-                    {% include "account/snippets/field.html" with field=form.pays %}
+                    {% include "account/snippets/field.html" with field=form.pays liste="pays-connus" %}
+                    <datalist id="pays-connus">
+                        {% for nom in pays_connus %}<option value="{{ nom }}"></option>{% endfor %}
+                    </datalist>
                     {% include "account/snippets/field.html" with field=form.slogan %}
 
                     <div class="step-nav">
@@ -507,7 +514,7 @@
                             </svg>
                             <span class="dz-text">Glissez votre document ici</span>
                             <span class="dz-hint">ou cliquez pour parcourir</span>
-                            <span class="dz-hint">PDF obligatoire (RCCM, statuts, immatriculation…)</span>
+                            <span class="dz-hint">PDF facultatif (RCCM, statuts, immatriculation…)</span>
                         </div>
                         <div class="dz-preview dz-preview-doc">
                             <span class="dz-badge">PDF</span>
@@ -519,7 +526,7 @@
                                 aria-label="Retirer le document">×</button>
                         </div>
                         <input type="file" id="id_document" name="document"
-                            accept="application/pdf,.pdf" required />
+                            accept="application/pdf,.pdf" />
                     </label>
 
                     <div class="step-nav">
@@ -579,7 +586,7 @@
             if (!form) return;
 
             var sections = form.querySelectorAll(".steps");
-            var dots = form.querySelectorAll(".stepper .step-item");
+            var dots = document.querySelectorAll(".stepper .step-item");
             var current = 1;
 
             function go(n) {
@@ -751,7 +758,7 @@
                             window.showToast &&
                                 window.showToast(
                                     "error",
-                                    "Document : le PDF est obligatoire.",
+                                    "Document : seul le format PDF est accepté.",
                                 );
                             unfilled();
                             return;

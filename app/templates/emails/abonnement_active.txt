@@ -1,7 +1,7 @@
-Merci{% if prenom %} {{ prenom }}{% endif %} !
+{% extends "emails/base.txt" %}
+{% block contenu %}Merci{% if prenom %} {{ prenom }}{% endif %} !
 
 L'abonnement {{ abonnement.forfait.nom }} de « {{ societe.nom }} » est actif jusqu'au {{ abonnement.date_fin|date:"d/m/Y" }}.
 {% if app %}
 Accédez à votre espace : {{ app }}
-{% endif %}
-— Archi
+{% endif %}{% endblock %}

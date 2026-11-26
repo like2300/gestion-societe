@@ -1,27 +1,17 @@
-<!doctype html>
-<html lang="fr">
-<body style="margin:0;padding:0;background:#f4f6fb;font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#0f172a">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6fb;padding:32px 12px">
-    <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e9f2">
-        <tr><td style="background:#d97706;padding:22px 28px;color:#ffffff;font-size:18px;font-weight:700">Archi — activation manuelle</td></tr>
-        <tr><td style="padding:28px">
-          <h1 style="margin:0 0 16px;font-size:22px">Demande gratuite à activer</h1>
-          <p style="margin:0 0 14px;line-height:1.6">Une société demande l'offre <b>{{ forfait.nom }}</b>.</p>
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:12px;margin:0 0 20px">
-            <tr><td style="padding:14px 16px;font-size:14px;line-height:1.7">
-              <b>Société :</b> {{ societe.nom }}<br>
-              <b>Forfait :</b> {{ forfait.nom }} (gratuit)<br>
-              <b>Demandée par :</b> {{ createur.email }}
-            </td></tr>
-          </table>
-          <a href="{{ lien }}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 22px;border-radius:12px">Activer l'abonnement</a>
-          <p style="margin:18px 0 0;font-size:12px;color:#64748b;word-break:break-all">Lien : {{ lien }}</p>
-          <p style="margin:10px 0 0;font-size:12px;color:#64748b">Ce lien est lié à votre compte administrateur. Il expire dans {{ minutes }} minutes. Après expiration, générez un nouveau lien dans /backoffice/societes/.</p>
-        </td></tr>
-        <tr><td style="padding:16px 28px;background:#f8fafc;font-size:12px;color:#94a3b8">Vous recevez cet e-mail car vous administrez la plateforme Archi.</td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>
+{% extends "emails/base.html" %}
+{% block contenu %}
+<div style="background:#d97706;padding:16px 20px;border-radius:12px;color:#ffffff;font-size:18px;font-weight:700;margin-bottom:20px">Archi — activation manuelle</div>
+<h1 style="margin:0 0 16px;font-size:22px">Demande gratuite à activer</h1>
+<p style="margin:0 0 14px;line-height:1.6">Une société demande l'offre <b>{{ forfait.nom }}</b>.</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:12px;margin:0 0 20px">
+  <tr><td style="padding:14px 16px;font-size:14px;line-height:1.7">
+    <b>Société :</b> {{ societe.nom }}<br>
+    <b>Forfait :</b> {{ forfait.nom }} (gratuit)<br>
+    <b>Demandée par :</b> {{ createur.email }}
+  </td></tr>
+</table>
+<a href="{{ lien }}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 22px;border-radius:12px">Activer l'abonnement</a>
+<p style="margin:18px 0 0;font-size:12px;color:#64748b;word-break:break-all">Lien : {{ lien }}</p>
+<p style="margin:10px 0 0;font-size:12px;color:#64748b">Ce lien est lié à votre compte administrateur. Il expire dans {{ minutes }} minutes. Après expiration, générez un nouveau lien dans /backoffice/societes/.</p>
+<p style="margin:14px 0 0;font-size:12px;color:#94a3b8">Vous recevez cet e-mail car vous administrez la plateforme Archi.</p>
+{% endblock %}

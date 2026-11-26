@@ -57,12 +57,14 @@ class PresenceActiviteMiddleware:
 class MotDePasseInitialMiddleware:
     """Bloque un compte qui utilise encore le mot de passe par défaut.
 
-    Tant que ``user.doit_changer_mdp`` est vrai (employé à sa première
-    connexion), seules la fenêtre de changement de mot de passe et la
-    déconnexion sont accessibles :
-    - toute page du tableau de bord renvoie vers l'accueil, où la fenêtre
-      obligatoire s'affiche (impossible de la fermer) ;
-    - toute action (POST, API JSON…) est refusée (403).
+    Deux cas sont traités :
+
+    1. Connexion avec Google : l'employé doit saisir le code à 6 chiffres
+       reçu par e-mail. La fenêtre de changement de mot de passe n'apparaît pas.
+    2. Connexion avec e-mail et mot de passe : la fenêtre obligatoire de
+       changement de mot de passe s'affiche.
+
+    Tant que l'étape n'est pas faite, toute autre page ou action est bloquée.
     """
 
     AUTORISES = ("/static/", "/media/", "/accounts/logout/", "/favicon")
@@ -72,11 +74,42 @@ class MotDePasseInitialMiddleware:
 
     def __call__(self, request):
         user = getattr(request, "user", None)
-        if user is not None and user.is_authenticated and getattr(user, "doit_changer_mdp", False):
-            reponse = self._bloquer(request)
+        if user is not None and user.is_authenticated:
+            session = getattr(request, "session", None)
+            par_google = bool(session and session.get("connexion_par_google"))
+            if par_google and getattr(user, "validation_google_requise", False):
+                reponse = self._bloquer_google(request)
+            elif not par_google and getattr(user, "doit_changer_mdp", False):
+                reponse = self._bloquer(request)
+            else:
+                reponse = None
             if reponse is not None:
                 return reponse
         return self.get_response(request)
+
+    @staticmethod
+    def _est_action(request):
+        return (
+            request.headers.get("x-requested-with") == "XMLHttpRequest"
+            or "application/json" in request.headers.get("accept", "")
+            or request.method not in ("GET", "HEAD")
+        )
+
+    def _bloquer_google(self, request):
+        from django.http import JsonResponse
+        from django.shortcuts import redirect
+        from django.urls import reverse
+
+        chemin = request.path
+        url_code = reverse("gestion:validation_code_google")
+        if chemin == url_code or chemin.startswith(self.AUTORISES):
+            return None
+        if self._est_action(request):
+            return JsonResponse(
+                {"ok": False, "erreur": "Validez d'abord votre code de connexion."},
+                status=403,
+            )
+        return redirect(url_code)
 
     def _bloquer(self, request):
         from django.http import JsonResponse
@@ -90,12 +123,7 @@ class MotDePasseInitialMiddleware:
             return None
         if request.method in ("GET", "HEAD") and chemin == url_accueil:
             return None  # l'accueil affiche la fenêtre obligatoire
-        ajax = (
-            request.headers.get("x-requested-with") == "XMLHttpRequest"
-            or "application/json" in request.headers.get("accept", "")
-            or request.method not in ("GET", "HEAD")
-        )
-        if ajax:
+        if self._est_action(request):
             return JsonResponse(
                 {"ok": False, "erreur": "Définissez d'abord votre mot de passe personnel."},
                 status=403,
@@ -113,6 +141,10 @@ class AbonnementRestreintMiddleware:
     AUTORISES = (
         "/static/", "/media/", "/accounts/", "/favicon",
         "/gestion/post-login/", "/gestion/societe/creer/",
+        "/gestion/societe/abonnement/",
+    )
+
+    BLOQUES_EMPLOYE = (
         "/gestion/societe/abonnement/",
     )
 
@@ -141,14 +173,31 @@ class AbonnementRestreintMiddleware:
         if societe is None:
             return None
         e = abonnements.etat(societe)
+        est_createur = services.est_createur(user, societe)
+        # Un employé ne gère jamais l'abonnement de la société.
+        if not est_createur and request.path.startswith(self.BLOQUES_EMPLOYE):
+            return self._reponse_restreinte(request, societe, e)
         if not e or not e["restreinte"]:
             return None
         # Le créateur garde l'accès à sa page d'abonnement pour suivre sa demande.
-        if request.path.startswith("/gestion/societe/abonnement/"):
+        if est_createur and request.path.startswith("/gestion/societe/abonnement/"):
             return None
+        return self._reponse_restreinte(request, societe, e)
+
+    def _reponse_restreinte(self, request, societe, e):
+        from django.http import JsonResponse
+        from django.shortcuts import render
+
+        from . import services
+
         ajax = (request.headers.get("x-requested-with") == "XMLHttpRequest"
                 or "application/json" in request.headers.get("accept", "")
                 or request.method not in ("GET", "HEAD"))
         if ajax:
             return JsonResponse({"ok": False, "erreur": "L'accès de votre société est momentanément restreint."}, status=403)
-        return render(request, "gestion/acces_restreint.html", {"societe": societe, "etat": e}, status=403)
+        return render(
+            request,
+            "gestion/acces_restreint.html",
+            {"societe": societe, "etat": e, "est_createur": services.est_createur(request.user, societe)},
+            status=403,
+        )

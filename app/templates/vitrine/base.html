@@ -351,9 +351,11 @@
         </div>
     </header>
 
-    {% if messages %}
-        <ul class="messages">{% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}</ul>
-    {% endif %}
+    {% block messages %}
+        {% if messages %}
+            <ul class="messages">{% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}</ul>
+        {% endif %}
+    {% endblock %}
 
     {% block contenu %}{% endblock %}
 

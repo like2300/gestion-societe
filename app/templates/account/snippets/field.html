@@ -15,7 +15,7 @@ Usage : {% include "account/snippets/field.html" with field=form.login %}
         {% if field.field.required %}required{% endif %}
         placeholder=" "
         {% if type != "password" %}value="{{ field.value|default:'' }}"{% endif %}
-        autocomplete="{% if type == 'password' %}{{ field.field.widget.attrs.autocomplete|default:'new-password' }}{% else %}{{ field.field.widget.attrs.autocomplete|default:'off' }}{% endif %}"
+        {% if liste %}list="{{ liste }}" autocomplete="on"{% else %}autocomplete="{% if type == 'password' %}{{ field.field.widget.attrs.autocomplete|default:'new-password' }}{% else %}{{ field.field.widget.attrs.autocomplete|default:'off' }}{% endif %}"{% endif %}
         {% if type == "password" %}data-password-field{% endif %}
         class="gfx-input{% if field.errors %} input-invalid{% endif %}" />
     <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span class="req"> *</span>{% endif %}</label>

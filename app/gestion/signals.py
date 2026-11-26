@@ -1,5 +1,6 @@
 """Signaux : journalisation des connexions et traçage de la présence."""
 
+from allauth.account.signals import user_logged_in as allauth_user_logged_in
 from django.contrib.auth.signals import user_logged_in, user_logged_out
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
@@ -27,6 +28,20 @@ def journaliser_connexion(sender, request, user, **kwargs):
         user,
     )
     _ouvrir_presence(user, societe, request)
+
+
+@receiver(allauth_user_logged_in)
+def marquer_connexion_google(sender, request, user, **kwargs):
+    """Repère une connexion Google pour la validation par code à 6 chiffres."""
+    session = getattr(request, "session", None)
+    if session is None:
+        return
+    sociallogin = kwargs.get("sociallogin")
+    provider = getattr(getattr(sociallogin, "account", None), "provider", "")
+    if provider == "google":
+        session["connexion_par_google"] = True
+    else:
+        session.pop("connexion_par_google", None)
 
 
 @receiver(user_logged_out)

@@ -1,0 +1,11 @@
+{% extends "emails/base.txt" %}
+{% block contenu %}Activez votre compte{% if createur.prenom %} {{ createur.prenom }}{% endif %}
+
+Votre demande pour le forfait {{ forfait.nom }} est enregistrée pour la société {{ societe.nom }}.
+
+Ouvrez ce lien pour activer votre accès. Vous devez être connecté à votre compte Archi.
+
+Activer mon compte :
+{{ lien }}
+
+Ce lien est lié à votre compte. Il expire dans {{ minutes }} minutes.{% endblock %}

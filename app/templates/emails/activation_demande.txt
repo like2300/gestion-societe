@@ -1,4 +1,5 @@
-Demande gratuite à activer{% if admin.prenom %}, {{ admin.prenom }}{% endif %}.
+{% extends "emails/base.txt" %}
+{% block contenu %}Demande gratuite à activer{% if admin.prenom %}, {{ admin.prenom }}{% endif %}.
 
 Société : {{ societe.nom }}
 Forfait : {{ forfait.nom }} (gratuit)
@@ -8,6 +9,4 @@ Ouvrez ce lien pour activer l'abonnement :
 {{ lien }}
 
 Le lien est lié à votre compte administrateur. Il expire dans {{ minutes }} minutes.
-Si le lien expire, générez un nouveau lien dans /backoffice/societes/.
-
-— Archi
+Si le lien expire, générez un nouveau lien dans /backoffice/societes/.{% endblock %}

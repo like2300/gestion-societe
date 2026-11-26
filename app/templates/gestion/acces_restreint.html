@@ -25,18 +25,21 @@
         </div>
         <span class="soc">{{ societe.nom }}</span>
         <h1>Accès momentanément restreint</h1>
-        {% if etat.niveau == "sans_offre" %}
-            <p>Choisissez une offre pour ouvrir votre espace.</p>
-            <p>Vos données sont conservées. L'accès s'ouvre après validation de votre abonnement par notre équipe.</p>
-            <a class="btn" href="{% url 'gestion:mon_abonnement' %}">Choisir une offre</a>
+        {% if not etat %}
+            <p>L'accès à cette société est momentanément restreint.</p>
+            <p>Vos données sont conservées. Contactez le responsable de la société.</p>
+        {% elif etat.niveau == "sans_offre" %}
+            <p>Cette société n'a pas encore d'abonnement actif.</p>
+            <p>Vos données sont conservées.{% if est_createur %} Choisissez une offre pour activer l'accès.{% else %} Contactez le responsable de la société pour activer une offre.{% endif %}</p>
+            {% if est_createur %}<a class="btn" href="{% url 'gestion:mon_abonnement' %}">Choisir une offre</a>{% endif %}
         {% elif etat.niveau == "en_attente" %}
-            <p>Votre demande d'abonnement attend l'activation par notre équipe.</p>
-            <p>Vous recevrez un e-mail dès l'activation.</p>
-            <a class="btn" href="{% url 'gestion:mon_abonnement' %}">Suivre ma demande</a>
+            <p>La demande d'abonnement de cette société attend l'activation par notre équipe.</p>
+            <p>Vos données sont conservées.{% if est_createur %} Vous recevrez un e-mail dès l'activation.{% else %} L'accès reviendra après validation.{% endif %}</p>
+            {% if est_createur %}<a class="btn" href="{% url 'gestion:mon_abonnement' %}">Suivre ma demande</a>{% endif %}
         {% else %}
             <p>L'espace de votre société est en maintenance : son abonnement {% if etat.niveau == "suspendu" %}a été suspendu{% else %}doit être renouvelé{% endif %}.</p>
-            <p>Vos données sont conservées. Prévenez le responsable de votre société ; l'accès reviendra dès le réabonnement.</p>
-            <a class="btn" href="{% url 'gestion:mon_abonnement' %}">Voir mon abonnement</a>
+            <p>Vos données sont conservées. {% if est_createur %}Gérez votre abonnement pour rétablir l'accès.{% else %}Prévenez le responsable de votre société ; l'accès reviendra dès le réabonnement.{% endif %}</p>
+            {% if est_createur %}<a class="btn" href="{% url 'gestion:mon_abonnement' %}">Voir mon abonnement</a>{% endif %}
         {% endif %}
         <p style="margin-top:16px"><a class="btn" href="{% url 'account_logout' %}">Se déconnecter</a></p>
     </main>

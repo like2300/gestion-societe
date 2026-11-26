@@ -1,6 +1,9 @@
 {% extends "vitrine/base.html" %}
 {% load static %}
 
+{# Aucune notification sur la landing page. #}
+{% block messages %}{% endblock %}
+
 {% block style %}
     /* ===== Hero Entreprise avec fond logiciel flouté & Slider de captures réelles ===== */
     .hero-ent {
