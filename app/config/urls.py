@@ -1,7 +1,8 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import include, path
+from django.contrib.staticfiles import views as staticfiles_views
+from django.urls import include, path, re_path
 
 from gestion import backoffice
 from gestion.urls_public import backoffice_urls, vitrine
@@ -24,3 +25,9 @@ urlpatterns = [
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# AlwaysData : le service Python ne sert pas /static/ seul.
+# Django cherche les fichiers dans STATIC_ROOT et dans les dossiers static/ des apps.
+urlpatterns += [
+    re_path(r"^static/(?P<path>.*)$", staticfiles_views.serve, {"insecure": True}),
+]
