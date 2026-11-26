@@ -60,7 +60,7 @@
         {% elif abo.statut == "SUSPENDU" %}
             <section class="carte"><h2>Abonnement suspendu</h2><p class="sous">Contactez le support pour le réactiver.</p></section>
         {% elif not forfait.prix %}
-            <section class="carte"><h2>Forfait gratuit</h2><p class="sous">Aucun paiement n'est nécessaire.</p></section>
+            <section class="carte"><h2>Forfait gratuit</h2><p class="sous">Aucun paiement n'est nécessaire. Votre demande attend la validation de notre équipe ; vous recevrez un e-mail dès l'activation.</p></section>
         {% else %}
             {% if declare %}
                 <div class="attente"><span>Paiement déclaré (réf. <b>{{ declare.reference }}</b>) le {{ declare.date_paiement|date:"d/m/Y" }} : en cours de vérification. Vous recevrez un e-mail dès l'activation.</span></div>
@@ -69,7 +69,7 @@
             {% if kpay_ok %}
             <section class="carte">
                 <h2>Payer par Mobile Money</h2>
-                <p class="sous">Recevez une demande de paiement sur votre téléphone et validez-la avec votre code secret. L'activation est immédiate.</p>
+                <p class="sous">Recevez une demande de paiement sur votre téléphone et validez-la avec votre code secret. Notre équipe active l'abonnement après vérification du paiement.</p>
                 {% if paiement_kpay %}
                     <form method="post" class="attente">
                         {% csrf_token %}<input type="hidden" name="action" value="verifier" />

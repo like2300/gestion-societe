@@ -43,7 +43,7 @@ INCLUS = [
 ]
 
 FAQ = [
-    ("Puis-je essayer gratuitement ?", "Oui : le forfait gratuit donne accès à la plateforme pendant sa durée, sans moyen de paiement."),
+    ("Puis-je essayer gratuitement ?", "Oui : choisissez le forfait gratuit. Notre équipe active votre accès après validation de la demande, sans moyen de paiement."),
     ("Comment payer mon abonnement ?", "Après la création de votre société, vous recevez un e-mail avec un lien de paiement : Mobile Money ou virement."),
     ("Mes données sont-elles protégées ?", "Chaque société est isolée ; les documents confidentiels ne sont accessibles qu'aux personnes autorisées."),
     ("Mes employés ont-ils un accès ?", "Oui : chaque employé reçoit son compte et ne voit que les modules que vous lui ouvrez."),
@@ -160,8 +160,11 @@ def payer(request, jeton):
             ok, data = kpay.statut_depot(paiement_kpay.kpay_id)
             statut = str((data or {}).get("status") or "").upper()
             if ok and statut == "COMPLETED":
-                abonnements.activer(abo, paiement_kpay, request)
-                messages.success(request, "Paiement reçu : votre abonnement est actif. Merci !")
+                # Le paiement est vérifié, mais l'activation reste manuelle (back-office).
+                if "vérifié KPay" not in (paiement_kpay.reference or ""):
+                    paiement_kpay.reference = ((paiement_kpay.reference or "") + " — vérifié KPay")[:150]
+                    paiement_kpay.save(update_fields=["reference"])
+                messages.success(request, "Paiement reçu par Mobile Money. L'équipe active votre abonnement après vérification.")
             elif ok and statut in ("FAILED", "CANCELLED", "EXPIRED"):
                 paiement_kpay.statut = "ANNULE"
                 paiement_kpay.save(update_fields=["statut"])

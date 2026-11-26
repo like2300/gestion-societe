@@ -2,9 +2,9 @@
 
 Cycle de vie d'un ``AbonnementSociete`` :
 
-- ``demarrer``  : à la création de la société. Forfait gratuit → ACTIF tout de suite ;
-                  forfait payant → EN_ATTENTE + e-mail de confirmation avec le lien de paiement.
-- ``activer``   : paiement confirmé (Mobile Money vérifié, ou validé dans le back-office)
+- ``demarrer``  : à la création de la société. Toute demande reste EN_ATTENTE ;
+                  l'équipe active l'abonnement depuis le back-office (action manuelle).
+- ``activer``   : action manuelle dans le back-office uniquement
                   → ACTIF pour la durée du forfait (prolonge si déjà actif).
 - ``suspendre`` / ``prolonger`` : actions du back-office.
 - ``courant``   : dernier abonnement de la société ; passe à EXPIRE une fois la date dépassée.
@@ -97,20 +97,17 @@ def _envoyer(sujet, gabarit, contexte, destinataire):
 def demarrer(societe, forfait, request=None, ancien=None):
     """Crée l'abonnement initial (ou une demande de changement d'offre si ``ancien``) + e-mail.
 
-    Une demande de changement d'offre reste EN_ATTENTE jusqu'à son activation par
-    l'équipe (ou au paiement en ligne pour un forfait payant).
+    Toute demande reste EN_ATTENTE jusqu'à son activation par l'équipe dans le back-office.
     """
     forfait = forfait or forfait_par_defaut()
     if forfait is None:
         return None
     aujourd_hui = timezone.localdate()
     gratuit = not forfait.prix
-    actif_direct = gratuit and ancien is None
+    # Aucune activation automatique, même pour un forfait gratuit.
     abo = AbonnementSociete.objects.create(
         societe=societe, forfait=forfait, prix_paye=forfait.prix, ancien_forfait=ancien,
-        date_debut=aujourd_hui,
-        date_fin=aujourd_hui + timedelta(days=forfait.duree_jours) if actif_direct else aujourd_hui,
-        statut="ACTIF" if actif_direct else "EN_ATTENTE",
+        date_debut=aujourd_hui, date_fin=aujourd_hui, statut="EN_ATTENTE",
     )
     createur = societe.createur
     if ancien is not None:
@@ -136,6 +133,7 @@ def demarrer(societe, forfait, request=None, ancien=None):
 def activer(abonnement, paiement=None, request=None, encaisse=False, mode="Espèces"):
     """Active (ou prolonge) l'abonnement pour la durée de son forfait.
 
+    Appel uniquement depuis le back-office : aucune activation automatique.
     - remplace l'abonnement actif précédent de la société (changement d'offre) ;
     - ``encaisse`` : l'équipe a reçu le paiement hors ligne → un paiement confirmé est
       enregistré (comptabilisé dans les ventes) s'il n'en existe pas déjà un.
@@ -177,7 +175,7 @@ def refuser(abonnement):
 
 
 def demandes_en_attente():
-    """Demandes à traiter : nouvelles offres payantes et changements d'offre en attente."""
+    """Demandes à traiter : toutes les offres en attente d'activation manuelle."""
     return (AbonnementSociete.objects.filter(statut="EN_ATTENTE")
             .select_related("societe", "societe__createur", "forfait", "ancien_forfait")
             .order_by("-created_at", "-pk"))
@@ -344,9 +342,9 @@ def etat(societe):
                 "niveau": "bientot" if jours <= JOURS_ALERTE else "ok", "restreinte": False}
     dernier = next((a for a in abos if a.statut in ("EXPIRE", "SUSPENDU")), None)
     if dernier is None:
-        # Jamais activé (forfait payant en attente de paiement) : rien d'actif mais pas d'expiration
+        # Jamais activé : la demande attend une validation manuelle de l'équipe.
         return {"abonnement": abos[0], "forfait": abos[0].forfait, "jours_restants": None,
-                "niveau": "en_attente", "restreinte": False}
+                "niveau": "en_attente", "restreinte": True}
     # Un renouvellement en attente de paiement : le lien de paiement à proposer est le sien
     renouvellement = next((a for a in abos if a.statut == "EN_ATTENTE"), None)
     return {"abonnement": renouvellement or dernier, "forfait": dernier.forfait,

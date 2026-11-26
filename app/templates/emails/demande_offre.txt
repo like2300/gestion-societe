@@ -5,7 +5,7 @@ Changement d'offre : {{ ancien.nom }} → {{ forfait.nom }} ({{ forfait.prix_aff
 {% if gratuit %}
 Notre équipe l'active rapidement ; vous recevrez un e-mail de confirmation.
 {% else %}
-Payez le nouveau forfait pour l'activer immédiatement :
+Payez le nouveau forfait. L'activation est effectuée manuellement par notre équipe après vérification :
 {{ lien }}
 {% endif %}
 — Archi

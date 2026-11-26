@@ -111,7 +111,7 @@
                     {% if etat_abo.niveau == "ok" or etat_abo.niveau == "bientot" %}Valable jusqu'au <b>{{ etat_abo.abonnement.date_fin|date:"d/m/Y" }}</b> · {% if etat_abo.jours_restants == 0 %}dernier jour{% else %}{{ etat_abo.jours_restants }} jour{{ etat_abo.jours_restants|pluralize }} restant{{ etat_abo.jours_restants|pluralize }}{% endif %}
                     {% elif etat_abo.niveau == "expire" %}Terminé depuis le {{ etat_abo.abonnement.date_fin|date:"d/m/Y" }} : l'accès de vos employés est restreint.
                     {% elif etat_abo.niveau == "suspendu" %}Contactez le support pour le réactiver.
-                    {% else %}En attente de paiement ou d'activation.{% endif %}
+                    {% else %}En attente d'activation par notre équipe.{% endif %}
                 </p>
                 {% if demande_abo and demande_abo.pk != etat_abo.abonnement.pk %}<p class="so-abo-info">Demande en cours : <b>{{ demande_abo.forfait.nom }}</b>.</p>{% endif %}
                 {% if est_createur and etat_abo.niveau != "ok" and etat_abo.niveau != "suspendu" %}

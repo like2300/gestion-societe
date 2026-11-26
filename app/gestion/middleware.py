@@ -128,11 +128,17 @@ class AbonnementRestreintMiddleware:
 
         from . import abonnements, services
 
-        societe = services.societe_pour_utilisateur(user)
-        if societe is None or not services.est_employe(user, societe):
+        if getattr(user, "is_superuser", False):
+            societe = user.societes_creees.first()
+        else:
+            societe = services.societe_pour_utilisateur(user)
+        if societe is None:
             return None
         e = abonnements.etat(societe)
         if not e or not e["restreinte"]:
+            return None
+        # Le créateur garde l'accès à sa page d'abonnement pour suivre sa demande.
+        if request.path.startswith("/gestion/societe/abonnement/"):
             return None
         ajax = (request.headers.get("x-requested-with") == "XMLHttpRequest"
                 or "application/json" in request.headers.get("accept", "")

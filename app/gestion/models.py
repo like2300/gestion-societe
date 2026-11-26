@@ -1285,7 +1285,7 @@ class AbonnementSociete(models.Model):
     date_fin = models.DateField()
     prix_paye = models.DecimalField(max_digits=15, decimal_places=2)
     statut = models.CharField(
-        max_length=30, choices=STATUT_ABONNEMENT_CHOICES, default="ACTIF"
+        max_length=30, choices=STATUT_ABONNEMENT_CHOICES, default="EN_ATTENTE"
     )
     renouvellement_auto = models.BooleanField(default=False)
     # Lien de paiement envoyé par e-mail (page publique protégée par ce jeton)

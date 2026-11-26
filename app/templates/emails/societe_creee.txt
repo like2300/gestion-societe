@@ -4,13 +4,10 @@ Votre société « {{ societe.nom }} » a bien été créée.
 
 Forfait : {{ forfait.nom }}
 Montant : {% if gratuit %}Gratuit{% else %}{{ forfait.prix_affiche }} / {{ forfait.duree_jours }} jours{% endif %}
-Statut  : {% if gratuit %}actif jusqu'au {{ abonnement.date_fin|date:"d/m/Y" }}{% else %}en attente de paiement{% endif %}
-{% if gratuit %}
-Accédez à votre espace : {{ app }}
-{% else %}
+Statut  : en attente d'activation par notre équipe
+{% if not gratuit %}
 Payez votre abonnement ici (Mobile Money ou virement) :
 {{ lien }}
-
-Votre accès complet est activé dès la confirmation du paiement.
 {% endif %}
+Votre accès complet est activé après validation manuelle par notre équipe. Vous recevrez un e-mail de confirmation.
 — Archi

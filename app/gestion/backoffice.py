@@ -1,8 +1,8 @@
 """Back-office SaaS : espace épuré de l'équipe de la plateforme (comptes staff / superadmin).
 
 - Vue d'ensemble : indicateurs, graphiques (inscriptions, revenus, forfaits), paiements à valider.
-- Abonnements    : filtrer, activer, prolonger, suspendre, renvoyer le lien de paiement.
-- Paiements      : valider (→ abonnement activé + e-mail) ou rejeter les paiements déclarés.
+- Abonnements    : filtrer, activer manuellement, prolonger, suspendre, renvoyer le lien de paiement.
+- Paiements      : valider manuellement (→ abonnement activé + e-mail) ou rejeter les paiements déclarés.
 - Sociétés       : toutes les sociétés clientes et leur abonnement.
 """
 

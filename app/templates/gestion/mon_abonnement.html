@@ -21,7 +21,7 @@
                 <p class="ab-info">Valable jusqu'au <b>{{ actif.date_fin|date:"d/m/Y" }}</b> ({{ actif.date_fin|timeuntil }})</p>
             {% elif dernier %}
                 <h2>{{ dernier.forfait.nom }} <span class="ab-etat {{ dernier.statut }}">{{ dernier.get_statut_display }}</span></h2>
-                <p class="ab-info">{% if dernier.statut == "EN_ATTENTE" %}En attente de paiement ou d'activation.{% else %}Depuis le {{ dernier.date_fin|date:"d/m/Y" }}.{% endif %}</p>
+                <p class="ab-info">{% if dernier.statut == "EN_ATTENTE" %}En attente d'activation par notre équipe.{% else %}Depuis le {{ dernier.date_fin|date:"d/m/Y" }}.{% endif %}</p>
                 {% if dernier.forfait.prix and dernier.statut != "SUSPENDU" %}<a class="btn-primary" href="{% url 'abonnement_payer' dernier.jeton %}">Payer / renouveler</a>{% endif %}
             {% else %}
                 <h2>Aucune offre</h2>
