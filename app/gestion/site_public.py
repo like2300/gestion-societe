@@ -52,11 +52,19 @@ FAQ = [
 def images_site():
     """URL des images de la vitrine : fichier chargé dans l'admin ou image d'origine."""
     objets = {i.code: i for i in ImageSite.objects.all()}
-    return {
+    images = {
         code: (objets[code].image.url if code in objets and objets[code].image
                else static(defaut) if defaut else "")
         for code, defaut in IMAGES_VITRINE_DEFAUT.items()
     }
+    # Change quand le logo ou l'image OG change : force WhatsApp à recharger l'aperçu.
+    versions = [
+        int(objets[code].updated_at.timestamp())
+        for code in ("logo_app", "og_image")
+        if code in objets
+    ]
+    images["og_version"] = max(versions) if versions else 0
+    return images
 
 
 def accueil(request):

@@ -12,6 +12,7 @@ urlpatterns = [
     # Référencement
     path("robots.txt", seo.robots, name="robots"),
     path("sitemap.xml", seo.sitemap, name="sitemap"),
+    path("og-image.png", seo.og_image, name="og_image"),
     # Racine : site vitrine public (présentation, tarifs, inscription) + paiement par lien
     *vitrine,
     # Back-office de l'équipe SaaS (abonnements, paiements, sociétés)
