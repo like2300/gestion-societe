@@ -52,7 +52,7 @@ def _envoyer(sujet, gabarit, contexte, destinataire):
         return False
     contexte = dict(contexte)
     contexte.update(contexte_email(contexte.get("societe")))
-    contexte.setdefault("login_url", reverse("account_login"))
+    contexte.setdefault("login_url", _url_absolue(reverse("account_login")))
     try:
         texte = render_to_string(f"emails/{gabarit}.txt", contexte)
         html = render_to_string(f"emails/{gabarit}.html", contexte)
