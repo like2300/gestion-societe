@@ -25,9 +25,20 @@
         </div>
         <span class="soc">{{ societe.nom }}</span>
         <h1>Accès momentanément restreint</h1>
-        <p>L'espace de votre société est en maintenance : son abonnement {% if etat.niveau == "suspendu" %}a été suspendu{% else %}doit être renouvelé{% endif %}.</p>
-        <p>Vos données sont conservées. Prévenez le responsable de votre société ; l'accès reviendra dès le réabonnement.</p>
-        <a class="btn" href="{% url 'account_logout' %}">Se déconnecter</a>
+        {% if etat.niveau == "sans_offre" %}
+            <p>Choisissez une offre pour ouvrir votre espace.</p>
+            <p>Vos données sont conservées. L'accès s'ouvre après validation de votre abonnement par notre équipe.</p>
+            <a class="btn" href="{% url 'gestion:mon_abonnement' %}">Choisir une offre</a>
+        {% elif etat.niveau == "en_attente" %}
+            <p>Votre demande d'abonnement attend l'activation par notre équipe.</p>
+            <p>Vous recevrez un e-mail dès l'activation.</p>
+            <a class="btn" href="{% url 'gestion:mon_abonnement' %}">Suivre ma demande</a>
+        {% else %}
+            <p>L'espace de votre société est en maintenance : son abonnement {% if etat.niveau == "suspendu" %}a été suspendu{% else %}doit être renouvelé{% endif %}.</p>
+            <p>Vos données sont conservées. Prévenez le responsable de votre société ; l'accès reviendra dès le réabonnement.</p>
+            <a class="btn" href="{% url 'gestion:mon_abonnement' %}">Voir mon abonnement</a>
+        {% endif %}
+        <p style="margin-top:16px"><a class="btn" href="{% url 'account_logout' %}">Se déconnecter</a></p>
     </main>
 </body>
 </html>

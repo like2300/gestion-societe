@@ -357,16 +357,17 @@ JOURS_ALERTE = 7  # le créateur est prévenu à partir de 7 jours avant la fin
 def etat(societe):
     """État de l'abonnement d'une société pour l'interface.
 
-    Retourne None pour une société sans aucun abonnement (anciennes sociétés : rien ne change),
-    sinon un dict : abonnement, forfait, jours_restants, niveau parmi
-    « ok » / « bientot » (≤ 7 jours) / « expire » / « suspendu » / « en_attente », restreinte (bool).
+    Retourne un dict : abonnement, forfait, jours_restants, niveau parmi
+    « ok » / « bientot » (≤ 7 jours) / « expire » / « suspendu » / « en_attente » / « sans_offre »,
+    restreinte (bool). Une société sans offre est restreinte jusqu'au choix d'un forfait.
     """
     if societe is None:
         return None
     aujourd_hui = timezone.localdate()
     abos = list(societe.abonnements.select_related("forfait").order_by("-created_at", "-pk")[:10])
     if not abos:
-        return None
+        return {"abonnement": None, "forfait": None, "jours_restants": None,
+                "niveau": "sans_offre", "restreinte": True}
     actif = next((a for a in abos if a.statut == "ACTIF"), None)
     if actif and actif.date_fin < aujourd_hui:
         actif.statut = "EXPIRE"

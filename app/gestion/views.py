@@ -136,30 +136,13 @@ def _bounce_inactive(request):
     return redirect(reverse("account_login") + "?inactive=1")
 
 
-def _est_compte_social(user):
-    """Vrai si le compte est relié à un fournisseur social (Google…)."""
-    manager = getattr(user, "socialaccount_set", None)
-    if manager is None:
-        return False
-    return manager.exists()
-
-
 def _url_sans_societe(user):
     """Destination d'un compte connecté qui n'a pas encore de société.
 
-    - Une demande/invitation d'équipe en attente → écran « rejoindre ».
-    - Compte « employé »                        → écran « rejoindre une
-      société » : il rejoint une société existante, il n'en crée pas.
-    - Compte social (Google…)                   → son profil, sans imposer la
-      création d'une société.
-    - Sinon (inscription email)                 → création de la société.
+    La première connexion mène toujours à la création de la société. Les
+    employés et les comptes avec une invitation en attente sont renvoyés vers
+    « rejoindre une société » par la vue de création.
     """
-    if DemandeAdhesion.objects.filter(user=user, statut="EN_ATTENTE").exists():
-        return "gestion:rejoindre_equipe"
-    if services.est_compte_employe(user):
-        return "gestion:rejoindre_equipe"
-    if _est_compte_social(user):
-        return "gestion:profil"
     return "gestion:societe_create"
 
 
@@ -277,7 +260,12 @@ def _sync_depense_salaire(societe, salaire):
 @login_required
 def societe_create(request):
     """Page de création de la première société après connexion."""
-    if services.societe_pour_utilisateur(request.user) is not None:
+    societe = (services.societe_pour_utilisateur(request.user)
+               or request.user.societes_creees.first())
+    if societe is not None:
+        etat = abonnements_service.etat(societe)
+        if etat and etat["restreinte"]:
+            return redirect("gestion:mon_abonnement")
         return redirect("gestion:dashboard")
     if services.est_compte_employe(request.user):
         # Un employé rejoint une société existante, il n'en crée pas.
@@ -307,27 +295,35 @@ def societe_create(request):
         services.journaliser(
             societe, "CREATION", "societe", societe.nom, "Création de la société", request.user
         )
-        # Abonnement du forfait choisi sur le site (gratuit par défaut) + e-mail de confirmation
+        # Abonnement seulement si l'utilisateur a choisi une offre sur le site.
+        # Sinon, la page « Mon abonnement » impose le choix avant le dashboard.
         from . import abonnements, site_public
 
-        abo = abonnements.demarrer(societe, site_public.forfait_en_session(request), request)
-        if abo is not None and abo.statut == "EN_ATTENTE":
-            return redirect("abonnement_payer", jeton=abo.jeton)
-        return redirect("gestion:dashboard")
+        forfait_choisi = site_public.forfait_en_session(request)
+        if forfait_choisi is not None:
+            abo = abonnements.demarrer(societe, forfait_choisi, request)
+            if abo is not None and forfait_choisi.prix:
+                return redirect("abonnement_payer", jeton=abo.jeton)
+        return redirect("gestion:mon_abonnement")
     return render(request, "gestion/societe_create.html", {"form": form})
 
 
 @login_required
 def post_login_redirect(request):
-    """Après connexion : super admin → /admin/, sinon société puis dashboard."""
+    """Après connexion : administration, création de société, offre, puis dashboard."""
     if getattr(request.user, "statut", "ACTIF") != "ACTIF":
         return _bounce_inactive(request)
     if request.user.is_superuser:
-        if request.user.societes_creees.first() is not None:
-            return redirect("gestion:dashboard")
-        return redirect("backoffice:index")
-    if services.societe_pour_utilisateur(request.user) is None:
-        return redirect(_url_sans_societe(request.user))
+        societe = request.user.societes_creees.first()
+        if societe is None:
+            return redirect("backoffice:index")
+    else:
+        societe = services.societe_pour_utilisateur(request.user)
+        if societe is None:
+            return redirect(_url_sans_societe(request.user))
+    etat = abonnements_service.etat(societe)
+    if etat and etat["restreinte"]:
+        return redirect("gestion:mon_abonnement")
     return redirect("gestion:dashboard")
 
 

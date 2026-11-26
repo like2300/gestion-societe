@@ -104,11 +104,17 @@ class MotDePasseInitialMiddleware:
 
 
 class AbonnementRestreintMiddleware:
-    """Abonnement expiré ou suspendu : les EMPLOYÉS de la société voient une page
-    « accès momentanément restreint » au lieu de l'application (le créateur garde
-    l'accès pour se réabonner, avec le pop-up de réabonnement)."""
+    """Bloque l'application quand l'abonnement manque, est en attente, expiré ou suspendu.
 
-    AUTORISES = ("/static/", "/media/", "/accounts/", "/favicon")
+    Les pages de création de société, de choix d'offre et de redirection après
+    connexion restent ouvertes pour permettre de choisir un forfait.
+    """
+
+    AUTORISES = (
+        "/static/", "/media/", "/accounts/", "/favicon",
+        "/gestion/post-login/", "/gestion/societe/creer/",
+        "/gestion/societe/abonnement/",
+    )
 
     def __init__(self, get_response):
         self.get_response = get_response

@@ -33,15 +33,15 @@
             {% if demande %}
                 <h2>{% if demande.ancien_forfait %}{{ demande.ancien_forfait.nom }} → {% endif %}{{ demande.forfait.nom }}</h2>
                 <p class="ab-info">Envoyée le {{ demande.created_at|date:"d/m/Y à H:i" }} · en attente {% if demande.forfait.prix %}de paiement ou {% endif %}d'activation par notre équipe.</p>
-                {% if demande.forfait.prix %}<a class="btn-primary" href="{% url 'abonnement_payer' demande.jeton %}">Payer {{ demande.forfait.prix_affiche }} pour activer maintenant</a>{% endif %}
+                {% if demande.forfait.prix %}<a class="btn-primary" href="{% url 'abonnement_payer' demande.jeton %}">Payer {{ demande.forfait.prix_affiche }}</a>{% endif %}
             {% else %}
                 <h2>Aucune demande en cours</h2>
-                <p class="ab-info">Choisissez une autre offre : votre demande est traitée par notre équipe, ou activée tout de suite après paiement.</p>
+                <p class="ab-info">Choisissez une autre offre : votre demande est traitée par notre équipe après vérification.</p>
             {% endif %}
         </article>
     </section>
 
-    <h2 class="ab-titre">Changer d'offre</h2>
+    <h2 class="ab-titre">{% if actif or dernier %}Changer d'offre{% else %}Choisissez votre offre{% endif %}</h2>
     <section class="ab-offres">
         {% for f in forfaits %}
         <article class="ab-offre{% if actif and actif.forfait_id == f.pk %} courante{% endif %}">
