@@ -1,0 +1,69 @@
+{% extends "backoffice/base.html" %}
+{% block titre %}Vitrine{% endblock %}
+{% block style %}
+.vitrine-apercu { width: 110px; height: 66px; object-fit: contain; background: #f7f7f4; border: 1px solid var(--trait); border-radius: 10px; }
+.vitrine-form { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin: 0; }
+.vitrine-form label { display: block; font-size: .72rem; color: var(--doux); margin-bottom: 2px; }
+.vitrine-form input[type="file"] { max-width: 230px; font: inherit; font-size: .75rem; }
+.vitrine-form input[type="text"] { height: 34px; border: 1px solid var(--trait); border-radius: 10px; padding: 0 .6rem; font: inherit; font-size: .8rem; min-width: 130px; }
+{% endblock %}
+{% block contenu %}
+<div class="page-titre"><h2>Vitrine publique</h2><p>Supprimez les avis et remplacez les images de la page d'accueil.</p></div>
+
+<div class="carte tableau" style="margin-bottom: 18px;">
+    <div style="padding: 14px 16px 0;">
+        <h3 style="margin: 0; font-size: 1rem; color: var(--encre);">Avis clients</h3>
+        <p style="margin: .2rem 0 0; color: var(--doux); font-size: .84rem;">
+            <a href="/admin/gestion/avis/add/" style="color: var(--foret); text-decoration: underline;">Ajouter un avis</a> · les avis sont également modifiables dans l'admin.
+        </p>
+    </div>
+    <table>
+        <thead><tr><th>Client</th><th>Note</th><th>Message</th><th style="text-align:right">Action</th></tr></thead>
+        <tbody>
+        {% for a in avis %}
+            <tr>
+                <td><b>{{ a.nom }}</b><small>{% if a.fonction %}{{ a.fonction }}{% endif %}{% if a.societe %}{% if a.fonction %} · {% endif %}{{ a.societe }}{% endif %}</small></td>
+                <td><span class="etat {% if a.actif %}ACTIF{% else %}AUCUN{% endif %}">{{ a.note }}/5</span></td>
+                <td>{{ a.message|truncatechars:110 }}</td>
+                <td><div class="actions">
+                    <form method="post" onsubmit="return confirm('Supprimer cet avis ?')">{% csrf_token %}
+                        <input type="hidden" name="action" value="supprimer_avis" />
+                        <input type="hidden" name="pk" value="{{ a.pk }}" />
+                        <button type="submit" class="b non">Supprimer</button>
+                    </form>
+                </div></td>
+            </tr>
+        {% empty %}<tr><td colspan="4" class="vide">Aucun avis.</td></tr>{% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="carte tableau">
+    <div style="padding: 14px 16px 0;">
+        <h3 style="margin: 0; font-size: 1rem; color: var(--encre);">Images de la page d'accueil</h3>
+        <p style="margin: .2rem 0 0; color: var(--doux); font-size: .84rem;">Chargez un fichier pour remplacer l'image. « Image d'origine » restaure l'image fournie avec Archi.</p>
+    </div>
+    <table>
+        <thead><tr><th>Emplacement</th><th>Aperçu</th><th>Remplacement</th></tr></thead>
+        <tbody>
+        {% for l in lignes %}
+            <tr>
+                <td><b>{{ l.label }}</b><small>{{ l.obj.code }}</small></td>
+                <td><img class="vitrine-apercu" src="{{ l.url }}" alt="" loading="lazy" /></td>
+                <td>
+                    <form method="post" enctype="multipart/form-data" class="vitrine-form">{% csrf_token %}
+                        <input type="hidden" name="action" value="image" />
+                        {{ l.form.pk }}
+                        <div><label for="{{ l.form.image.id_for_label }}">Fichier</label>{{ l.form.image }}</div>
+                        <div><label for="{{ l.form.titre.id_for_label }}">Titre</label>{{ l.form.titre }}</div>
+                        <div><label for="{{ l.form.alt.id_for_label }}">Texte alternatif</label>{{ l.form.alt }}</div>
+                        <button type="submit" class="b ok">Enregistrer</button>
+                        <button type="submit" name="reset" value="{{ l.obj.pk }}" class="b">Image d'origine</button>
+                    </form>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

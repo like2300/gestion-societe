@@ -2821,6 +2821,17 @@ IMAGES_VITRINE = (
     ("assistant_ia", "Capture — assistant IA"),
 )
 
+IMAGES_VITRINE_DEFAUT = {
+    "hero_fond": "vitrine/hero-login-bg.jpg",
+    "macbook": "vitrine/macbook-air-m5-transparent.png",
+    "dashboard": "vitrine/captures/dashboard.png",
+    "collaboration": "vitrine/captures/collaboration.png",
+    "finances": "vitrine/captures/finances.png",
+    "planning": "vitrine/captures/planning.png",
+    "bureau": "vitrine/captures/bureau.png",
+    "assistant_ia": "vitrine/captures/assistant_ia.png",
+}
+
 
 class ImageSite(models.Model):
     """Image de la vitrine remplaçable depuis l'administration."""

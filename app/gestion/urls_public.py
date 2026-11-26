@@ -18,6 +18,7 @@ backoffice_urls = ([
     path("paiements/", backoffice.liste_paiements, name="paiements"),
     path("paiements/<int:pk>/<str:action>/", backoffice.action_paiement, name="paiement_action"),
     path("societes/", backoffice.liste_societes, name="societes"),
+    path("vitrine/", backoffice.vitrine, name="vitrine"),
     path("societes/<int:pk>/lien-activation/", backoffice.lien_activation_societe, name="lien_activation"),
     path("activer/<str:jeton>/", backoffice.activer_societe, name="activer_societe"),
     path("forfaits/", backoffice.liste_forfaits, name="forfaits"),

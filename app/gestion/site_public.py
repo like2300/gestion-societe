@@ -17,7 +17,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 from . import abonnements, kpay, services
-from .models import AbonnementSociete, Avis, Forfait, ImageSite
+from .models import AbonnementSociete, Avis, Forfait, ImageSite, IMAGES_VITRINE_DEFAUT
 
 SESSION_FORFAIT = "forfait_choisi"
 
@@ -47,18 +47,6 @@ FAQ = [
     ("Mes données sont-elles protégées ?", "Chaque société est isolée ; les documents confidentiels ne sont accessibles qu'aux personnes autorisées."),
     ("Mes employés ont-ils un accès ?", "Oui : chaque employé reçoit son compte et ne voit que les modules que vous lui ouvrez."),
 ]
-
-IMAGES_VITRINE_DEFAUT = {
-    "hero_fond": "vitrine/hero-login-bg.jpg",
-    "macbook": "vitrine/macbook-air-m5-transparent.png",
-    "dashboard": "vitrine/captures/dashboard.png",
-    "collaboration": "vitrine/captures/collaboration.png",
-    "finances": "vitrine/captures/finances.png",
-    "planning": "vitrine/captures/planning.png",
-    "bureau": "vitrine/captures/bureau.png",
-    "assistant_ia": "vitrine/captures/assistant_ia.png",
-}
-
 
 def images_site():
     """URL des images de la vitrine : fichier chargé dans l'admin ou image d'origine."""

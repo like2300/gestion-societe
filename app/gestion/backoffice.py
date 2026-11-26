@@ -11,9 +11,11 @@ from functools import wraps
 
 from datetime import timedelta
 
+from django import forms
 from django.conf import settings
 from django.contrib import messages
 from django.core import signing
+from django.templatetags.static import static
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -24,10 +26,22 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
 
 from . import abonnements
-from .models import AbonnementSociete, Forfait, PaiementAbonnement, Societe
+from .models import (
+    AbonnementSociete, Avis, Forfait, ImageSite, PaiementAbonnement, Societe,
+    IMAGES_VITRINE, IMAGES_VITRINE_DEFAUT,
+)
 
 SEL_LIEN_ACTIVATION = "activation-societe"
 DUREE_LIEN_ACTIVATION = 3600  # secondes
+
+
+class ImageVitrineForm(forms.Form):
+    """Remplacement d'une image de la vitrine depuis le back-office."""
+
+    pk = forms.IntegerField(widget=forms.HiddenInput)
+    image = forms.ImageField(required=False, label="Nouvelle image")
+    titre = forms.CharField(max_length=120, required=False, label="Titre")
+    alt = forms.CharField(max_length=200, required=False, label="Texte alternatif")
 
 
 def equipe_saas(vue):
@@ -240,6 +254,54 @@ def activer_societe(request, jeton):
         abonnements.activer(abo, request=request)
         messages.success(request, f"{abo.societe.nom} activée. Abonnement {abo.forfait.nom} actif.")
     return redirect("backoffice:societes")
+
+
+@equipe_saas
+def vitrine(request):
+    """Gestion de la vitrine publique : avis clients et images du site."""
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if "reset" in request.POST:
+            image_site = get_object_or_404(ImageSite, pk=request.POST.get("reset"))
+            if image_site.image:
+                image_site.image.delete(save=False)
+                image_site.image = ""
+                image_site.save(update_fields=["image", "updated_at"])
+            messages.success(request, "Image d'origine restaurée.")
+        elif action == "supprimer_avis":
+            get_object_or_404(Avis, pk=request.POST.get("pk")).delete()
+            messages.success(request, "Avis supprimé.")
+        elif action == "image":
+            formulaire = ImageVitrineForm(request.POST, request.FILES)
+            if formulaire.is_valid():
+                image_site = get_object_or_404(ImageSite, pk=formulaire.cleaned_data["pk"])
+                if formulaire.cleaned_data["image"]:
+                    if image_site.image:
+                        image_site.image.delete(save=False)
+                    image_site.image = formulaire.cleaned_data["image"]
+                image_site.titre = formulaire.cleaned_data["titre"]
+                image_site.alt = formulaire.cleaned_data["alt"]
+                image_site.save()
+                messages.success(request, f"« {image_site.get_code_display()} » mis à jour.")
+            else:
+                messages.error(request, "Fichier image invalide.")
+        return redirect("backoffice:vitrine")
+
+    lignes = []
+    for code, libelle in IMAGES_VITRINE:
+        image_site, _ = ImageSite.objects.get_or_create(code=code, defaults={"titre": libelle})
+        lignes.append({
+            "obj": image_site,
+            "label": libelle,
+            "url": image_site.image.url if image_site.image else static(IMAGES_VITRINE_DEFAUT[code]),
+            "form": ImageVitrineForm(initial={
+                "pk": image_site.pk, "titre": image_site.titre, "alt": image_site.alt,
+            }),
+        })
+    return render(request, "backoffice/vitrine.html", {
+        "section": "vitrine", "lignes": lignes,
+        "avis": Avis.objects.all().order_by("ordre", "-created_at", "pk"),
+    })
 
 
 DEVISES_FORFAIT = ("USD", "XOF", "XAF", "EUR")
