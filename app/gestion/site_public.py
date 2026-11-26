@@ -52,7 +52,8 @@ def images_site():
     """URL des images de la vitrine : fichier chargé dans l'admin ou image d'origine."""
     objets = {i.code: i for i in ImageSite.objects.all()}
     return {
-        code: (objets[code].image.url if code in objets and objets[code].image else static(defaut))
+        code: (objets[code].image.url if code in objets and objets[code].image
+               else static(defaut) if defaut else "")
         for code, defaut in IMAGES_VITRINE_DEFAUT.items()
     }
 
@@ -157,6 +158,7 @@ def payer(request, jeton):
                 messages.success(request, "Merci ! Votre paiement est en cours de vérification ; vous recevrez un e-mail dès l'activation.")
         return redirect("abonnement_payer", jeton=abo.jeton)
     return render(request, "vitrine/payer.html", {
+        "images": images_site(),
         "abo": abo, "societe": abo.societe, "forfait": abo.forfait,
         "kpay_ok": kpay.configuree(), "providers": kpay.PROVIDERS,
         "equivalents": abonnements.equivalents_locaux(abo.forfait),

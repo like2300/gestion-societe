@@ -2819,6 +2819,8 @@ IMAGES_VITRINE = (
     ("planning", "Capture — planning"),
     ("bureau", "Capture — bureautique"),
     ("assistant_ia", "Capture — assistant IA"),
+    ("logo_header", "Logo dans l'en-tête"),
+    ("logo_footer", "Logo dans le pied de page"),
 )
 
 IMAGES_VITRINE_DEFAUT = {
@@ -2830,6 +2832,8 @@ IMAGES_VITRINE_DEFAUT = {
     "planning": "vitrine/captures/planning.png",
     "bureau": "vitrine/captures/bureau.png",
     "assistant_ia": "vitrine/captures/assistant_ia.png",
+    "logo_header": "",
+    "logo_footer": "",
 }
 
 

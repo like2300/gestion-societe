@@ -49,7 +49,7 @@
         {% for l in lignes %}
             <tr>
                 <td><b>{{ l.label }}</b><small>{{ l.obj.code }}</small></td>
-                <td><img class="vitrine-apercu" src="{{ l.url }}" alt="" loading="lazy" /></td>
+                <td>{% if l.url %}<img class="vitrine-apercu" src="{{ l.url }}" alt="" loading="lazy" />{% else %}<span style="font-size:.78rem;color:var(--doux)">Logo Archi par défaut</span>{% endif %}</td>
                 <td>
                     <form method="post" enctype="multipart/form-data" class="vitrine-form">{% csrf_token %}
                         <input type="hidden" name="action" value="image" />

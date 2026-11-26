@@ -290,10 +290,11 @@ def vitrine(request):
     lignes = []
     for code, libelle in IMAGES_VITRINE:
         image_site, _ = ImageSite.objects.get_or_create(code=code, defaults={"titre": libelle})
+        defaut = IMAGES_VITRINE_DEFAUT[code]
         lignes.append({
             "obj": image_site,
             "label": libelle,
-            "url": image_site.image.url if image_site.image else static(IMAGES_VITRINE_DEFAUT[code]),
+            "url": image_site.image.url if image_site.image else static(defaut) if defaut else "",
             "form": ImageVitrineForm(initial={
                 "pk": image_site.pk, "titre": image_site.titre, "alt": image_site.alt,
             }),

@@ -101,6 +101,8 @@
             letter-spacing: -0.02em;
             white-space: nowrap;
         }
+        .marque-img { max-height: 34px; max-width: 150px; object-fit: contain; }
+        .footer-logo { max-height: 42px; max-width: 190px; object-fit: contain; }
         .marque-icone {
             width: 34px;
             height: 34px;
@@ -247,14 +249,18 @@
     <header class="nav">
         <div class="conteneur">
             <a class="marque" href="{% url 'vitrine' %}">
-                <span class="marque-icone" aria-hidden="true">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="3" width="8" height="18" rx="1.5"/>
-                        <rect x="13" y="9" width="8" height="12" rx="1.5"/>
-                        <path d="M7 7h.01M7 11h.01M7 15h.01M17 13h.01M17 17h.01"/>
-                    </svg>
-                </span>
-                <span>Archi</span>
+                {% if images.logo_header %}
+                    <img src="{{ images.logo_header }}" alt="Archi" class="marque-img" />
+                {% else %}
+                    <span class="marque-icone" aria-hidden="true">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="8" height="18" rx="1.5"/>
+                            <rect x="13" y="9" width="8" height="12" rx="1.5"/>
+                            <path d="M7 7h.01M7 11h.01M7 15h.01M17 13h.01M17 17h.01"/>
+                        </svg>
+                    </span>
+                    <span>Archi</span>
+                {% endif %}
             </a>
             <nav class="nav-liens" aria-label="Navigation principale">
                 <a href="{% url 'vitrine' %}#fonctionnalites">Plateforme</a>
@@ -335,7 +341,11 @@
             <div class="grid grid-cols-1 gap-12 py-16 lg:grid-cols-[1fr_1.4fr_1fr]">
 
                 <div>
-                    <p class="font-serif text-2xl tracking-wide text-stone-900">Archi</p>
+                    {% if images.logo_footer %}
+                        <img src="{{ images.logo_footer }}" alt="Archi" class="footer-logo" />
+                    {% else %}
+                        <p class="font-serif text-2xl tracking-wide text-stone-900">Archi</p>
+                    {% endif %}
                     <p class="mt-4 max-w-xs text-sm leading-relaxed text-stone-500">
                         Archi réunit vos équipes, clients, projets, finances et documents dans un seul espace. Pilotez votre activité et collaborez sans outils dispersés.
                     </p>
