@@ -8,6 +8,7 @@ from django.utils import timezone
 from . import geographie
 from .models import (
     COULEUR_SOCIETE_CHOICES,
+    Avis,
     Client,
     ContratEmploye,
     DemandeAdhesion,
@@ -79,6 +80,18 @@ def _fcfa(v):
 
 
 COULEURS_STATUT_PAIEMENT = {"CONFIRME": "#10b981", "EN_ATTENTE": "#f59e0b", "ANNULE": "#e11d48"}
+
+
+class AvisForm(forms.ModelForm):
+    """Avis envoyé par un visiteur : publié seulement après validation."""
+
+    class Meta:
+        model = Avis
+        fields = ("nom", "fonction", "societe", "note", "message", "photo")
+        widgets = {
+            "message": forms.Textarea(attrs={"rows": 4}),
+            "note": forms.Select(),
+        }
 
 
 class SignupFormPro(AllauthSignupForm):

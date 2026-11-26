@@ -545,6 +545,15 @@
         letter-spacing: -0.02em;
     }
     .final p { margin: 0; color: #cbd5e1; max-width: 54ch; }
+
+    /* Formulaire d'avis public */
+    .form-avis label { display: block; margin-bottom: .35rem; font-size: .8rem; font-weight: 600; color: #57534e; }
+    .form-avis input[type="text"], .form-avis select, .form-avis textarea, .form-avis input[type="file"] {
+        width: 100%; border: 1px solid #e7e5e4; border-radius: 12px; padding: .65rem .8rem;
+        font: inherit; font-size: .9rem; color: #1c1917; background: #ffffff;
+    }
+    .form-avis textarea { resize: vertical; }
+    .form-avis .erreur { margin: .35rem 0 0; font-size: .75rem; color: #dc2626; }
 {% endblock %}
 
 {% block contenu %}
@@ -1066,6 +1075,53 @@
             {% endif %}
         </div>
     </div>
+
+    <section class="bloc" id="formulaire-avis">
+        <div class="conteneur">
+            <div class="mx-auto max-w-2xl rounded-3xl border border-stone-200 bg-white p-8">
+                <div class="titre-bloc" style="margin-bottom: 1.5rem;">
+                    <span class="sur">Votre avis</span>
+                    <h2>Donnez votre avis sur Archi</h2>
+                    <p>Votre message sera publié après validation par l'équipe Archi.</p>
+                </div>
+                <form method="post" enctype="multipart/form-data" class="form-avis grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="avis" />
+                    <div>
+                        <label for="{{ form_avis.nom.id_for_label }}">Nom et prénom *</label>
+                        {{ form_avis.nom }}
+                        {% for e in form_avis.nom.errors %}<p class="erreur">{{ e }}</p>{% endfor %}
+                    </div>
+                    <div>
+                        <label for="{{ form_avis.note.id_for_label }}">Note *</label>
+                        {{ form_avis.note }}
+                        {% for e in form_avis.note.errors %}<p class="erreur">{{ e }}</p>{% endfor %}
+                    </div>
+                    <div>
+                        <label for="{{ form_avis.fonction.id_for_label }}">Fonction</label>
+                        {{ form_avis.fonction }}
+                    </div>
+                    <div>
+                        <label for="{{ form_avis.societe.id_for_label }}">Société</label>
+                        {{ form_avis.societe }}
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label for="{{ form_avis.message.id_for_label }}">Votre message *</label>
+                        {{ form_avis.message }}
+                        {% for e in form_avis.message.errors %}<p class="erreur">{{ e }}</p>{% endfor %}
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label for="{{ form_avis.photo.id_for_label }}">Photo (facultative)</label>
+                        {{ form_avis.photo }}
+                        {% for e in form_avis.photo.errors %}<p class="erreur">{{ e }}</p>{% endfor %}
+                    </div>
+                    <div class="sm:col-span-2">
+                        <button type="submit" class="btn btn-plein btn-grand">Envoyer mon avis</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
 
     <script>
         (function () {

@@ -268,6 +268,11 @@ def vitrine(request):
                 image_site.image = ""
                 image_site.save(update_fields=["image", "updated_at"])
             messages.success(request, "Image d'origine restaurée.")
+        elif action in ("publier_avis", "masquer_avis"):
+            avis = get_object_or_404(Avis, pk=request.POST.get("pk"))
+            avis.actif = action == "publier_avis"
+            avis.save(update_fields=["actif"])
+            messages.success(request, "Avis publié." if avis.actif else "Avis masqué.")
         elif action == "supprimer_avis":
             get_object_or_404(Avis, pk=request.POST.get("pk")).delete()
             messages.success(request, "Avis supprimé.")

@@ -17,6 +17,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 from . import abonnements, kpay, services
+from .forms import AvisForm
 from .models import AbonnementSociete, Avis, Forfait, ImageSite, IMAGES_VITRINE_DEFAUT
 
 SESSION_FORFAIT = "forfait_choisi"
@@ -59,6 +60,16 @@ def images_site():
 
 
 def accueil(request):
+    form_avis = AvisForm()
+    if request.method == "POST" and request.POST.get("action") == "avis":
+        form_avis = AvisForm(request.POST, request.FILES)
+        if form_avis.is_valid():
+            avis = form_avis.save(commit=False)
+            avis.actif = False  # modération dans le back-office avant publication
+            avis.save()
+            messages.success(request, "Merci ! Votre avis sera publié après validation.")
+            return redirect(f"{reverse('vitrine')}#formulaire-avis")
+        messages.error(request, "Vérifiez les champs du formulaire.")
     forfaits = list(abonnements.forfaits_publics())
     populaire = max(forfaits, key=lambda f: f.prix).pk if len(forfaits) > 1 else None
     connecte = request.user.is_authenticated
@@ -67,6 +78,7 @@ def accueil(request):
         "inclus": INCLUS, "faq": FAQ, "connecte": connecte,
         "images": images_site(),
         "avis": Avis.objects.filter(actif=True)[:12],
+        "form_avis": form_avis,
         "espace_url": reverse("gestion:post_login_redirect") if connecte else "",
     })
 

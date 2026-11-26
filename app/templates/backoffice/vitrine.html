@@ -23,9 +23,14 @@
         {% for a in avis %}
             <tr>
                 <td><b>{{ a.nom }}</b><small>{% if a.fonction %}{{ a.fonction }}{% endif %}{% if a.societe %}{% if a.fonction %} · {% endif %}{{ a.societe }}{% endif %}</small></td>
-                <td><span class="etat {% if a.actif %}ACTIF{% else %}AUCUN{% endif %}">{{ a.note }}/5</span></td>
+                <td><span class="etat {% if a.actif %}ACTIF{% else %}EN_ATTENTE{% endif %}">{{ a.note }}/5 · {% if a.actif %}Publié{% else %}En attente{% endif %}</span></td>
                 <td>{{ a.message|truncatechars:110 }}</td>
                 <td><div class="actions">
+                    <form method="post">{% csrf_token %}
+                        <input type="hidden" name="action" value="{% if a.actif %}masquer_avis{% else %}publier_avis{% endif %}" />
+                        <input type="hidden" name="pk" value="{{ a.pk }}" />
+                        <button type="submit" class="b ok">{% if a.actif %}Masquer{% else %}Publier{% endif %}</button>
+                    </form>
                     <form method="post" onsubmit="return confirm('Supprimer cet avis ?')">{% csrf_token %}
                         <input type="hidden" name="action" value="supprimer_avis" />
                         <input type="hidden" name="pk" value="{{ a.pk }}" />
