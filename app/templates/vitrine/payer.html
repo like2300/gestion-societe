@@ -1,6 +1,13 @@
 {% extends "vitrine/base.html" %}
 
 {% block titre %}Archi — Paiement de l'abonnement — {{ societe.nom }}{% endblock %}
+{% block seo_robots %}noindex, nofollow{% endblock %}
+{% block seo_canonical %}{{ SITE_URL }}/{% endblock %}
+{% block meta_extra %}
+    <meta property="og:title" content="Archi — Paiement de l'abonnement" />
+    <meta property="og:url" content="{{ SITE_URL }}/" />
+    <meta name="twitter:title" content="Archi — Paiement de l'abonnement" />
+{% endblock %}
 
 {% block style %}
     main { padding: 3rem 0 5rem; background: var(--fond); min-height: 70vh; }

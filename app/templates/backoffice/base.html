@@ -1,9 +1,12 @@
-{% load ui %}<!doctype html>
+{% load static %}{% load ui %}<!doctype html>
 <html lang="fr">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{% block titre %}Tableau de bord{% endblock %} — Administration</title>
+    <title>{% block titre %}Tableau de bord{% endblock %} — Archi</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#091326" />
+    <link rel="icon" href="{% if images.favicon %}{{ images.favicon }}{% elif images.logo_app %}{{ images.logo_app }}{% else %}{% static 'vitrine/favicon.ico' %}{% endif %}" sizes="any" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700;800&display=swap" />
     <style>
@@ -110,6 +113,7 @@
 <div class="cadre">
     <header class="tete">
         <div class="salut">
+            {% if images.logo_app %}<img src="{{ images.logo_app }}" alt="Archi" style="height:34px;max-width:120px;object-fit:contain" />{% endif %}
             <span class="av">{{ request.user.prenom|default:request.user.email|first|upper }}</span>
             <h1>Bonjour, {{ request.user.prenom|default:"équipe" }}</h1>
         </div>

@@ -1,8 +1,26 @@
 import os
 
 from django.conf import settings
+from django.utils.functional import SimpleLazyObject
 
 _UI_DIR = os.path.join(os.path.dirname(__file__), "static", "gestion")
+
+SEO_DESCRIPTION = (
+    "Archi : pilotez votre entreprise au même endroit : collaboration d'équipe, "
+    "RH, clients, projets, finances, planning, suite bureautique et assistant IA."
+)
+
+
+def images_publiques(request):
+    """Images de la vitrine et logo de l'application, sur toutes les pages."""
+    from .site_public import images_site
+
+    return {"images": SimpleLazyObject(images_site)}
+
+
+def seo(request):
+    """Réglages SEO communs à toutes les pages publiques."""
+    return {"SITE_URL": settings.SITE_URL, "SEO_DESCRIPTION": SEO_DESCRIPTION}
 
 
 def _ui_version():

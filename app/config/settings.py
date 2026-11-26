@@ -168,6 +168,8 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "gestion.context_processors.media_prefix",
+                "gestion.context_processors.images_publiques",
+                "gestion.context_processors.seo",
                 "gestion.context_processors.notifications",
                 "gestion.context_processors.abonnement_alerte",
                 "gestion.context_processors.mdp_initial",
@@ -215,11 +217,14 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 
+# Adresse publique du site : utilisée pour les balises SEO (canonical, Open Graph).
+SITE_URL = os.getenv("SITE_URL", "https://appsfortesting.alwaysdata.net").rstrip("/")
+
 # --- Unfold (panneau admin moderne) ---------------------------------------
 
 UNFOLD = {
-    "SITE_TITLE": "Gestionnaire de société",
-    "SITE_HEADER": "Gestionnaire de société",
+    "SITE_TITLE": "Archi",
+    "SITE_HEADER": "Archi",
     "SITE_SYMBOL": "domain",
     "SHOW_LANGUAGES": False,
 }
@@ -277,7 +282,7 @@ else:
     EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 
 DEFAULT_FROM_EMAIL = os.getenv(
-    "DEFAULT_FROM_EMAIL", "Gestionnaire de société <no-reply@example.com>"
+    "DEFAULT_FROM_EMAIL", "Archi <no-reply@example.com>"
 )
 
 # --- IA (Groq) ---

@@ -2821,6 +2821,8 @@ IMAGES_VITRINE = (
     ("assistant_ia", "Capture — assistant IA"),
     ("logo_header", "Logo dans l'en-tête"),
     ("logo_footer", "Logo dans le pied de page"),
+    ("logo_app", "Logo de l'application (connexion, favicon)"),
+    ("favicon", "Favicon du site"),
 )
 
 IMAGES_VITRINE_DEFAUT = {
@@ -2834,6 +2836,8 @@ IMAGES_VITRINE_DEFAUT = {
     "assistant_ia": "vitrine/captures/assistant_ia.png",
     "logo_header": "",
     "logo_footer": "",
+    "logo_app": "",
+    "favicon": "vitrine/favicon.svg",
 }
 
 

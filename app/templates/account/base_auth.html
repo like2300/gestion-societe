@@ -5,9 +5,12 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>
-            {% block title %}Authentification{% endblock %} | Gestionnaire de
-            société
+            {% block title %}Authentification{% endblock %} | Archi
         </title>
+        <meta name="robots" content="noindex, nofollow" />
+        <meta name="theme-color" content="#091326" />
+        <link rel="icon" href="{% if images.favicon %}{{ images.favicon }}{% elif images.logo_app %}{{ images.logo_app }}{% else %}{% static 'vitrine/favicon.ico' %}{% endif %}" sizes="any" />
+        <link rel="apple-touch-icon" href="{% if images.logo_app %}{{ images.logo_app }}{% else %}{% static 'vitrine/favicon-180.png' %}{% endif %}" />
         <!-- Tailwind v4 via CDN (remplacer par un build CSS en production) -->
         <script src="https://cdn.tailwindcss.com"></script>
         <link rel="stylesheet" href="{% static 'gestion/gfield.css' %}?v=1" />
@@ -257,6 +260,10 @@
             <div
                 class="min-h-screen flex flex-col items-center justify-center px-4 py-8 md:p-8"
             >
+                <a href="{% url 'vitrine' %}" class="mb-8 block" aria-label="Archi — accueil du site">
+                    <img src="{% if images.logo_app %}{{ images.logo_app }}{% else %}{% static 'vitrine/favicon.svg' %}{% endif %}"
+                        alt="Archi" class="mx-auto h-14 w-auto object-contain" />
+                </a>
                 {% block main %}{% endblock main %}
             </div>
         </main>

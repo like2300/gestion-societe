@@ -76,7 +76,6 @@ def accueil(request):
     return render(request, "vitrine/accueil.html", {
         "forfaits": forfaits, "populaire": populaire, "fonctionnalites": FONCTIONNALITES,
         "inclus": INCLUS, "faq": FAQ, "connecte": connecte,
-        "images": images_site(),
         "avis": Avis.objects.filter(actif=True)[:12],
         "form_avis": form_avis,
         "espace_url": reverse("gestion:post_login_redirect") if connecte else "",
@@ -170,7 +169,6 @@ def payer(request, jeton):
                 messages.success(request, "Merci ! Votre paiement est en cours de vérification ; vous recevrez un e-mail dès l'activation.")
         return redirect("abonnement_payer", jeton=abo.jeton)
     return render(request, "vitrine/payer.html", {
-        "images": images_site(),
         "abo": abo, "societe": abo.societe, "forfait": abo.forfait,
         "kpay_ok": kpay.configuree(), "providers": kpay.PROVIDERS,
         "equivalents": abonnements.equivalents_locaux(abo.forfait),

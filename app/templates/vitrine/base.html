@@ -4,7 +4,37 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% block titre %}Archi — Pilotez votre entreprise{% endblock %}</title>
-    <meta name="description" content="Archi : pilotez votre entreprise au même endroit : collaboration d'équipe, RH, clients, projets, finances, planning, suite bureautique et assistant IA." />
+    <meta name="description" content="{{ SEO_DESCRIPTION }}" />
+    <meta name="robots" content="{% block seo_robots %}index, follow{% endblock %}" />
+    <meta name="theme-color" content="#091326" />
+    <link rel="canonical" href="{% block seo_canonical %}{{ SITE_URL }}{{ request.path }}{% endblock %}" />
+    <link rel="icon" href="{% if images.favicon %}{{ images.favicon }}{% elif images.logo_app %}{{ images.logo_app }}{% else %}{% static 'vitrine/favicon.ico' %}{% endif %}" sizes="any" />
+    <link rel="apple-touch-icon" href="{% if images.logo_app %}{{ images.logo_app }}{% else %}{% static 'vitrine/favicon-180.png' %}{% endif %}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Archi" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:url" content="{{ SITE_URL }}{{ request.path }}" />
+    <meta property="og:title" content="Archi — Pilotez votre entreprise" />
+    <meta property="og:description" content="{{ SEO_DESCRIPTION }}" />
+    <meta property="og:image" content="{{ SITE_URL }}{{ images.dashboard }}" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Archi — Pilotez votre entreprise" />
+    <meta name="twitter:description" content="{{ SEO_DESCRIPTION }}" />
+    <meta name="twitter:image" content="{{ SITE_URL }}{{ images.dashboard }}" />
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Archi",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "description": "{{ SEO_DESCRIPTION|escapejs }}",
+        "url": "{{ SITE_URL }}/",
+        "image": "{{ SITE_URL }}/static/vitrine/captures/dashboard.png"
+    }
+    </script>
+    <link rel="sitemap" type="application/xml" href="{{ SITE_URL }}/sitemap.xml" />
+    {% block meta_extra %}{% endblock %}
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" />

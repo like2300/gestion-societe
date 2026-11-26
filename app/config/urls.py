@@ -5,10 +5,13 @@ from django.contrib.staticfiles import views as staticfiles_views
 from django.urls import include, path, re_path
 from django.views.static import serve as fichier_statique
 
-from gestion import backoffice
+from gestion import backoffice, seo
 from gestion.urls_public import backoffice_urls, vitrine
 
 urlpatterns = [
+    # Référencement
+    path("robots.txt", seo.robots, name="robots"),
+    path("sitemap.xml", seo.sitemap, name="sitemap"),
     # Racine : site vitrine public (présentation, tarifs, inscription) + paiement par lien
     *vitrine,
     # Back-office de l'équipe SaaS (abonnements, paiements, sociétés)
