@@ -16,7 +16,6 @@ from django.conf import settings
 from django.contrib import messages
 from django.core import signing
 from django.templatetags.static import static
-from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.contrib.auth.views import redirect_to_login
@@ -30,10 +29,6 @@ from .models import (
     AbonnementSociete, Avis, Forfait, ImageSite, PaiementAbonnement, Societe,
     IMAGES_VITRINE, IMAGES_VITRINE_DEFAUT,
 )
-
-SEL_LIEN_ACTIVATION = "activation-societe"
-DUREE_LIEN_ACTIVATION = 3600  # secondes
-
 
 class ImageVitrineForm(forms.Form):
     """Remplacement d'une image de la vitrine depuis le back-office."""
@@ -226,12 +221,10 @@ def liste_societes(request):
 def lien_activation_societe(request, pk):
     """Crée un lien signé valable 1 h, lié au compte de l'administrateur connecté."""
     abo = get_object_or_404(abonnements.demandes_en_attente(), pk=pk)
-    jeton = signing.dumps({"abo": abo.pk, "admin": request.user.pk}, salt=SEL_LIEN_ACTIVATION)
-    chemin = reverse("backoffice:activer_societe", args=[jeton])
     return JsonResponse({
-        "lien": request.build_absolute_uri(chemin),
+        "lien": abonnements.lien_activation(abo, request.user.pk, request),
         "societe": abo.societe.nom,
-        "expire": (timezone.now() + timedelta(seconds=DUREE_LIEN_ACTIVATION)).strftime("%H:%M"),
+        "expire": (timezone.now() + timedelta(seconds=abonnements.DUREE_LIEN_ACTIVATION)).strftime("%H:%M"),
     })
 
 
@@ -241,7 +234,8 @@ def activer_societe(request, jeton):
     if not request.user.is_authenticated:
         return redirect_to_login(request.get_full_path())
     try:
-        donnees = signing.loads(jeton, salt=SEL_LIEN_ACTIVATION, max_age=DUREE_LIEN_ACTIVATION)
+        donnees = signing.loads(jeton, salt=abonnements.SEL_LIEN_ACTIVATION,
+                                max_age=abonnements.DUREE_LIEN_ACTIVATION)
     except signing.BadSignature:
         messages.error(request, "Lien d'activation invalide ou expiré.")
         return redirect("backoffice:societes")

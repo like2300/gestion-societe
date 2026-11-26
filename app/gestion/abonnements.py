@@ -4,6 +4,7 @@ Cycle de vie d'un ``AbonnementSociete`` :
 
 - ``demarrer``  : à la création de la société. Toute demande reste EN_ATTENTE ;
                   l'équipe active l'abonnement depuis le back-office (action manuelle).
+                  Pour une offre gratuite, un lien d'activation est envoyé aux administrateurs.
 - ``activer``   : action manuelle dans le back-office uniquement
                   → ACTIF pour la durée du forfait (prolonge si déjà actif).
 - ``suspendre`` / ``prolonger`` : actions du back-office.
@@ -14,15 +15,19 @@ import logging
 from datetime import timedelta
 
 from django.conf import settings
+from django.core import signing
 from django.core.mail import send_mail
 from django.db.models import Q
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import AbonnementSociete, Forfait, ModePaiement, PaiementAbonnement
+from .models import AbonnementSociete, Forfait, ModePaiement, PaiementAbonnement, UserAdmin
 
 log = logging.getLogger(__name__)
+
+SEL_LIEN_ACTIVATION = "activation-societe"
+DUREE_LIEN_ACTIVATION = 3600  # secondes
 
 
 def montant_local(montant, devise, monnaie):
@@ -80,6 +85,35 @@ def lien_paiement(abonnement, request=None):
     return getattr(settings, "SITE_PUBLIC_URL", "http://127.0.0.1:8000").rstrip("/") + chemin
 
 
+def lien_activation(abonnement, admin_pk, request=None):
+    """Lien signé d'activation manuelle, valable 1 h, lié à un compte admin."""
+    jeton = signing.dumps({"abo": abonnement.pk, "admin": admin_pk}, salt=SEL_LIEN_ACTIVATION)
+    chemin = reverse("backoffice:activer_societe", args=[jeton])
+    if request is not None:
+        return request.build_absolute_uri(chemin)
+    return settings.SITE_URL.rstrip("/") + chemin
+
+
+def notifier_activation_gratuite(abonnement, request=None):
+    """Envoie le lien d'activation manuelle aux administrateurs de la plateforme."""
+    admins = UserAdmin.objects.filter(is_superuser=True, is_active=True).exclude(email="")
+    for admin in admins:
+        _envoyer(
+            f"Offre gratuite à activer — {abonnement.societe.nom}",
+            "activation_demande",
+            {
+                "societe": abonnement.societe,
+                "abonnement": abonnement,
+                "forfait": abonnement.forfait,
+                "createur": abonnement.societe.createur,
+                "admin": admin,
+                "lien": lien_activation(abonnement, admin.pk, request),
+                "minutes": DUREE_LIEN_ACTIVATION // 60,
+            },
+            admin.email,
+        )
+
+
 def _envoyer(sujet, gabarit, contexte, destinataire):
     """E-mail HTML + texte ; une erreur d'envoi est journalisée sans bloquer le parcours."""
     if not destinataire:
@@ -118,15 +152,17 @@ def demarrer(societe, forfait, request=None, ancien=None):
              "lien": lien_paiement(abo, request), "prenom": getattr(createur, "prenom", "")},
             getattr(createur, "email", ""),
         )
-        return abo
-    _envoyer(
-        f"Votre société « {societe.nom} » a été créée",
-        "societe_creee",
-        {"societe": societe, "abonnement": abo, "forfait": forfait, "gratuit": gratuit,
-         "lien": lien_paiement(abo, request), "prenom": getattr(createur, "prenom", ""),
-         "app": request.build_absolute_uri(reverse("gestion:dashboard")) if request else ""},
-        getattr(createur, "email", ""),
-    )
+    else:
+        _envoyer(
+            f"Votre société « {societe.nom} » a été créée",
+            "societe_creee",
+            {"societe": societe, "abonnement": abo, "forfait": forfait, "gratuit": gratuit,
+             "lien": lien_paiement(abo, request), "prenom": getattr(createur, "prenom", ""),
+             "app": request.build_absolute_uri(reverse("gestion:dashboard")) if request else ""},
+            getattr(createur, "email", ""),
+        )
+    if gratuit:
+        notifier_activation_gratuite(abo, request)
     return abo
 
 
